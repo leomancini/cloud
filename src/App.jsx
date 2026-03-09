@@ -332,6 +332,8 @@ const PostImage = styled.img`
   border-radius: ${RADIUS};
   object-fit: cover;
   aspect-ratio: ${(p) => (p.$single ? "auto" : "1")};
+  background: #f0f0f0;
+  min-height: ${(p) => (p.$single ? "200px" : "auto")};
 `;
 
 const PostVideo = styled.video`
@@ -340,6 +342,8 @@ const PostVideo = styled.video`
   border-radius: ${RADIUS};
   object-fit: cover;
   aspect-ratio: ${(p) => (p.$single ? "auto" : "1")};
+  background: #f0f0f0;
+  min-height: ${(p) => (p.$single ? "200px" : "auto")};
 `;
 
 const PostButton = styled.button`
@@ -896,10 +900,27 @@ function App() {
     setShowLocationSearch(false);
   };
 
-  const handleMediaSelect = (e) => {
+  const compressImage = (file, maxWidth = 1600, quality = 0.8) =>
+    new Promise((resolve) => {
+      if (!file.type.startsWith("image/")) return resolve(file);
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: "image/jpeg" })), "image/jpeg", quality);
+        URL.revokeObjectURL(img.src);
+      };
+      img.src = URL.createObjectURL(file);
+    });
+
+  const handleMediaSelect = async (e) => {
     const files = Array.from(e.target.files);
-    setMediaFiles((prev) => [...prev, ...files]);
-    const newPreviews = files.map((file) => ({
+    const processed = await Promise.all(files.map((f) => compressImage(f)));
+    setMediaFiles((prev) => [...prev, ...processed]);
+    const newPreviews = processed.map((file) => ({
       url: URL.createObjectURL(file),
       type: file.type.startsWith("video/") ? "video" : "image",
     }));
