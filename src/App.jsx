@@ -46,6 +46,12 @@ const LoginCard = styled.div`
 const Title = styled.h1`
   font-size: 22px;
   color: #333;
+  margin: 0 0 6px;
+`;
+
+const Subtitle = styled.p`
+  font-size: 15px;
+  color: #999;
   margin: 0 0 24px;
 `;
 
@@ -623,7 +629,8 @@ function App() {
       <Page>
         <LoginCard>
           <Title>Cloud</Title>
-          <SignInButton href="/api/auth/google">Sign in with Google</SignInButton>
+          <Subtitle>Share your day</Subtitle>
+          <SignInButton href="/api/auth/google">Log in with Google</SignInButton>
         </LoginCard>
       </Page>
     );
@@ -657,7 +664,7 @@ function App() {
             <ProfileAvatar src={user.picture} alt={user.name} />
             <ProfileName>{user.name}</ProfileName>
             <ProfileEmail>{user.email}</ProfileEmail>
-            <LogoutButton onClick={handleLogout}>Sign out</LogoutButton>
+            <LogoutButton onClick={handleLogout}>Log out</LogoutButton>
           </ProfilePage>
         ) : tab === "feed" ? (
           <>
