@@ -675,6 +675,12 @@ const UserName = styled.span`
   color: #333;
 `;
 
+const UserStatus = styled.div`
+  font-size: 12px;
+  color: ${TEXT_SECONDARY};
+  margin-top: 1px;
+`;
+
 const FollowButton = styled.button`
   padding: 8px 18px;
   border-radius: ${RADIUS};
@@ -1064,10 +1070,9 @@ function App() {
   };
 
   const handleFollow = async (id, followStatus) => {
-    if (followStatus === "pending") return;
     const key = `follow-${id}`;
     startBusy(key);
-    if (followStatus === "approved") {
+    if (followStatus === "approved" || followStatus === "pending") {
       await fetch(`/api/unfollow/${id}`, { method: "POST" });
       setUsers((prev) =>
         prev.map((u) => (u.id === id ? { ...u, is_following: 0, follow_status: null } : u))
@@ -1083,6 +1088,7 @@ function App() {
     }
     endBusy(key);
     loadFeed();
+    loadUsers();
   };
 
   const handleApproveFollow = async (id) => {
@@ -1274,7 +1280,7 @@ function App() {
               </SuggestionsBox>
             )}
             {users.filter((u) => u.is_following).length < 5 &&
-              users.filter((u) => !u.is_following && u.follow_status !== "pending").length > 0 && (
+              users.filter((u) => !u.is_following).length > 0 && (
               <SuggestionsBox>
                 <SectionTitle>People you might know</SectionTitle>
                 {users
@@ -1468,30 +1474,6 @@ function App() {
           </>
         ) : (
           <>
-            {followers.length > 0 && (
-              <>
-                <SectionTitle>Followers</SectionTitle>
-                <UserList>
-                  {followers.map((u) => (
-                    <UserRow key={u.id}>
-                      <UserInfo>
-                        <UserAvatar src={u.picture} alt={u.name} />
-                        <UserName>{u.name}</UserName>
-                      </UserInfo>
-                      <FollowButton
-                        $following={u.is_following}
-                        $status={u.follow_status}
-                        disabled={isBusy(`follow-${u.id}`)}
-                        onClick={() => handleFollow(u.id, u.follow_status || (u.is_following ? "approved" : null))}
-                      >
-                        {isBusy(`follow-${u.id}`) ? <Spinner /> : u.follow_status === "pending" ? "Requested" : u.is_following ? "Following" : "Follow back"}
-                      </FollowButton>
-                    </UserRow>
-                  ))}
-                </UserList>
-              </>
-            )}
-            <SectionTitle style={followers.length > 0 ? { marginTop: 24 } : undefined}>Everyone</SectionTitle>
             <UserList>
               {users.length === 0 ? (
                 <EmptyState>No other users yet</EmptyState>
@@ -1500,7 +1482,12 @@ function App() {
                   <UserRow key={u.id}>
                     <UserInfo>
                       <UserAvatar src={u.picture} alt={u.name} />
-                      <UserName>{u.name}</UserName>
+                      <div>
+                        <UserName>{u.name}</UserName>
+                        {u.follows_you && (
+                          <UserStatus>Follows you</UserStatus>
+                        )}
+                      </div>
                     </UserInfo>
                     <FollowButton
                       $following={u.is_following}
@@ -1508,7 +1495,7 @@ function App() {
                       disabled={isBusy(`follow-${u.id}`)}
                       onClick={() => handleFollow(u.id, u.follow_status || (u.is_following ? "approved" : null))}
                     >
-                      {isBusy(`follow-${u.id}`) ? <Spinner /> : u.follow_status === "pending" ? "Requested" : u.is_following ? "Following" : "Follow"}
+                      {isBusy(`follow-${u.id}`) ? <Spinner /> : u.follow_status === "pending" ? "Requested" : u.is_following ? "Following" : u.follows_you ? "Follow back" : "Follow"}
                     </FollowButton>
                   </UserRow>
                 ))

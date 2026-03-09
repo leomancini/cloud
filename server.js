@@ -213,14 +213,15 @@ app.get("/api/users", (req, res) => {
   const users = db
     .prepare(
       `SELECT u.id, u.name, '/api/pictures/' || u.id || '.jpg' as picture,
-        (SELECT status FROM follows WHERE follower_id = ? AND following_id = u.id) as follow_status
+        (SELECT status FROM follows WHERE follower_id = ? AND following_id = u.id) as follow_status,
+        (SELECT status FROM follows WHERE follower_id = u.id AND following_id = ?) as follows_you
       FROM users u
       WHERE u.id != ?
       ORDER BY u.created_at DESC`
     )
-    .all(req.user.id, req.user.id);
+    .all(req.user.id, req.user.id, req.user.id);
 
-  res.json({ users: users.map((u) => ({ ...u, is_following: u.follow_status === "approved" ? 1 : 0, follow_status: u.follow_status || null })) });
+  res.json({ users: users.map((u) => ({ ...u, is_following: u.follow_status === "approved" ? 1 : 0, follow_status: u.follow_status || null, follows_you: u.follows_you === "approved" })) });
 });
 
 app.get("/api/followers", (req, res) => {
