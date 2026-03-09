@@ -519,20 +519,20 @@ const CommentBody = styled.div`
 `;
 
 const CommentAuthor = styled.span`
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: ${TEXT};
   margin-right: 6px;
 `;
 
 const CommentText = styled.span`
-  font-size: 13px;
+  font-size: 15px;
   color: ${TEXT};
   line-height: 1.2;
 `;
 
 const CommentTime = styled.span`
-  font-size: 11px;
+  font-size: 12px;
   color: ${TEXT_SECONDARY};
   margin-left: 8px;
 `;
