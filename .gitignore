@@ -3,4 +3,5 @@ dist/
 .env
 *.sqlite
 pictures/
+uploads/
 

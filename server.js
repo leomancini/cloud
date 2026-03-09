@@ -7,6 +7,7 @@ import Database from "better-sqlite3";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { mkdirSync, existsSync, writeFileSync } from "fs";
+import multer from "multer";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -42,6 +43,28 @@ db.exec(`
     UNIQUE(follower_id, following_id)
   )
 `);
+
+// Uploads directory
+const uploadsDir = join(__dirname, "uploads");
+if (!existsSync(uploadsDir)) mkdirSync(uploadsDir);
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: uploadsDir,
+    filename: (req, file, cb) => {
+      const ext = file.originalname.split(".").pop();
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`);
+    },
+  }),
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/") || file.mimetype.startsWith("video/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only images and videos are allowed"));
+    }
+  },
+});
 
 // Profile pictures cache
 const picturesDir = join(__dirname, "pictures");
@@ -238,19 +261,48 @@ try {
   db.exec("ALTER TABLE posts ADD COLUMN place_lng REAL");
 } catch {}
 
-app.post("/api/posts", (req, res) => {
+db.exec(`
+  CREATE TABLE IF NOT EXISTS post_media (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    filename TEXT NOT NULL,
+    media_type TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id)
+  )
+`);
+
+app.post("/api/posts", upload.array("media", 10), (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
   const { content, place_name, place_lat, place_lng } = req.body;
-  if (!content || !content.trim())
-    return res.status(400).json({ error: "Content required" });
+  if ((!content || !content.trim()) && (!req.files || req.files.length === 0))
+    return res.status(400).json({ error: "Content or media required" });
 
   const result = db
     .prepare(
       "INSERT INTO posts (user_id, content, place_name, place_lat, place_lng) VALUES (?, ?, ?, ?, ?)"
     )
-    .run(req.user.id, content.trim(), place_name || null, place_lat || null, place_lng || null);
+    .run(
+      req.user.id,
+      (content || "").trim(),
+      place_name || null,
+      place_lat || null,
+      place_lng || null
+    );
 
-  res.json({ id: result.lastInsertRowid });
+  const postId = result.lastInsertRowid;
+
+  if (req.files) {
+    const insertMedia = db.prepare(
+      "INSERT INTO post_media (post_id, filename, media_type) VALUES (?, ?, ?)"
+    );
+    for (const file of req.files) {
+      const mediaType = file.mimetype.startsWith("video/") ? "video" : "image";
+      insertMedia.run(postId, file.filename, mediaType);
+    }
+  }
+
+  res.json({ id: postId });
 });
 
 app.get("/api/feed", (req, res) => {
@@ -270,7 +322,30 @@ app.get("/api/feed", (req, res) => {
     )
     .all(req.user.id, req.user.id);
 
-  res.json({ posts });
+  const getMedia = db.prepare(
+    "SELECT filename, media_type FROM post_media WHERE post_id = ? ORDER BY id"
+  );
+
+  const postsWithMedia = posts.map((post) => ({
+    ...post,
+    media: getMedia.all(post.id).map((m) => ({
+      url: `/api/uploads/${m.filename}`,
+      type: m.media_type,
+    })),
+  }));
+
+  res.json({ posts: postsWithMedia });
+});
+
+// Serve uploaded media
+app.get("/api/uploads/:filename", (req, res) => {
+  const filePath = join(uploadsDir, req.params.filename);
+  if (existsSync(filePath)) {
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.sendFile(filePath);
+  } else {
+    res.status(404).end();
+  }
 });
 
 // Places search proxy

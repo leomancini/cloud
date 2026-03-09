@@ -240,6 +240,96 @@ const RemoveLocation = styled.button`
   padding: 0 4px;
 `;
 
+const ComposeActionsLeft = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const MediaButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid ${(p) => (p.$active ? "black" : "#ddd")};
+  background: ${(p) => (p.$active ? "#f5f5f5" : "white")};
+  color: ${(p) => (p.$active ? "#333" : "#888")};
+
+  &:hover {
+    background: #f5f5f5;
+  }
+`;
+
+const HiddenFileInput = styled.input`
+  display: none;
+`;
+
+const MediaPreviews = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+`;
+
+const MediaPreview = styled.div`
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+`;
+
+const PreviewImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+const PreviewVideo = styled.video`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+const RemoveMedia = styled.button`
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+`;
+
+const PostMediaContainer = styled.div`
+  margin-top: 10px;
+  border-radius: 10px;
+  overflow: hidden;
+`;
+
+const PostImage = styled.img`
+  width: 100%;
+  display: block;
+  border-radius: 10px;
+`;
+
+const PostVideo = styled.video`
+  width: 100%;
+  display: block;
+  border-radius: 10px;
+`;
+
 const PostButton = styled.button`
   padding: 8px 20px;
   border-radius: 8px;
@@ -423,6 +513,11 @@ function App() {
   const [userLocation, setUserLocation] = useState(null);
   const searchTimeout = useRef(null);
 
+  // Media state
+  const [mediaFiles, setMediaFiles] = useState([]);
+  const [mediaPreviews, setMediaPreviews] = useState([]);
+  const fileInputRef = useRef(null);
+
   useEffect(() => {
     fetch("/api/auth/me")
       .then((res) => res.json())
@@ -474,21 +569,44 @@ function App() {
     setShowLocationSearch(false);
   };
 
+  const handleMediaSelect = (e) => {
+    const files = Array.from(e.target.files);
+    setMediaFiles((prev) => [...prev, ...files]);
+    const newPreviews = files.map((file) => ({
+      url: URL.createObjectURL(file),
+      type: file.type.startsWith("video/") ? "video" : "image",
+    }));
+    setMediaPreviews((prev) => [...prev, ...newPreviews]);
+    e.target.value = "";
+  };
+
+  const removeMedia = (index) => {
+    URL.revokeObjectURL(mediaPreviews[index].url);
+    setMediaFiles((prev) => prev.filter((_, i) => i !== index));
+    setMediaPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handlePost = async () => {
-    if (!compose.trim()) return;
-    const body = { content: compose };
+    if (!compose.trim() && mediaFiles.length === 0) return;
+    const formData = new FormData();
+    formData.append("content", compose);
     if (selectedLocation) {
-      body.place_name = selectedLocation.name;
-      body.place_lat = selectedLocation.lat;
-      body.place_lng = selectedLocation.lng;
+      formData.append("place_name", selectedLocation.name);
+      formData.append("place_lat", selectedLocation.lat);
+      formData.append("place_lng", selectedLocation.lng);
+    }
+    for (const file of mediaFiles) {
+      formData.append("media", file);
     }
     await fetch("/api/posts", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: formData,
     });
     setCompose("");
     setSelectedLocation(null);
+    mediaPreviews.forEach((p) => URL.revokeObjectURL(p.url));
+    setMediaFiles([]);
+    setMediaPreviews([]);
     loadFeed();
   };
 
@@ -593,8 +711,36 @@ function App() {
                   )}
                 </LocationSearch>
               )}
+              {mediaPreviews.length > 0 && (
+                <MediaPreviews>
+                  {mediaPreviews.map((preview, i) => (
+                    <MediaPreview key={i}>
+                      {preview.type === "video" ? (
+                        <PreviewVideo src={preview.url} muted />
+                      ) : (
+                        <PreviewImage src={preview.url} />
+                      )}
+                      <RemoveMedia onClick={() => removeMedia(i)}>×</RemoveMedia>
+                    </MediaPreview>
+                  ))}
+                </MediaPreviews>
+              )}
+              <HiddenFileInput
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                onChange={handleMediaSelect}
+              />
               <ComposeActions>
-                <PinButton
+                <ComposeActionsLeft>
+                  <MediaButton
+                    $active={mediaFiles.length > 0}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    🖼 Media
+                  </MediaButton>
+                  <PinButton
                   $active={showLocationSearch || selectedLocation}
                   onClick={() => {
                     if (selectedLocation) {
@@ -612,9 +758,13 @@ function App() {
                     setLocationResults([]);
                   }}
                 >
-                  📍 Location
-                </PinButton>
-                <PostButton onClick={handlePost} disabled={!compose.trim()}>
+                    📍 Location
+                  </PinButton>
+                </ComposeActionsLeft>
+                <PostButton
+                  onClick={handlePost}
+                  disabled={!compose.trim() && mediaFiles.length === 0}
+                >
                   Post
                 </PostButton>
               </ComposeActions>
@@ -629,7 +779,25 @@ function App() {
                     <PostAuthor>{post.author_name}</PostAuthor>
                     <PostTime>{timeAgo(post.created_at)}</PostTime>
                   </PostHeader>
-                  <PostContent>{post.content}</PostContent>
+                  {post.content && <PostContent>{post.content}</PostContent>}
+                  {post.media && post.media.length > 0 && (
+                    <PostMediaContainer>
+                      {post.media.map((m, i) =>
+                        m.type === "video" ? (
+                          <PostVideo
+                            key={i}
+                            src={m.url}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                          />
+                        ) : (
+                          <PostImage key={i} src={m.url} />
+                        )
+                      )}
+                    </PostMediaContainer>
+                  )}
                   {post.place_name && post.place_lat && (
                     <PostLocation>
                       <PostMap
