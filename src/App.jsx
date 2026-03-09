@@ -282,22 +282,21 @@ const MediaPreviews = styled.div`
 
 const MediaPreview = styled.div`
   position: relative;
-  width: 80px;
-  height: 80px;
   border-radius: 8px;
   overflow: hidden;
+  max-height: 200px;
 `;
 
 const PreviewImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: 100px;
+  border-radius: 8px;
+  display: block;
 `;
 
 const PreviewVideo = styled.video`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: 100px;
+  border-radius: 8px;
+  display: block;
 `;
 
 const RemoveMedia = styled.button`
