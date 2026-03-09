@@ -528,7 +528,7 @@ const CommentAuthor = styled.span`
 const CommentText = styled.span`
   font-size: 13px;
   color: ${TEXT};
-  line-height: 1.4;
+  line-height: 1.2;
 `;
 
 const CommentTime = styled.span`
