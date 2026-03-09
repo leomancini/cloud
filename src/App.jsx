@@ -155,17 +155,16 @@ const IconButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  font-size: 15px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 14px;
   cursor: pointer;
-  border: none;
-  background: ${(p) => (p.$active ? "#f0f0f0" : "transparent")};
+  border: 1px solid ${(p) => (p.$active ? "#333" : "#ddd")};
+  background: ${(p) => (p.$active ? "#f5f5f5" : "white")};
   color: ${(p) => (p.$active ? "#333" : "#999")};
 
   &:hover {
-    background: #f0f0f0;
+    background: #f5f5f5;
   }
 `;
 
