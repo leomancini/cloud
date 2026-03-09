@@ -7,9 +7,10 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import Database from "better-sqlite3";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { mkdirSync, existsSync, writeFileSync, readFileSync } from "fs";
+import { mkdirSync, existsSync, writeFileSync, readFileSync, renameSync } from "fs";
 import crypto from "crypto";
 import multer from "multer";
+import sharp from "sharp";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -356,7 +357,7 @@ db.exec(`
   )
 `);
 
-app.post("/api/posts", upload.array("media", 10), (req, res) => {
+app.post("/api/posts", upload.array("media", 10), async (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
   const { content, place_name, place_lat, place_lng, place_address } = req.body;
   if ((!content || !content.trim()) && (!req.files || req.files.length === 0))
@@ -383,6 +384,17 @@ app.post("/api/posts", upload.array("media", 10), (req, res) => {
     );
     for (const file of req.files) {
       const mediaType = file.mimetype.startsWith("video/") ? "video" : "image";
+      if (mediaType === "image") {
+        try {
+          await sharp(file.path)
+            .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
+            .jpeg({ quality: 80 })
+            .toFile(file.path + ".tmp");
+          renameSync(file.path + ".tmp", file.path);
+        } catch (e) {
+          console.error("Image compression failed:", e);
+        }
+      }
       insertMedia.run(postId, file.filename, mediaType);
     }
   }
