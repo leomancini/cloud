@@ -218,6 +218,23 @@ app.get("/api/users", (req, res) => {
   res.json({ users });
 });
 
+app.get("/api/followers", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+
+  const followers = db
+    .prepare(
+      `SELECT u.id, u.name, '/api/pictures/' || u.id || '.jpg' as picture,
+        EXISTS(SELECT 1 FROM follows WHERE follower_id = ? AND following_id = u.id) as is_following
+      FROM users u
+      JOIN follows f ON f.follower_id = u.id
+      WHERE f.following_id = ?
+      ORDER BY f.created_at DESC`
+    )
+    .all(req.user.id, req.user.id);
+
+  res.json({ followers });
+});
+
 app.post("/api/follow/:id", (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
 
