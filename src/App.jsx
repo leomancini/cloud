@@ -7,6 +7,7 @@ const BORDER = "#eee";
 const TEXT = "#333";
 const TEXT_SECONDARY = "#999";
 const ICON_GAP = "8px";
+const Spinner = () => <i className="fa-solid fa-spinner fa-spin" />;
 
 const Page = styled.div`
   min-height: 100vh;
@@ -799,6 +800,7 @@ function App() {
   const [compose, setCompose] = useState("");
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
+  const [busyActions, setBusyActions] = useState(new Set());
 
   // Location state
   const [showLocationSearch, setShowLocationSearch] = useState(false);
@@ -818,6 +820,10 @@ function App() {
   const [openCommentMenuId, setOpenCommentMenuId] = useState(null);
   const [editingComment, setEditingComment] = useState(null);
   const [editCommentText, setEditCommentText] = useState("");
+
+  const startBusy = (key) => setBusyActions((prev) => new Set(prev).add(key));
+  const endBusy = (key) => setBusyActions((prev) => { const next = new Set(prev); next.delete(key); return next; });
+  const isBusy = (key) => busyActions.has(key);
 
   useEffect(() => {
     const handleClickOutside = () => { setOpenMenuId(null); setOpenCommentMenuId(null); };
@@ -937,8 +943,10 @@ function App() {
 
   const handleDelete = async (id) => {
     setOpenMenuId(null);
+    startBusy(`delete-${id}`);
     await fetch(`/api/posts/${id}`, { method: "DELETE" });
     setPosts((prev) => prev.filter((p) => p.id !== id));
+    endBusy(`delete-${id}`);
   };
 
   const handleReact = async (postId, emoji) => {
@@ -987,6 +995,7 @@ function App() {
   const handleComment = async (postId) => {
     const content = (commentInputs[postId] || "").trim();
     if (!content) return;
+    startBusy(`comment-${postId}`);
     const res = await fetch(`/api/posts/${postId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -999,6 +1008,7 @@ function App() {
       )
     );
     setCommentInputs((prev) => ({ ...prev, [postId]: "" }));
+    endBusy(`comment-${postId}`);
   };
 
   const handleDeleteComment = async (commentId, postId) => {
@@ -1014,6 +1024,7 @@ function App() {
   const handleEditComment = async (commentId, postId) => {
     const content = editCommentText.trim();
     if (!content) return;
+    startBusy(`edit-comment-${commentId}`);
     await fetch(`/api/comments/${commentId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -1026,12 +1037,16 @@ function App() {
           : p
       )
     );
+    endBusy(`edit-comment-${commentId}`);
     setEditingComment(null);
     setEditCommentText("");
   };
 
   const handleFollow = async (id, followStatus) => {
-    if (followStatus === "approved" || followStatus === "pending") {
+    if (followStatus === "pending") return;
+    const key = `follow-${id}`;
+    startBusy(key);
+    if (followStatus === "approved") {
       await fetch(`/api/unfollow/${id}`, { method: "POST" });
       setUsers((prev) =>
         prev.map((u) => (u.id === id ? { ...u, is_following: 0, follow_status: null } : u))
@@ -1045,23 +1060,29 @@ function App() {
         prev.map((u) => (u.id === id ? { ...u, is_following: 0, follow_status: "pending" } : u))
       );
     }
+    endBusy(key);
     loadFeed();
   };
 
   const handleApproveFollow = async (id) => {
+    startBusy(`approve-${id}`);
     await fetch(`/api/follow-requests/${id}/approve`, { method: "POST" });
     setFollowRequests((prev) => prev.filter((r) => r.id !== id));
+    endBusy(`approve-${id}`);
     loadFollowers();
     loadUsers();
     loadFeed();
   };
 
   const handleRejectFollow = async (id) => {
+    startBusy(`reject-${id}`);
     await fetch(`/api/follow-requests/${id}/reject`, { method: "POST" });
     setFollowRequests((prev) => prev.filter((r) => r.id !== id));
+    endBusy(`reject-${id}`);
   };
 
   const handleLogout = async () => {
+    startBusy("logout");
     await fetch("/api/auth/logout", { method: "POST" });
     setUser(null);
     setUsers([]);
@@ -1110,7 +1131,7 @@ function App() {
             <ProfileAvatar src={user.picture} alt={user.name} />
             <ProfileName>{user.name}</ProfileName>
             <ProfileEmail>{user.email}</ProfileEmail>
-            <LogoutButton onClick={handleLogout}>Log out</LogoutButton>
+            <LogoutButton onClick={handleLogout} disabled={isBusy("logout")}>{isBusy("logout") ? <Spinner /> : "Log out"}</LogoutButton>
           </ProfilePage>
         ) : tab === "feed" ? (
           <>
@@ -1220,11 +1241,11 @@ function App() {
                       <UserName>{r.name}</UserName>
                     </UserInfo>
                     <RequestActions>
-                      <ApproveButton onClick={() => handleApproveFollow(r.id)}>
-                        Approve
+                      <ApproveButton disabled={isBusy(`approve-${r.id}`)} onClick={() => handleApproveFollow(r.id)}>
+                        {isBusy(`approve-${r.id}`) ? <Spinner /> : "Approve"}
                       </ApproveButton>
-                      <RejectButton onClick={() => handleRejectFollow(r.id)}>
-                        Reject
+                      <RejectButton disabled={isBusy(`reject-${r.id}`)} onClick={() => handleRejectFollow(r.id)}>
+                        {isBusy(`reject-${r.id}`) ? <Spinner /> : "Reject"}
                       </RejectButton>
                     </RequestActions>
                   </UserRow>
@@ -1246,9 +1267,10 @@ function App() {
                       <FollowButton
                         $following={false}
                         $status={u.follow_status}
+                        disabled={isBusy(`follow-${u.id}`)}
                         onClick={() => handleFollow(u.id, u.follow_status)}
                       >
-                        {u.follow_status === "pending" ? "Requested" : "Follow"}
+                        {isBusy(`follow-${u.id}`) ? <Spinner /> : u.follow_status === "pending" ? "Requested" : "Follow"}
                       </FollowButton>
                     </UserRow>
                   ))}
@@ -1364,8 +1386,8 @@ function App() {
                                     }}
                                     autoFocus
                                   />
-                                  <CommentPostButton onClick={() => handleEditComment(c.id, post.id)}>
-                                    <i className="fa-solid fa-check" />
+                                  <CommentPostButton onClick={() => handleEditComment(c.id, post.id)} disabled={isBusy(`edit-comment-${c.id}`)}>
+                                    {isBusy(`edit-comment-${c.id}`) ? <Spinner /> : <i className="fa-solid fa-check" />}
                                   </CommentPostButton>
                                 </CommentInputRow>
                               ) : (
@@ -1413,8 +1435,8 @@ function App() {
                         }}
                       />
                       {(commentInputs[post.id] || "").trim() && (
-                        <CommentPostButton onClick={() => handleComment(post.id)}>
-                          <i className="fa-solid fa-arrow-up" />
+                        <CommentPostButton onClick={() => handleComment(post.id)} disabled={isBusy(`comment-${post.id}`)}>
+                          {isBusy(`comment-${post.id}`) ? <Spinner /> : <i className="fa-solid fa-arrow-up" />}
                         </CommentPostButton>
                       )}
                     </CommentInputRow>
@@ -1438,9 +1460,10 @@ function App() {
                       <FollowButton
                         $following={u.is_following}
                         $status={u.follow_status}
+                        disabled={isBusy(`follow-${u.id}`)}
                         onClick={() => handleFollow(u.id, u.follow_status || (u.is_following ? "approved" : null))}
                       >
-                        {u.follow_status === "pending" ? "Requested" : u.is_following ? "Following" : "Follow back"}
+                        {isBusy(`follow-${u.id}`) ? <Spinner /> : u.follow_status === "pending" ? "Requested" : u.is_following ? "Following" : "Follow back"}
                       </FollowButton>
                     </UserRow>
                   ))}
@@ -1461,9 +1484,10 @@ function App() {
                     <FollowButton
                       $following={u.is_following}
                       $status={u.follow_status}
+                      disabled={isBusy(`follow-${u.id}`)}
                       onClick={() => handleFollow(u.id, u.follow_status || (u.is_following ? "approved" : null))}
                     >
-                      {u.follow_status === "pending" ? "Requested" : u.is_following ? "Following" : "Follow"}
+                      {isBusy(`follow-${u.id}`) ? <Spinner /> : u.follow_status === "pending" ? "Requested" : u.is_following ? "Following" : "Follow"}
                     </FollowButton>
                   </UserRow>
                 ))
