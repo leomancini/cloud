@@ -16,11 +16,23 @@ const Header = styled.div`
   margin: 0 auto 32px;
 `;
 
+const HeaderProfile = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+`;
+
 const SmallAvatar = styled.img`
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  cursor: pointer;
+`;
+
+const HeaderName = styled.span`
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
 `;
 
 const LoginCard = styled.div`
@@ -357,11 +369,10 @@ function App() {
           <BackButton onClick={() => setTab("feed")}>&larr; Back</BackButton>
         ) : (
           <>
-            <SmallAvatar
-              src={user.picture}
-              alt={user.name}
-              onClick={() => setTab("profile")}
-            />
+            <HeaderProfile onClick={() => setTab("profile")}>
+              <SmallAvatar src={user.picture} alt={user.name} />
+              <HeaderName>{user.name}</HeaderName>
+            </HeaderProfile>
             <SegmentedControl>
               <Segment $active={tab === "feed"} onClick={() => setTab("feed")}>
                 Feed
