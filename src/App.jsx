@@ -344,6 +344,11 @@ function App() {
   return (
     <Page>
       <Header>
+        <SmallAvatar
+          src={user.picture}
+          alt={user.name}
+          onClick={() => setTab("profile")}
+        />
         <SegmentedControl>
           <Segment $active={tab === "feed"} onClick={() => setTab("feed")}>
             Feed
@@ -352,11 +357,6 @@ function App() {
             People
           </Segment>
         </SegmentedControl>
-        <SmallAvatar
-          src={user.picture}
-          alt={user.name}
-          onClick={() => setTab("profile")}
-        />
       </Header>
       <Content>
         {tab === "profile" ? (
