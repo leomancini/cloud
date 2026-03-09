@@ -217,6 +217,50 @@ app.post("/api/unfollow/:id", (req, res) => {
   res.json({ ok: true });
 });
 
+// Posts routes
+db.exec(`
+  CREATE TABLE IF NOT EXISTS posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+
+app.post("/api/posts", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const { content } = req.body;
+  if (!content || !content.trim())
+    return res.status(400).json({ error: "Content required" });
+
+  const result = db
+    .prepare("INSERT INTO posts (user_id, content) VALUES (?, ?)")
+    .run(req.user.id, content.trim());
+
+  res.json({ id: result.lastInsertRowid });
+});
+
+app.get("/api/feed", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+
+  const posts = db
+    .prepare(
+      `SELECT p.id, p.content, p.created_at,
+        u.name as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
+      FROM posts p
+      JOIN users u ON p.user_id = u.id
+      WHERE p.user_id IN (
+        SELECT following_id FROM follows WHERE follower_id = ?
+      ) OR p.user_id = ?
+      ORDER BY p.created_at DESC
+      LIMIT 50`
+    )
+    .all(req.user.id, req.user.id);
+
+  res.json({ posts });
+});
+
 // Serve static files from dist
 app.use(express.static(join(__dirname, "dist")));
 
