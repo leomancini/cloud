@@ -694,6 +694,23 @@ const FollowButton = styled.button`
   }
 `;
 
+const FollowBtn = ({ user, onFollow, busy }) => {
+  const status = user.follow_status;
+  const following = user.is_following;
+  const followsYou = user.follows_you;
+  const label = status === "pending" ? "Requested" : following ? "Following" : followsYou ? "Follow back" : "Follow";
+  return (
+    <FollowButton
+      $following={!!following}
+      $status={status}
+      disabled={busy}
+      onClick={() => onFollow(user.id, status || (following ? "approved" : null))}
+    >
+      {busy ? <Spinner /> : label}
+    </FollowButton>
+  );
+};
+
 const RequestActions = styled.div`
   display: flex;
   gap: 8px;
@@ -1266,17 +1283,11 @@ function App() {
                       <UserName>{r.name}</UserName>
                     </UserInfo>
                     {r.approved ? (
-                      <FollowButton
-                        $following={false}
-                        $status={r.followed_back ? "pending" : null}
-                        disabled={isBusy(`follow-${r.id}`) || r.followed_back}
-                        onClick={() => {
-                          handleFollow(r.id, null);
-                          setFollowRequests((prev) => prev.map((req) => req.id === r.id ? { ...req, followed_back: true } : req));
-                        }}
-                      >
-                        {isBusy(`follow-${r.id}`) ? <Spinner /> : r.followed_back ? "Requested" : "Follow back"}
-                      </FollowButton>
+                      <FollowBtn
+                        user={users.find((u) => u.id === r.id) || { id: r.id, follows_you: true }}
+                        onFollow={handleFollow}
+                        busy={isBusy(`follow-${r.id}`)}
+                      />
                     ) : (
                       <RequestActions>
                         <ApproveButton disabled={isBusy(`approve-${r.id}`)} onClick={() => handleApproveFollow(r.id)}>
@@ -1303,14 +1314,7 @@ function App() {
                         <UserAvatar src={u.picture} alt={u.name} />
                         <UserName>{u.name}</UserName>
                       </UserInfo>
-                      <FollowButton
-                        $following={false}
-                        $status={u.follow_status}
-                        disabled={isBusy(`follow-${u.id}`)}
-                        onClick={() => handleFollow(u.id, u.follow_status)}
-                      >
-                        {isBusy(`follow-${u.id}`) ? <Spinner /> : u.follow_status === "pending" ? "Requested" : "Follow"}
-                      </FollowButton>
+                      <FollowBtn user={u} onFollow={handleFollow} busy={isBusy(`follow-${u.id}`)} />
                     </UserRow>
                   ))}
               </SuggestionsBox>
@@ -1501,14 +1505,7 @@ function App() {
                         )}
                       </div>
                     </UserInfo>
-                    <FollowButton
-                      $following={u.is_following}
-                      $status={u.follow_status}
-                      disabled={isBusy(`follow-${u.id}`)}
-                      onClick={() => handleFollow(u.id, u.follow_status || (u.is_following ? "approved" : null))}
-                    >
-                      {isBusy(`follow-${u.id}`) ? <Spinner /> : u.follow_status === "pending" ? "Requested" : u.is_following ? "Following" : u.follows_you ? "Follow back" : "Follow"}
-                    </FollowButton>
+                    <FollowBtn user={u} onFollow={handleFollow} busy={isBusy(`follow-${u.id}`)} />
                   </UserRow>
                 ))
               )}
