@@ -871,6 +871,19 @@ function App() {
       });
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(`${proto}//${window.location.host}/ws?userId=${user.id}`);
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === "follow-request") loadFollowRequests();
+      if (msg.type === "follow-approved" || msg.type === "follow-rejected") { loadUsers(); loadFollowers(); }
+      if (msg.type === "feed-update") loadFeed();
+    };
+    return () => ws.close();
+  }, [user]);
+
   const loadFeed = () => {
     fetch("/api/feed")
       .then((res) => res.json())
@@ -1104,6 +1117,7 @@ function App() {
     endBusy(key);
     loadFeed();
     loadUsers();
+    loadFollowRequests();
   };
 
   const handleApproveFollow = async (id) => {
@@ -1160,7 +1174,7 @@ function App() {
               <Segment $active={tab === "feed"} onClick={() => setTab("feed")}>
                 Feed
               </Segment>
-              <Segment $active={tab === "people"} onClick={() => setTab("people")}>
+              <Segment $active={tab === "people"} onClick={() => { setTab("people"); loadUsers(); loadFollowRequests(); loadFollowers(); }}>
                 People
               </Segment>
             </SegmentedControl>
