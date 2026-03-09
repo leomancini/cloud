@@ -229,11 +229,12 @@ const LocationAddress = styled.div`
 `;
 
 const SelectedLocation = styled.div`
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
   margin-top: 8px;
-  padding: 8px 12px;
+  padding: 8px 36px 8px 12px;
   background: #f5f5f5;
   border-radius: 8px;
   font-size: 13px;
@@ -247,13 +248,16 @@ const SelectedLocation = styled.div`
 `;
 
 const RemoveLocation = styled.button`
-  margin-left: auto;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   border: none;
   background: none;
   color: #999;
   cursor: pointer;
   font-size: 14px;
-  padding: 0 6px;
+  padding: 0;
   display: flex;
   align-items: center;
 `;
