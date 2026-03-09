@@ -463,34 +463,34 @@ const ReactionsRow = styled.div`
 const ReactionChip = styled.button`
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: 0;
   border: none;
   background: none;
-  font-size: 13px;
+  font-size: 20px;
   cursor: pointer;
 `;
 
 const ReactionNames = styled.span`
-  font-size: 12px;
-  color: ${TEXT_SECONDARY};
+  font-size: 13px;
+  color: ${TEXT};
+  font-weight: 600;
 `;
 
 const EmojiOption = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   border: none;
   background: ${(p) => (p.$active ? "#f0f0f0" : "none")};
-  font-size: 16px;
+  font-size: 20px;
+  line-height: 34px;
+  padding: 2px 0 0;
   cursor: pointer;
   border-radius: ${RADIUS_SM};
-  opacity: ${(p) => (p.$active ? 1 : 0.5)};
-
   &:hover {
-    opacity: 1;
     background: #f0f0f0;
   }
 `;
