@@ -676,12 +676,47 @@ const FollowButton = styled.button`
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  border: 1px solid ${(p) => (p.$following ? "#ddd" : "black")};
-  background: ${(p) => (p.$following ? "white" : "black")};
-  color: ${(p) => (p.$following ? "#666" : "white")};
+  border: 1px solid ${(p) => (p.$status === "pending" ? "#ddd" : p.$following ? "#ddd" : "black")};
+  background: ${(p) => (p.$status === "pending" ? "white" : p.$following ? "white" : "black")};
+  color: ${(p) => (p.$status === "pending" ? "#999" : p.$following ? "#666" : "white")};
 
   &:hover {
-    background: ${(p) => (p.$following ? "#f5f5f5" : "#222")};
+    background: ${(p) => (p.$status === "pending" ? "#f5f5f5" : p.$following ? "#f5f5f5" : "#222")};
+  }
+`;
+
+const RequestActions = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const ApproveButton = styled.button`
+  padding: 8px 18px;
+  border-radius: ${RADIUS};
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: black;
+  color: white;
+
+  &:hover {
+    background: #222;
+  }
+`;
+
+const RejectButton = styled.button`
+  padding: 8px 18px;
+  border-radius: ${RADIUS};
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #ddd;
+  background: white;
+  color: #666;
+
+  &:hover {
+    background: #f5f5f5;
   }
 `;
 
@@ -759,6 +794,7 @@ function App() {
   const [users, setUsers] = useState([]);
   const [posts, setPosts] = useState([]);
   const [followers, setFollowers] = useState([]);
+  const [followRequests, setFollowRequests] = useState([]);
   const [tab, setTab] = useState("feed");
   const [compose, setCompose] = useState("");
   const [loading, setLoading] = useState(true);
@@ -799,6 +835,7 @@ function App() {
           loadFeed();
           loadUsers();
           loadFollowers();
+          loadFollowRequests();
         }
       });
   }, []);
@@ -807,6 +844,12 @@ function App() {
     fetch("/api/feed")
       .then((res) => res.json())
       .then((data) => setPosts(data.posts));
+  };
+
+  const loadFollowRequests = () => {
+    fetch("/api/follow-requests")
+      .then((res) => res.json())
+      .then((data) => setFollowRequests(data.requests));
   };
 
   const loadFollowers = () => {
@@ -987,20 +1030,35 @@ function App() {
     setEditCommentText("");
   };
 
-  const handleFollow = async (id, isFollowing) => {
-    const endpoint = isFollowing ? `/api/unfollow/${id}` : `/api/follow/${id}`;
-    await fetch(endpoint, { method: "POST" });
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === id ? { ...u, is_following: isFollowing ? 0 : 1 } : u
-      )
-    );
-    setFollowers((prev) =>
-      prev.map((u) =>
-        u.id === id ? { ...u, is_following: isFollowing ? 0 : 1 } : u
-      )
-    );
+  const handleFollow = async (id, followStatus) => {
+    if (followStatus === "approved" || followStatus === "pending") {
+      await fetch(`/api/unfollow/${id}`, { method: "POST" });
+      setUsers((prev) =>
+        prev.map((u) => (u.id === id ? { ...u, is_following: 0, follow_status: null } : u))
+      );
+      setFollowers((prev) =>
+        prev.map((u) => (u.id === id ? { ...u, is_following: 0, follow_status: null } : u))
+      );
+    } else {
+      await fetch(`/api/follow/${id}`, { method: "POST" });
+      setUsers((prev) =>
+        prev.map((u) => (u.id === id ? { ...u, is_following: 0, follow_status: "pending" } : u))
+      );
+    }
     loadFeed();
+  };
+
+  const handleApproveFollow = async (id) => {
+    await fetch(`/api/follow-requests/${id}/approve`, { method: "POST" });
+    setFollowRequests((prev) => prev.filter((r) => r.id !== id));
+    loadFollowers();
+    loadUsers();
+    loadFeed();
+  };
+
+  const handleRejectFollow = async (id) => {
+    await fetch(`/api/follow-requests/${id}/reject`, { method: "POST" });
+    setFollowRequests((prev) => prev.filter((r) => r.id !== id));
   };
 
   const handleLogout = async () => {
@@ -1152,8 +1210,29 @@ function App() {
                 </PostButton>
               </ComposeActions>
             </ComposeBox>
+            {followRequests.length > 0 && (
+              <SuggestionsBox>
+                <SectionTitle>Follow requests</SectionTitle>
+                {followRequests.map((r) => (
+                  <UserRow key={r.id}>
+                    <UserInfo>
+                      <UserAvatar src={r.picture} alt={r.name} />
+                      <UserName>{r.name}</UserName>
+                    </UserInfo>
+                    <RequestActions>
+                      <ApproveButton onClick={() => handleApproveFollow(r.id)}>
+                        Approve
+                      </ApproveButton>
+                      <RejectButton onClick={() => handleRejectFollow(r.id)}>
+                        Reject
+                      </RejectButton>
+                    </RequestActions>
+                  </UserRow>
+                ))}
+              </SuggestionsBox>
+            )}
             {users.filter((u) => u.is_following).length < 5 &&
-              users.filter((u) => !u.is_following).length > 0 && (
+              users.filter((u) => !u.is_following && u.follow_status !== "pending").length > 0 && (
               <SuggestionsBox>
                 <SectionTitle>People you might know</SectionTitle>
                 {users
@@ -1166,9 +1245,10 @@ function App() {
                       </UserInfo>
                       <FollowButton
                         $following={false}
-                        onClick={() => handleFollow(u.id, u.is_following)}
+                        $status={u.follow_status}
+                        onClick={() => handleFollow(u.id, u.follow_status)}
                       >
-                        Follow
+                        {u.follow_status === "pending" ? "Requested" : "Follow"}
                       </FollowButton>
                     </UserRow>
                   ))}
@@ -1357,9 +1437,10 @@ function App() {
                       </UserInfo>
                       <FollowButton
                         $following={u.is_following}
-                        onClick={() => handleFollow(u.id, u.is_following)}
+                        $status={u.follow_status}
+                        onClick={() => handleFollow(u.id, u.follow_status || (u.is_following ? "approved" : null))}
                       >
-                        {u.is_following ? "Following" : "Follow"}
+                        {u.follow_status === "pending" ? "Requested" : u.is_following ? "Following" : "Follow back"}
                       </FollowButton>
                     </UserRow>
                   ))}
@@ -1379,9 +1460,10 @@ function App() {
                     </UserInfo>
                     <FollowButton
                       $following={u.is_following}
-                      onClick={() => handleFollow(u.id, u.is_following)}
+                      $status={u.follow_status}
+                      onClick={() => handleFollow(u.id, u.follow_status || (u.is_following ? "approved" : null))}
                     >
-                      {u.is_following ? "Following" : "Follow"}
+                      {u.follow_status === "pending" ? "Requested" : u.is_following ? "Following" : "Follow"}
                     </FollowButton>
                   </UserRow>
                 ))
