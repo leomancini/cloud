@@ -556,7 +556,7 @@ const SuggestionsBox = styled.div`
   margin-bottom: 24px;
 `;
 
-const SuggestionsTitle = styled.div`
+const SectionTitle = styled.div`
   font-size: 14px;
   font-weight: 600;
   color: ${TEXT};
@@ -615,6 +615,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [users, setUsers] = useState([]);
   const [posts, setPosts] = useState([]);
+  const [followers, setFollowers] = useState([]);
   const [tab, setTab] = useState("feed");
   const [compose, setCompose] = useState("");
   const [loading, setLoading] = useState(true);
@@ -648,6 +649,7 @@ function App() {
         if (data.user) {
           loadFeed();
           loadUsers();
+          loadFollowers();
         }
       });
   }, []);
@@ -656,6 +658,12 @@ function App() {
     fetch("/api/feed")
       .then((res) => res.json())
       .then((data) => setPosts(data.posts));
+  };
+
+  const loadFollowers = () => {
+    fetch("/api/followers")
+      .then((res) => res.json())
+      .then((data) => setFollowers(data.followers));
   };
 
   const loadUsers = () => {
@@ -742,6 +750,11 @@ function App() {
     const endpoint = isFollowing ? `/api/unfollow/${id}` : `/api/follow/${id}`;
     await fetch(endpoint, { method: "POST" });
     setUsers((prev) =>
+      prev.map((u) =>
+        u.id === id ? { ...u, is_following: isFollowing ? 0 : 1 } : u
+      )
+    );
+    setFollowers((prev) =>
       prev.map((u) =>
         u.id === id ? { ...u, is_following: isFollowing ? 0 : 1 } : u
       )
@@ -901,7 +914,7 @@ function App() {
             {users.filter((u) => u.is_following).length < 5 &&
               users.filter((u) => !u.is_following).length > 0 && (
               <SuggestionsBox>
-                <SuggestionsTitle>People you might know</SuggestionsTitle>
+                <SectionTitle>People you might know</SectionTitle>
                 {users
                   .filter((u) => !u.is_following)
                   .map((u) => (
@@ -987,26 +1000,50 @@ function App() {
             )}
           </>
         ) : (
-          <UserList>
-            {users.length === 0 ? (
-              <EmptyState>No other users yet</EmptyState>
-            ) : (
-              users.map((u) => (
-                <UserRow key={u.id}>
-                  <UserInfo>
-                    <UserAvatar src={u.picture} alt={u.name} />
-                    <UserName>{u.name}</UserName>
-                  </UserInfo>
-                  <FollowButton
-                    $following={u.is_following}
-                    onClick={() => handleFollow(u.id, u.is_following)}
-                  >
-                    {u.is_following ? "Following" : "Follow"}
-                  </FollowButton>
-                </UserRow>
-              ))
+          <>
+            {followers.length > 0 && (
+              <>
+                <SectionTitle>Followers</SectionTitle>
+                <UserList>
+                  {followers.map((u) => (
+                    <UserRow key={u.id}>
+                      <UserInfo>
+                        <UserAvatar src={u.picture} alt={u.name} />
+                        <UserName>{u.name}</UserName>
+                      </UserInfo>
+                      <FollowButton
+                        $following={u.is_following}
+                        onClick={() => handleFollow(u.id, u.is_following)}
+                      >
+                        {u.is_following ? "Following" : "Follow"}
+                      </FollowButton>
+                    </UserRow>
+                  ))}
+                </UserList>
+              </>
             )}
-          </UserList>
+            <SectionTitle style={followers.length > 0 ? { marginTop: 24 } : undefined}>Everyone</SectionTitle>
+            <UserList>
+              {users.length === 0 ? (
+                <EmptyState>No other users yet</EmptyState>
+              ) : (
+                users.map((u) => (
+                  <UserRow key={u.id}>
+                    <UserInfo>
+                      <UserAvatar src={u.picture} alt={u.name} />
+                      <UserName>{u.name}</UserName>
+                    </UserInfo>
+                    <FollowButton
+                      $following={u.is_following}
+                      onClick={() => handleFollow(u.id, u.is_following)}
+                    >
+                      {u.is_following ? "Following" : "Follow"}
+                    </FollowButton>
+                  </UserRow>
+                ))
+              )}
+            </UserList>
+          </>
         )}
       </Content>
     </Page>
