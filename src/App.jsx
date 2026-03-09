@@ -1270,11 +1270,14 @@ function App() {
                     {r.approved ? (
                       <FollowButton
                         $following={false}
-                        $status={null}
-                        disabled={isBusy(`follow-${r.id}`)}
-                        onClick={() => handleFollow(r.id, null)}
+                        $status={r.followed_back ? "pending" : null}
+                        disabled={isBusy(`follow-${r.id}`) || r.followed_back}
+                        onClick={() => {
+                          handleFollow(r.id, null);
+                          setFollowRequests((prev) => prev.map((req) => req.id === r.id ? { ...req, followed_back: true } : req));
+                        }}
                       >
-                        {isBusy(`follow-${r.id}`) ? <Spinner /> : "Follow back"}
+                        {isBusy(`follow-${r.id}`) ? <Spinner /> : r.followed_back ? "Requested" : "Follow back"}
                       </FollowButton>
                     ) : (
                       <RequestActions>
