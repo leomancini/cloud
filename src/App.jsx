@@ -73,6 +73,15 @@ const Segment = styled.button`
   transition: all 0.15s ease;
 `;
 
+const BackButton = styled.button`
+  padding: 8px 0;
+  font-size: 15px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: #333;
+`;
+
 const LogoutButton = styled.button`
   padding: 8px 16px;
   border-radius: 8px;
@@ -344,19 +353,25 @@ function App() {
   return (
     <Page>
       <Header>
-        <SmallAvatar
-          src={user.picture}
-          alt={user.name}
-          onClick={() => setTab("profile")}
-        />
-        <SegmentedControl>
-          <Segment $active={tab === "feed"} onClick={() => setTab("feed")}>
-            Feed
-          </Segment>
-          <Segment $active={tab === "people"} onClick={() => setTab("people")}>
-            People
-          </Segment>
-        </SegmentedControl>
+        {tab === "profile" ? (
+          <BackButton onClick={() => setTab("feed")}>&larr; Back</BackButton>
+        ) : (
+          <>
+            <SmallAvatar
+              src={user.picture}
+              alt={user.name}
+              onClick={() => setTab("profile")}
+            />
+            <SegmentedControl>
+              <Segment $active={tab === "feed"} onClick={() => setTab("feed")}>
+                Feed
+              </Segment>
+              <Segment $active={tab === "people"} onClick={() => setTab("people")}>
+                People
+              </Segment>
+            </SegmentedControl>
+          </>
+        )}
       </Header>
       <Content>
         {tab === "profile" ? (
