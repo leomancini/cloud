@@ -320,20 +320,25 @@ const RemoveMedia = styled.button`
 
 const PostMediaContainer = styled.div`
   margin-top: 10px;
-  border-radius: ${RADIUS};
-  overflow: hidden;
+  display: grid;
+  grid-template-columns: ${(p) => (p.$count === 1 ? "1fr" : "1fr 1fr")};
+  gap: 4px;
 `;
 
 const PostImage = styled.img`
   width: 100%;
   display: block;
   border-radius: ${RADIUS};
+  object-fit: cover;
+  aspect-ratio: ${(p) => (p.$single ? "auto" : "1")};
 `;
 
 const PostVideo = styled.video`
   width: 100%;
   display: block;
   border-radius: ${RADIUS};
+  object-fit: cover;
+  aspect-ratio: ${(p) => (p.$single ? "auto" : "1")};
 `;
 
 const PostButton = styled.button`
@@ -544,7 +549,7 @@ const CommentInput = styled.input`
   border: 1px solid ${BORDER};
   border-radius: ${RADIUS};
   padding: 8px 12px;
-  font-size: 14px;
+  font-size: 16px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   outline: none;
   min-width: 0;
@@ -1196,7 +1201,7 @@ function App() {
                   </PostHeader>
                   {post.content && <PostContent>{post.content}</PostContent>}
                   {post.media && post.media.length > 0 && (
-                    <PostMediaContainer>
+                    <PostMediaContainer $count={post.media.length}>
                       {post.media.map((m, i) =>
                         m.type === "video" ? (
                           <PostVideo
@@ -1206,9 +1211,10 @@ function App() {
                             loop
                             muted
                             playsInline
+                            $single={post.media.length === 1}
                           />
                         ) : (
-                          <PostImage key={i} src={m.url} />
+                          <PostImage key={i} src={m.url} $single={post.media.length === 1} />
                         )
                       )}
                     </PostMediaContainer>
