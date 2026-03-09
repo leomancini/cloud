@@ -39,12 +39,16 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     follower_id INTEGER NOT NULL,
     following_id INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'approved',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (follower_id) REFERENCES users(id),
     FOREIGN KEY (following_id) REFERENCES users(id),
     UNIQUE(follower_id, following_id)
   )
 `);
+
+// Migration: add status column for existing DBs, default existing follows to approved
+try { db.exec("ALTER TABLE follows ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'"); } catch {}
 
 // Uploads directory
 const uploadsDir = join(__dirname, "uploads");
@@ -208,14 +212,14 @@ app.get("/api/users", (req, res) => {
   const users = db
     .prepare(
       `SELECT u.id, u.name, '/api/pictures/' || u.id || '.jpg' as picture,
-        EXISTS(SELECT 1 FROM follows WHERE follower_id = ? AND following_id = u.id) as is_following
+        (SELECT status FROM follows WHERE follower_id = ? AND following_id = u.id) as follow_status
       FROM users u
       WHERE u.id != ?
       ORDER BY u.created_at DESC`
     )
     .all(req.user.id, req.user.id);
 
-  res.json({ users });
+  res.json({ users: users.map((u) => ({ ...u, is_following: u.follow_status === "approved" ? 1 : 0, follow_status: u.follow_status || null })) });
 });
 
 app.get("/api/followers", (req, res) => {
@@ -224,15 +228,32 @@ app.get("/api/followers", (req, res) => {
   const followers = db
     .prepare(
       `SELECT u.id, u.name, '/api/pictures/' || u.id || '.jpg' as picture,
-        EXISTS(SELECT 1 FROM follows WHERE follower_id = ? AND following_id = u.id) as is_following
+        (SELECT status FROM follows WHERE follower_id = ? AND following_id = u.id) as follow_status,
+        f.status as their_follow_status
       FROM users u
       JOIN follows f ON f.follower_id = u.id
-      WHERE f.following_id = ?
+      WHERE f.following_id = ? AND f.status = 'approved'
       ORDER BY f.created_at DESC`
     )
     .all(req.user.id, req.user.id);
 
-  res.json({ followers });
+  res.json({ followers: followers.map((u) => ({ ...u, is_following: u.follow_status === "approved" ? 1 : 0, follow_status: u.follow_status || null })) });
+});
+
+app.get("/api/follow-requests", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+
+  const requests = db
+    .prepare(
+      `SELECT u.id, u.name, '/api/pictures/' || u.id || '.jpg' as picture, f.id as follow_id
+      FROM users u
+      JOIN follows f ON f.follower_id = u.id
+      WHERE f.following_id = ? AND f.status = 'pending'
+      ORDER BY f.created_at DESC`
+    )
+    .all(req.user.id);
+
+  res.json({ requests });
 });
 
 app.post("/api/follow/:id", (req, res) => {
@@ -242,11 +263,29 @@ app.post("/api/follow/:id", (req, res) => {
   if (targetId === req.user.id)
     return res.status(400).json({ error: "Cannot follow yourself" });
 
-  db.prepare("INSERT OR IGNORE INTO follows (follower_id, following_id) VALUES (?, ?)").run(
+  db.prepare("INSERT OR IGNORE INTO follows (follower_id, following_id, status) VALUES (?, ?, 'pending')").run(
     req.user.id,
     targetId
   );
 
+  res.json({ ok: true, status: "pending" });
+});
+
+app.post("/api/follow-requests/:id/approve", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const followerId = Number(req.params.id);
+  db.prepare("UPDATE follows SET status = 'approved' WHERE follower_id = ? AND following_id = ? AND status = 'pending'").run(
+    followerId, req.user.id
+  );
+  res.json({ ok: true });
+});
+
+app.post("/api/follow-requests/:id/reject", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const followerId = Number(req.params.id);
+  db.prepare("DELETE FROM follows WHERE follower_id = ? AND following_id = ? AND status = 'pending'").run(
+    followerId, req.user.id
+  );
   res.json({ ok: true });
 });
 
@@ -361,7 +400,7 @@ app.get("/api/feed", (req, res) => {
       FROM posts p
       JOIN users u ON p.user_id = u.id
       WHERE p.user_id IN (
-        SELECT following_id FROM follows WHERE follower_id = ?
+        SELECT following_id FROM follows WHERE follower_id = ? AND status = 'approved'
       ) OR p.user_id = ?
       ORDER BY p.created_at DESC
       LIMIT 50`
