@@ -426,6 +426,12 @@ app.get("/api/staticmap", async (req, res) => {
   if (!lat || !lng) return res.status(400).end();
 
   try {
+    const style = [
+      "feature:all|element:geometry|saturation:-100",
+      "feature:all|element:labels.icon|visibility:off",
+      "feature:poi|element:labels|visibility:off",
+      "feature:transit|element:labels|visibility:off",
+    ];
     const params = new URLSearchParams({
       center: `${lat},${lng}`,
       zoom,
@@ -434,6 +440,7 @@ app.get("/api/staticmap", async (req, res) => {
       markers: `color:red|${lat},${lng}`,
       key: process.env.GOOGLE_PLACES_API_KEY,
     });
+    style.forEach((s) => params.append("style", s));
     const response = await fetch(`https://maps.googleapis.com/maps/api/staticmap?${params}`);
     if (!response.ok) return res.status(response.status).end();
     res.setHeader("Content-Type", response.headers.get("content-type"));
