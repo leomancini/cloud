@@ -231,13 +231,19 @@ const LocationAddress = styled.div`
 const SelectedLocation = styled.div`
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin-top: 8px;
   padding: 8px 12px;
   background: #f5f5f5;
   border-radius: 8px;
   font-size: 13px;
   color: #333;
+
+  span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 `;
 
 const RemoveLocation = styled.button`
