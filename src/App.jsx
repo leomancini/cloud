@@ -92,6 +92,9 @@ const BackButton = styled.button`
   border: none;
   background: none;
   color: #333;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 `;
 
 const LogoutButton = styled.button`
@@ -142,20 +145,21 @@ const ComposeActions = styled.div`
   margin-top: 10px;
 `;
 
-const PinButton = styled.button`
+const IconButton = styled.button`
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 13px;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 15px;
   cursor: pointer;
-  border: 1px solid ${(p) => (p.$active ? "black" : "#ddd")};
-  background: ${(p) => (p.$active ? "#f5f5f5" : "white")};
-  color: ${(p) => (p.$active ? "#333" : "#888")};
+  border: none;
+  background: ${(p) => (p.$active ? "#f0f0f0" : "transparent")};
+  color: ${(p) => (p.$active ? "#333" : "#999")};
 
   &:hover {
-    background: #f5f5f5;
+    background: #f0f0f0;
   }
 `;
 
@@ -246,22 +250,6 @@ const ComposeActionsLeft = styled.div`
   gap: 8px;
 `;
 
-const MediaButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  cursor: pointer;
-  border: 1px solid ${(p) => (p.$active ? "black" : "#ddd")};
-  background: ${(p) => (p.$active ? "#f5f5f5" : "white")};
-  color: ${(p) => (p.$active ? "#333" : "#888")};
-
-  &:hover {
-    background: #f5f5f5;
-  }
-`;
 
 const HiddenFileInput = styled.input`
   display: none;
@@ -645,7 +633,7 @@ function App() {
     <Page>
       <Header>
         {tab === "profile" ? (
-          <BackButton onClick={() => setTab("feed")}>&larr; Back</BackButton>
+          <BackButton onClick={() => setTab("feed")}><i className="fa-solid fa-arrow-left" /> Back</BackButton>
         ) : (
           <>
             <HeaderProfile onClick={() => setTab("profile")}>
@@ -685,9 +673,9 @@ function App() {
               />
               {selectedLocation && (
                 <SelectedLocation>
-                  <span>📍 {selectedLocation.name}</span>
+                  <span><i className="fa-solid fa-location-dot" /> {selectedLocation.name}</span>
                   <RemoveLocation onClick={() => setSelectedLocation(null)}>
-                    ×
+                    <i className="fa-solid fa-xmark" />
                   </RemoveLocation>
                 </SelectedLocation>
               )}
@@ -720,7 +708,7 @@ function App() {
                       ) : (
                         <PreviewImage src={preview.url} />
                       )}
-                      <RemoveMedia onClick={() => removeMedia(i)}>×</RemoveMedia>
+                      <RemoveMedia onClick={() => removeMedia(i)}><i className="fa-solid fa-xmark" /></RemoveMedia>
                     </MediaPreview>
                   ))}
                 </MediaPreviews>
@@ -734,32 +722,32 @@ function App() {
               />
               <ComposeActions>
                 <ComposeActionsLeft>
-                  <MediaButton
+                  <IconButton
                     $active={mediaFiles.length > 0}
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    🖼 Media
-                  </MediaButton>
-                  <PinButton
-                  $active={showLocationSearch || selectedLocation}
-                  onClick={() => {
-                    if (selectedLocation) {
-                      setSelectedLocation(null);
-                    } else {
-                      if (!showLocationSearch && !userLocation && navigator.geolocation) {
-                        navigator.geolocation.getCurrentPosition(
-                          (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-                          () => {}
-                        );
+                    <i className="fa-solid fa-image" />
+                  </IconButton>
+                  <IconButton
+                    $active={showLocationSearch || selectedLocation}
+                    onClick={() => {
+                      if (selectedLocation) {
+                        setSelectedLocation(null);
+                      } else {
+                        if (!showLocationSearch && !userLocation && navigator.geolocation) {
+                          navigator.geolocation.getCurrentPosition(
+                            (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                            () => {}
+                          );
+                        }
+                        setShowLocationSearch(!showLocationSearch);
                       }
-                      setShowLocationSearch(!showLocationSearch);
-                    }
-                    setLocationQuery("");
-                    setLocationResults([]);
-                  }}
-                >
-                    📍 Location
-                  </PinButton>
+                      setLocationQuery("");
+                      setLocationResults([]);
+                    }}
+                  >
+                    <i className="fa-solid fa-location-dot" />
+                  </IconButton>
                 </ComposeActionsLeft>
                 <PostButton
                   onClick={handlePost}
@@ -804,7 +792,7 @@ function App() {
                         src={`https://maps.googleapis.com/maps/api/staticmap?center=${post.place_lat},${post.place_lng}&zoom=15&size=500x150&scale=2&markers=color:red|${post.place_lat},${post.place_lng}&key=***REMOVED***`}
                         alt={post.place_name}
                       />
-                      <PostPlaceName>📍 {post.place_name}</PostPlaceName>
+                      <PostPlaceName><i className="fa-solid fa-location-dot" /> {post.place_name}</PostPlaceName>
                     </PostLocation>
                   )}
                 </PostItem>
