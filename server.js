@@ -141,7 +141,7 @@ app.get(
   "/api/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
   (req, res) => {
-    res.redirect("/");
+    res.redirect(process.env.BASE_URL || "http://localhost:5173");
   }
 );
 
