@@ -686,7 +686,7 @@ function App() {
               />
               {selectedLocation && (
                 <SelectedLocation>
-                  <span><i className="fa-solid fa-location-dot" /> {selectedLocation.name}</span>
+                  <span><i className="fa-solid fa-location-dot" /> <strong>{selectedLocation.name}</strong></span>
                   <RemoveLocation onClick={() => setSelectedLocation(null)}>
                     <i className="fa-solid fa-xmark" />
                   </RemoveLocation>
