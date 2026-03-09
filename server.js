@@ -292,6 +292,31 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS reactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    emoji TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(post_id, user_id, emoji)
+  )
+`);
+
 app.post("/api/posts", upload.array("media", 10), (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
   const { content, place_name, place_lat, place_lng, place_address } = req.body;
@@ -346,6 +371,22 @@ app.get("/api/feed", (req, res) => {
   const getMedia = db.prepare(
     "SELECT filename, media_type FROM post_media WHERE post_id = ? ORDER BY id"
   );
+  const getComments = db.prepare(
+    `SELECT c.id, c.content, c.created_at, c.user_id,
+      u.name as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
+    FROM comments c
+    JOIN users u ON c.user_id = u.id
+    WHERE c.post_id = ?
+    ORDER BY c.created_at ASC`
+  );
+
+  const getReactions = db.prepare(
+    `SELECT r.emoji, u.name as user_name, r.user_id
+    FROM reactions r
+    JOIN users u ON r.user_id = u.id
+    WHERE r.post_id = ?
+    ORDER BY r.created_at`
+  );
 
   const postsWithMedia = posts.map((post) => ({
     ...post,
@@ -353,6 +394,17 @@ app.get("/api/feed", (req, res) => {
       url: `/api/uploads/${m.filename}`,
       type: m.media_type,
     })),
+    comments: getComments.all(post.id),
+    reactions: (() => {
+      const raw = getReactions.all(post.id);
+      const grouped = {};
+      for (const r of raw) {
+        if (!grouped[r.emoji]) grouped[r.emoji] = { emoji: r.emoji, names: [], user_reacted: 0 };
+        grouped[r.emoji].names.push(r.user_name);
+        if (r.user_id === req.user.id) grouped[r.emoji].user_reacted = 1;
+      }
+      return Object.values(grouped);
+    })(),
   }));
 
   res.json({ posts: postsWithMedia });
@@ -377,9 +429,82 @@ app.delete("/api/posts/:id", (req, res) => {
   if (post.user_id !== req.user.id)
     return res.status(403).json({ error: "Not your post" });
 
+  db.prepare("DELETE FROM reactions WHERE post_id = ?").run(post.id);
+  db.prepare("DELETE FROM comments WHERE post_id = ?").run(post.id);
   db.prepare("DELETE FROM post_media WHERE post_id = ?").run(post.id);
   db.prepare("DELETE FROM posts WHERE id = ?").run(post.id);
   res.json({ ok: true });
+});
+
+// Reactions
+app.post("/api/posts/:id/react", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const { emoji } = req.body;
+  if (!emoji) return res.status(400).json({ error: "Emoji required" });
+
+  const postId = Number(req.params.id);
+  const existing = db
+    .prepare("SELECT id, emoji FROM reactions WHERE post_id = ? AND user_id = ?")
+    .get(postId, req.user.id);
+
+  if (existing && existing.emoji === emoji) {
+    db.prepare("DELETE FROM reactions WHERE id = ?").run(existing.id);
+    res.json({ action: "removed" });
+  } else if (existing) {
+    db.prepare("UPDATE reactions SET emoji = ? WHERE id = ?").run(emoji, existing.id);
+    res.json({ action: "changed", previous: existing.emoji });
+  } else {
+    db.prepare("INSERT INTO reactions (post_id, user_id, emoji) VALUES (?, ?, ?)").run(
+      postId, req.user.id, emoji
+    );
+    res.json({ action: "added" });
+  }
+});
+
+// Comments
+app.post("/api/posts/:id/comments", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const { content } = req.body;
+  if (!content || !content.trim()) return res.status(400).json({ error: "Content required" });
+
+  const post = db.prepare("SELECT id FROM posts WHERE id = ?").get(Number(req.params.id));
+  if (!post) return res.status(404).json({ error: "Post not found" });
+
+  const result = db
+    .prepare("INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)")
+    .run(post.id, req.user.id, content.trim());
+
+  res.json({
+    id: result.lastInsertRowid,
+    content: content.trim(),
+    user_id: req.user.id,
+    author_name: req.user.name,
+    author_picture: `/api/pictures/${req.user.id}.jpg`,
+    created_at: new Date().toISOString().replace("T", " ").split(".")[0],
+  });
+});
+
+app.delete("/api/comments/:id", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const comment = db.prepare("SELECT * FROM comments WHERE id = ?").get(Number(req.params.id));
+  if (!comment) return res.status(404).json({ error: "Comment not found" });
+  if (comment.user_id !== req.user.id) return res.status(403).json({ error: "Not your comment" });
+
+  db.prepare("DELETE FROM comments WHERE id = ?").run(comment.id);
+  res.json({ ok: true });
+});
+
+app.put("/api/comments/:id", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const { content } = req.body;
+  if (!content || !content.trim()) return res.status(400).json({ error: "Content required" });
+
+  const comment = db.prepare("SELECT * FROM comments WHERE id = ?").get(Number(req.params.id));
+  if (!comment) return res.status(404).json({ error: "Comment not found" });
+  if (comment.user_id !== req.user.id) return res.status(403).json({ error: "Not your comment" });
+
+  db.prepare("UPDATE comments SET content = ? WHERE id = ?").run(content.trim(), comment.id);
+  res.json({ ok: true, content: content.trim() });
 });
 
 // Places search proxy
