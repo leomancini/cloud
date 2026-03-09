@@ -7,7 +7,8 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import Database from "better-sqlite3";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { mkdirSync, existsSync, writeFileSync } from "fs";
+import { mkdirSync, existsSync, writeFileSync, readFileSync } from "fs";
+import crypto from "crypto";
 import multer from "multer";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -258,11 +259,10 @@ db.exec(`
 `);
 
 // Add location columns if they don't exist (migration for existing DBs)
-try {
-  db.exec("ALTER TABLE posts ADD COLUMN place_name TEXT");
-  db.exec("ALTER TABLE posts ADD COLUMN place_lat REAL");
-  db.exec("ALTER TABLE posts ADD COLUMN place_lng REAL");
-} catch {}
+try { db.exec("ALTER TABLE posts ADD COLUMN place_name TEXT"); } catch {}
+try { db.exec("ALTER TABLE posts ADD COLUMN place_lat REAL"); } catch {}
+try { db.exec("ALTER TABLE posts ADD COLUMN place_lng REAL"); } catch {}
+try { db.exec("ALTER TABLE posts ADD COLUMN place_address TEXT"); } catch {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS post_media (
@@ -277,20 +277,21 @@ db.exec(`
 
 app.post("/api/posts", upload.array("media", 10), (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
-  const { content, place_name, place_lat, place_lng } = req.body;
+  const { content, place_name, place_lat, place_lng, place_address } = req.body;
   if ((!content || !content.trim()) && (!req.files || req.files.length === 0))
     return res.status(400).json({ error: "Content or media required" });
 
   const result = db
     .prepare(
-      "INSERT INTO posts (user_id, content, place_name, place_lat, place_lng) VALUES (?, ?, ?, ?, ?)"
+      "INSERT INTO posts (user_id, content, place_name, place_lat, place_lng, place_address) VALUES (?, ?, ?, ?, ?, ?)"
     )
     .run(
       req.user.id,
       (content || "").trim(),
       place_name || null,
       place_lat || null,
-      place_lng || null
+      place_lng || null,
+      place_address || null
     );
 
   const postId = result.lastInsertRowid;
@@ -313,7 +314,7 @@ app.get("/api/feed", (req, res) => {
 
   const posts = db
     .prepare(
-      `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng,
+      `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address,
         u.name as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
       FROM posts p
       JOIN users u ON p.user_id = u.id
@@ -419,11 +420,23 @@ app.get("/api/places/search", async (req, res) => {
   }
 });
 
-// Static map proxy
+// Static map cache
+const mapsDir = join(__dirname, "maps");
+if (!existsSync(mapsDir)) mkdirSync(mapsDir);
+
 app.get("/api/staticmap", async (req, res) => {
   if (!req.user) return res.status(401).end();
   const { lat, lng, zoom = 15, width = 500, height = 150 } = req.query;
   if (!lat || !lng) return res.status(400).end();
+
+  const cacheKey = crypto.createHash("md5").update(`${lat},${lng},${zoom},${width},${height}`).digest("hex");
+  const cachePath = join(mapsDir, `${cacheKey}.png`);
+
+  if (existsSync(cachePath)) {
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    return res.send(readFileSync(cachePath));
+  }
 
   try {
     const style = [
@@ -443,9 +456,10 @@ app.get("/api/staticmap", async (req, res) => {
     style.forEach((s) => params.append("style", s));
     const response = await fetch(`https://maps.googleapis.com/maps/api/staticmap?${params}`);
     if (!response.ok) return res.status(response.status).end();
-    res.setHeader("Content-Type", response.headers.get("content-type"));
-    res.setHeader("Cache-Control", "public, max-age=86400");
     const buffer = Buffer.from(await response.arrayBuffer());
+    writeFileSync(cachePath, buffer);
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Cache-Control", "public, max-age=86400");
     res.send(buffer);
   } catch {
     res.status(500).end();

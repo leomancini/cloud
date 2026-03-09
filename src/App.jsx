@@ -6,6 +6,7 @@ const RADIUS_SM = "6px";
 const BORDER = "#eee";
 const TEXT = "#333";
 const TEXT_SECONDARY = "#999";
+const ICON_GAP = "8px";
 
 const Page = styled.div`
   min-height: 100vh;
@@ -232,7 +233,7 @@ const SelectedLocation = styled.div`
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: ${ICON_GAP};
   margin-top: 8px;
   padding: 8px 36px 8px 12px;
   background: #f5f5f5;
@@ -243,7 +244,7 @@ const SelectedLocation = styled.div`
   span {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: ${ICON_GAP};
   }
 `;
 
@@ -448,23 +449,47 @@ const PostLocation = styled.div`
   margin-top: 10px;
 `;
 
+const PostMapWrapper = styled.div`
+  position: relative;
+  border-radius: ${RADIUS} ${RADIUS} 0 0;
+  overflow: hidden;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: ${RADIUS} ${RADIUS} 0 0;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+    pointer-events: none;
+  }
+`;
+
 const PostMap = styled.img`
   width: 100%;
   height: 150px;
   object-fit: cover;
   display: block;
-  border-radius: ${RADIUS} ${RADIUS} 0 0;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
 `;
 
 const PostPlaceName = styled.div`
   padding: 10px 12px;
   font-size: 13px;
   font-weight: 500;
-  color: #333;
+  color: ${TEXT};
   border: 1px solid ${BORDER};
   border-top: none;
   border-radius: 0 0 ${RADIUS} ${RADIUS};
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const PostPlaceAddress = styled.span`
+  font-weight: 400;
+  color: ${TEXT_SECONDARY};
 `;
 
 const UserList = styled.div`
@@ -562,15 +587,28 @@ const ProfileEmail = styled.p`
   margin: 0 0 32px;
 `;
 
+function shortAddress(address) {
+  if (!address) return null;
+  const parts = address.split(",").map((s) => s.trim());
+  if (parts.length >= 3) {
+    const state = parts[parts.length - 2].replace(/\s*\d{5}.*/, "");
+    const city = parts[parts.length - 3];
+    return `${city}, ${state}`;
+  }
+  return parts.slice(-2).join(", ");
+}
+
 function timeAgo(dateStr) {
-  const seconds = Math.floor((Date.now() - new Date(dateStr + "Z")) / 1000);
+  const date = new Date(dateStr + "Z");
+  const seconds = Math.floor((Date.now() - date) / 1000);
   if (seconds < 60) return "just now";
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  if (hours < 8) return `${hours}h ago`;
+  return date.toLocaleString(undefined, {
+    month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+  });
 }
 
 function App() {
@@ -677,6 +715,7 @@ function App() {
       formData.append("place_name", selectedLocation.name);
       formData.append("place_lat", selectedLocation.lat);
       formData.append("place_lng", selectedLocation.lng);
+      if (selectedLocation.address) formData.append("place_address", selectedLocation.address);
     }
     for (const file of mediaFiles) {
       formData.append("media", file);
@@ -931,11 +970,16 @@ function App() {
                   )}
                   {post.place_name && post.place_lat && (
                     <PostLocation>
-                      <PostMap
-                        src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=2`}
-                        alt={post.place_name}
-                      />
-                      <PostPlaceName><i className="fa-solid fa-location-dot" /> {post.place_name}</PostPlaceName>
+                      <PostMapWrapper>
+                        <PostMap
+                          src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=2`}
+                          alt={post.place_name}
+                        />
+                      </PostMapWrapper>
+                      <PostPlaceName>
+                        <span>{post.place_name}</span>
+                        {post.place_address && <PostPlaceAddress>{shortAddress(post.place_address)}</PostPlaceAddress>}
+                      </PostPlaceName>
                     </PostLocation>
                   )}
                 </PostItem>
