@@ -603,9 +603,9 @@ function timeAgo(dateStr) {
   const seconds = Math.floor((Date.now() - date) / 1000);
   if (seconds < 60) return "just now";
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 8) return `${hours}h ago`;
+  if (hours < 8) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
   return date.toLocaleString(undefined, {
     month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
   });
