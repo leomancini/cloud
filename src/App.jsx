@@ -445,6 +445,144 @@ const PostContent = styled.p`
   white-space: pre-wrap;
 `;
 
+const REACTION_EMOJIS = ["\u2764\uFE0F", "\uD83D\uDE02", "\uD83D\uDE2E", "\uD83D\uDD25", "\uD83D\uDC4F", "\uD83D\uDE22"];
+
+const ReactionsRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+`;
+
+const ReactionChip = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 13px;
+  cursor: pointer;
+`;
+
+const ReactionNames = styled.span`
+  font-size: 12px;
+  color: ${TEXT_SECONDARY};
+`;
+
+const EmojiOption = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: ${(p) => (p.$active ? "#f0f0f0" : "none")};
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: ${RADIUS_SM};
+  opacity: ${(p) => (p.$active ? 1 : 0.5)};
+
+  &:hover {
+    opacity: 1;
+    background: #f0f0f0;
+  }
+`;
+
+const CommentsSection = styled.div`
+  margin-top: 14px;
+`;
+
+const CommentRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+`;
+
+const CommentAvatar = styled.img`
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+`;
+
+const CommentBody = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const CommentAuthor = styled.span`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${TEXT};
+  margin-right: 6px;
+`;
+
+const CommentText = styled.span`
+  font-size: 13px;
+  color: ${TEXT};
+  line-height: 1.4;
+`;
+
+const CommentTime = styled.span`
+  font-size: 11px;
+  color: ${TEXT_SECONDARY};
+  margin-left: 8px;
+`;
+
+const CommentInputRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+`;
+
+const CommentInput = styled.input`
+  flex: 1;
+  border: 1px solid ${BORDER};
+  border-radius: ${RADIUS};
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  outline: none;
+  min-width: 0;
+
+  &:focus {
+    border-color: #ccc;
+  }
+`;
+
+const CommentPostButton = styled.button`
+  border: none;
+  background: none;
+  color: ${TEXT_SECONDARY};
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+
+  &:hover {
+    color: ${TEXT};
+  }
+`;
+
+const CommentCount = styled.button`
+  border: none;
+  background: none;
+  color: ${TEXT_SECONDARY};
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 8px;
+
+  &:hover {
+    color: ${TEXT};
+  }
+`;
+
 const PostLocation = styled.div`
   margin-top: 10px;
 `;
@@ -633,9 +771,14 @@ function App() {
   const [mediaPreviews, setMediaPreviews] = useState([]);
   const fileInputRef = useRef(null);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [commentInputs, setCommentInputs] = useState({});
+  const [expandedComments, setExpandedComments] = useState({});
+  const [openCommentMenuId, setOpenCommentMenuId] = useState(null);
+  const [editingComment, setEditingComment] = useState(null);
+  const [editCommentText, setEditCommentText] = useState("");
 
   useEffect(() => {
-    const handleClickOutside = () => setOpenMenuId(null);
+    const handleClickOutside = () => { setOpenMenuId(null); setOpenCommentMenuId(null); };
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
@@ -744,6 +887,95 @@ function App() {
     setOpenMenuId(null);
     await fetch(`/api/posts/${id}`, { method: "DELETE" });
     setPosts((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const handleReact = async (postId, emoji) => {
+    const res = await fetch(`/api/posts/${postId}/react`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emoji }),
+    });
+    const { action, previous } = await res.json();
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p.id !== postId) return p;
+        let reactions = [...(p.reactions || [])];
+
+        // Remove user from previous emoji if changing
+        if (action === "changed" && previous) {
+          const prevIdx = reactions.findIndex((r) => r.emoji === previous);
+          if (prevIdx >= 0) {
+            const names = reactions[prevIdx].names.filter((n) => n !== user.name);
+            if (names.length === 0) reactions.splice(prevIdx, 1);
+            else reactions[prevIdx] = { ...reactions[prevIdx], names, user_reacted: 0 };
+          }
+        }
+
+        if (action === "added" || action === "changed") {
+          const idx = reactions.findIndex((r) => r.emoji === emoji);
+          if (idx >= 0) {
+            reactions[idx] = { ...reactions[idx], names: [...reactions[idx].names, user.name], user_reacted: 1 };
+          } else {
+            reactions.push({ emoji, names: [user.name], user_reacted: 1 });
+          }
+        } else if (action === "removed") {
+          const idx = reactions.findIndex((r) => r.emoji === emoji);
+          if (idx >= 0) {
+            const names = reactions[idx].names.filter((n) => n !== user.name);
+            if (names.length === 0) reactions.splice(idx, 1);
+            else reactions[idx] = { ...reactions[idx], names, user_reacted: 0 };
+          }
+        }
+
+        return { ...p, reactions };
+      })
+    );
+  };
+
+  const handleComment = async (postId) => {
+    const content = (commentInputs[postId] || "").trim();
+    if (!content) return;
+    const res = await fetch(`/api/posts/${postId}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    const comment = await res.json();
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId ? { ...p, comments: [...(p.comments || []), comment] } : p
+      )
+    );
+    setCommentInputs((prev) => ({ ...prev, [postId]: "" }));
+  };
+
+  const handleDeleteComment = async (commentId, postId) => {
+    setOpenCommentMenuId(null);
+    await fetch(`/api/comments/${commentId}`, { method: "DELETE" });
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId ? { ...p, comments: p.comments.filter((c) => c.id !== commentId) } : p
+      )
+    );
+  };
+
+  const handleEditComment = async (commentId, postId) => {
+    const content = editCommentText.trim();
+    if (!content) return;
+    await fetch(`/api/comments/${commentId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? { ...p, comments: p.comments.map((c) => (c.id === commentId ? { ...c, content } : c)) }
+          : p
+      )
+    );
+    setEditingComment(null);
+    setEditCommentText("");
   };
 
   const handleFollow = async (id, isFollowing) => {
@@ -995,6 +1227,108 @@ function App() {
                       </PostPlaceName>
                     </PostLocation>
                   )}
+                  {(post.reactions || []).length > 0 && (
+                    <ReactionsRow>
+                      {(post.reactions || []).map((r) => (
+                        <ReactionChip
+                          key={r.emoji}
+                          $active={r.user_reacted}
+                          onClick={() => handleReact(post.id, r.emoji)}
+                        >
+                          {r.emoji} <ReactionNames>{(r.names || []).join(", ")}</ReactionNames>
+                        </ReactionChip>
+                      ))}
+                    </ReactionsRow>
+                  )}
+                  <ReactionsRow>
+                    {REACTION_EMOJIS.map((emoji) => {
+                      const userReacted = (post.reactions || []).some((r) => r.emoji === emoji && r.user_reacted);
+                      return (
+                        <EmojiOption key={emoji} $active={userReacted} onClick={() => handleReact(post.id, emoji)}>
+                          {emoji}
+                        </EmojiOption>
+                      );
+                    })}
+                  </ReactionsRow>
+                  <CommentsSection>
+                    {post.comments && post.comments.length > 0 && (
+                      <>
+                        {!expandedComments[post.id] && post.comments.length > 2 && (
+                          <CommentCount onClick={() => setExpandedComments((prev) => ({ ...prev, [post.id]: true }))}>
+                            View all {post.comments.length} comments
+                          </CommentCount>
+                        )}
+                        {(expandedComments[post.id] ? post.comments : post.comments.slice(-2)).map((c) => (
+                          <CommentRow key={c.id}>
+                            <CommentAvatar src={c.author_picture} alt={c.author_name} />
+                            <CommentBody>
+                              <CommentAuthor>{c.author_name}</CommentAuthor>
+                              {editingComment === c.id ? (
+                                <CommentInputRow>
+                                  <CommentInput
+                                    value={editCommentText}
+                                    onChange={(e) => setEditCommentText(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") handleEditComment(c.id, post.id);
+                                      if (e.key === "Escape") { setEditingComment(null); setEditCommentText(""); }
+                                    }}
+                                    autoFocus
+                                  />
+                                  <CommentPostButton onClick={() => handleEditComment(c.id, post.id)}>
+                                    <i className="fa-solid fa-check" />
+                                  </CommentPostButton>
+                                </CommentInputRow>
+                              ) : (
+                                <>
+                                  <CommentText>{c.content}</CommentText>
+                                  <CommentTime>{timeAgo(c.created_at)}</CommentTime>
+                                </>
+                              )}
+                            </CommentBody>
+                            {c.user_id === user.id && editingComment !== c.id && (
+                              <PostMenuWrapper>
+                                <PostMenuButton onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenCommentMenuId(openCommentMenuId === c.id ? null : c.id);
+                                }}>
+                                  <i className="fa-solid fa-ellipsis-vertical" />
+                                </PostMenuButton>
+                                {openCommentMenuId === c.id && (
+                                  <PostMenu onClick={(e) => e.stopPropagation()}>
+                                    <PostMenuItem onClick={() => {
+                                      setOpenCommentMenuId(null);
+                                      setEditingComment(c.id);
+                                      setEditCommentText(c.content);
+                                    }}>
+                                      <i className="fa-solid fa-pen" /> Edit
+                                    </PostMenuItem>
+                                    <PostMenuItem $danger onClick={() => handleDeleteComment(c.id, post.id)}>
+                                      <i className="fa-solid fa-trash" /> Delete
+                                    </PostMenuItem>
+                                  </PostMenu>
+                                )}
+                              </PostMenuWrapper>
+                            )}
+                          </CommentRow>
+                        ))}
+                      </>
+                    )}
+                    <CommentInputRow>
+                      <CommentInput
+                        placeholder="Add a comment..."
+                        value={commentInputs[post.id] || ""}
+                        onChange={(e) => setCommentInputs((prev) => ({ ...prev, [post.id]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleComment(post.id);
+                        }}
+                      />
+                      {(commentInputs[post.id] || "").trim() && (
+                        <CommentPostButton onClick={() => handleComment(post.id)}>
+                          <i className="fa-solid fa-arrow-up" />
+                        </CommentPostButton>
+                      )}
+                    </CommentInputRow>
+                  </CommentsSection>
                 </PostItem>
               ))
             )}
