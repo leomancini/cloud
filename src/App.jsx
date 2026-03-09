@@ -434,14 +434,6 @@ function App() {
           loadUsers();
         }
       });
-
-    // Get user's location for biasing search results
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => {}
-      );
-    }
   }, []);
 
   const loadFeed = () => {
@@ -608,6 +600,12 @@ function App() {
                     if (selectedLocation) {
                       setSelectedLocation(null);
                     } else {
+                      if (!showLocationSearch && !userLocation && navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                          (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                          () => {}
+                        );
+                      }
                       setShowLocationSearch(!showLocationSearch);
                     }
                     setLocationQuery("");
