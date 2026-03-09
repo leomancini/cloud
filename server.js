@@ -419,6 +419,32 @@ app.get("/api/places/search", async (req, res) => {
   }
 });
 
+// Static map proxy
+app.get("/api/staticmap", async (req, res) => {
+  if (!req.user) return res.status(401).end();
+  const { lat, lng, zoom = 15, width = 500, height = 150 } = req.query;
+  if (!lat || !lng) return res.status(400).end();
+
+  try {
+    const params = new URLSearchParams({
+      center: `${lat},${lng}`,
+      zoom,
+      size: `${width}x${height}`,
+      scale: 2,
+      markers: `color:red|${lat},${lng}`,
+      key: process.env.GOOGLE_PLACES_API_KEY,
+    });
+    const response = await fetch(`https://maps.googleapis.com/maps/api/staticmap?${params}`);
+    if (!response.ok) return res.status(response.status).end();
+    res.setHeader("Content-Type", response.headers.get("content-type"));
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    const buffer = Buffer.from(await response.arrayBuffer());
+    res.send(buffer);
+  } catch {
+    res.status(500).end();
+  }
+});
+
 // Serve static files from dist
 app.use(express.static(join(__dirname, "dist")));
 

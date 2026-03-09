@@ -930,7 +930,7 @@ function App() {
                   {post.place_name && post.place_lat && (
                     <PostLocation>
                       <PostMap
-                        src={`https://maps.googleapis.com/maps/api/staticmap?center=${post.place_lat},${post.place_lng}&zoom=15&size=500x150&scale=2&markers=color:red|${post.place_lat},${post.place_lng}&key=***REMOVED***`}
+                        src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}`}
                         alt={post.place_name}
                       />
                       <PostPlaceName><i className="fa-solid fa-location-dot" /> {post.place_name}</PostPlaceName>
