@@ -11,6 +11,8 @@ import { mkdirSync, existsSync, writeFileSync, readFileSync, renameSync } from "
 import crypto from "crypto";
 import multer from "multer";
 import sharp from "sharp";
+import { createServer } from "http";
+import { WebSocketServer } from "ws";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -270,6 +272,7 @@ app.post("/api/follow/:id", (req, res) => {
     targetId
   );
 
+  notifyUser(targetId, "follow-request");
   res.json({ ok: true, status: "pending" });
 });
 
@@ -279,6 +282,7 @@ app.post("/api/follow-requests/:id/approve", (req, res) => {
   db.prepare("UPDATE follows SET status = 'approved' WHERE follower_id = ? AND following_id = ? AND status = 'pending'").run(
     followerId, req.user.id
   );
+  notifyUser(followerId, "follow-approved");
   res.json({ ok: true });
 });
 
@@ -288,6 +292,7 @@ app.post("/api/follow-requests/:id/reject", (req, res) => {
   db.prepare("DELETE FROM follows WHERE follower_id = ? AND following_id = ? AND status = 'pending'").run(
     followerId, req.user.id
   );
+  notifyUser(followerId, "follow-rejected");
   res.json({ ok: true });
 });
 
@@ -400,6 +405,9 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
     }
   }
 
+  const followers = db.prepare("SELECT follower_id FROM follows WHERE following_id = ? AND status = 'approved'").all(req.user.id);
+  for (const f of followers) notifyUser(f.follower_id, "feed-update");
+
   res.json({ id: postId });
 });
 
@@ -495,6 +503,7 @@ app.post("/api/posts/:id/react", (req, res) => {
   if (!emoji) return res.status(400).json({ error: "Emoji required" });
 
   const postId = Number(req.params.id);
+  const post = db.prepare("SELECT user_id FROM posts WHERE id = ?").get(postId);
   const existing = db
     .prepare("SELECT id, emoji FROM reactions WHERE post_id = ? AND user_id = ?")
     .get(postId, req.user.id);
@@ -511,6 +520,7 @@ app.post("/api/posts/:id/react", (req, res) => {
     );
     res.json({ action: "added" });
   }
+  if (post && post.user_id !== req.user.id) notifyUser(post.user_id, "feed-update");
 });
 
 // Comments
@@ -519,12 +529,14 @@ app.post("/api/posts/:id/comments", (req, res) => {
   const { content } = req.body;
   if (!content || !content.trim()) return res.status(400).json({ error: "Content required" });
 
-  const post = db.prepare("SELECT id FROM posts WHERE id = ?").get(Number(req.params.id));
+  const post = db.prepare("SELECT id, user_id FROM posts WHERE id = ?").get(Number(req.params.id));
   if (!post) return res.status(404).json({ error: "Post not found" });
 
   const result = db
     .prepare("INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)")
     .run(post.id, req.user.id, content.trim());
+
+  if (post.user_id !== req.user.id) notifyUser(post.user_id, "feed-update");
 
   res.json({
     id: result.lastInsertRowid,
@@ -668,6 +680,36 @@ app.get("*", (req, res) => {
   res.sendFile(join(__dirname, "dist", "index.html"));
 });
 
-app.listen(port, () => {
+const server = createServer(app);
+const wss = new WebSocketServer({ server, path: "/ws" });
+
+const wsClients = new Map(); // userId -> Set of ws connections
+
+wss.on("connection", (ws, req) => {
+  const url = new URL(req.url, `http://localhost:${port}`);
+  const userId = Number(url.searchParams.get("userId"));
+  if (!userId) return ws.close();
+
+  if (!wsClients.has(userId)) wsClients.set(userId, new Set());
+  wsClients.get(userId).add(ws);
+
+  ws.on("close", () => {
+    const clients = wsClients.get(userId);
+    if (clients) {
+      clients.delete(ws);
+      if (clients.size === 0) wsClients.delete(userId);
+    }
+  });
+});
+
+function notifyUser(userId, type) {
+  const clients = wsClients.get(userId);
+  if (clients) {
+    const msg = JSON.stringify({ type });
+    for (const ws of clients) ws.send(msg);
+  }
+}
+
+server.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
 });
