@@ -932,7 +932,7 @@ function App() {
                   {post.place_name && post.place_lat && (
                     <PostLocation>
                       <PostMap
-                        src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}`}
+                        src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=2`}
                         alt={post.place_name}
                       />
                       <PostPlaceName><i className="fa-solid fa-location-dot" /> {post.place_name}</PostPlaceName>
