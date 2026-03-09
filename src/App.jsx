@@ -4,7 +4,7 @@ import styled from "styled-components";
 const Page = styled.div`
   min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: #f5f5f5;
+  background: white;
   padding: 40px 20px;
 `;
 
@@ -35,12 +35,7 @@ const HeaderName = styled.span`
 `;
 
 const LoginCard = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 40px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   text-align: center;
-  min-width: 300px;
   position: absolute;
   top: 50%;
   left: 50%;
@@ -61,11 +56,11 @@ const SignInButton = styled.a`
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
-  background: #333;
+  background: black;
   color: white;
 
   &:hover {
-    background: #555;
+    background: #222;
   }
 `;
 
@@ -92,13 +87,11 @@ const UserList = styled.div`
 `;
 
 const UserRow = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 16px 20px;
+  padding: 12px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid #eee;
 `;
 
 const UserInfo = styled.div`
@@ -125,12 +118,12 @@ const FollowButton = styled.button`
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  border: 1px solid ${(p) => (p.$following ? "#ddd" : "#333")};
-  background: ${(p) => (p.$following ? "white" : "#333")};
+  border: 1px solid ${(p) => (p.$following ? "#ddd" : "black")};
+  background: ${(p) => (p.$following ? "white" : "black")};
   color: ${(p) => (p.$following ? "#666" : "white")};
 
   &:hover {
-    background: ${(p) => (p.$following ? "#f5f5f5" : "#555")};
+    background: ${(p) => (p.$following ? "#f5f5f5" : "#222")};
   }
 `;
 
