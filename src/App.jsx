@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 
+const RADIUS = "10px";
+const RADIUS_SM = "6px";
+const BORDER = "#eee";
+const TEXT = "#333";
+const TEXT_SECONDARY = "#999";
+
 const Page = styled.div`
   min-height: 100vh;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -58,7 +64,7 @@ const Subtitle = styled.p`
 const SignInButton = styled.a`
   display: inline-block;
   padding: 12px 24px;
-  border-radius: 8px;
+  border-radius: ${RADIUS};
   font-size: 15px;
   font-weight: 500;
   text-decoration: none;
@@ -74,13 +80,13 @@ const SignInButton = styled.a`
 const SegmentedControl = styled.div`
   display: flex;
   background: #f0f0f0;
-  border-radius: 8px;
+  border-radius: ${RADIUS};
   padding: 3px;
 `;
 
 const Segment = styled.button`
   padding: 6px 16px;
-  border-radius: 6px;
+  border-radius: ${RADIUS_SM};
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -105,7 +111,7 @@ const BackButton = styled.button`
 
 const LogoutButton = styled.button`
   padding: 8px 16px;
-  border-radius: 8px;
+  border-radius: ${RADIUS};
   font-size: 13px;
   cursor: pointer;
   border: 1px solid #ddd;
@@ -124,14 +130,13 @@ const Content = styled.div`
 
 const ComposeBox = styled.div`
   margin-bottom: 24px;
-  border-bottom: 1px solid #eee;
   padding-bottom: 24px;
 `;
 
 const ComposeInput = styled.textarea`
   width: 100%;
-  border: 1px solid #eee;
-  border-radius: 12px;
+  border: 1px solid ${BORDER};
+  border-radius: ${RADIUS};
   padding: 14px;
   font-size: 16px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -157,7 +162,7 @@ const IconButton = styled.button`
   justify-content: center;
   width: 34px;
   height: 34px;
-  border-radius: 8px;
+  border-radius: ${RADIUS};
   font-size: 14px;
   cursor: pointer;
   border: none;
@@ -176,8 +181,8 @@ const LocationSearch = styled.div`
 
 const LocationInput = styled.input`
   width: 100%;
-  border: 1px solid #eee;
-  border-radius: 8px;
+  border: 1px solid ${BORDER};
+  border-radius: ${RADIUS};
   padding: 10px 12px;
   font-size: 16px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -195,8 +200,8 @@ const LocationResults = styled.div`
   left: 0;
   right: 0;
   background: white;
-  border: 1px solid #eee;
-  border-radius: 8px;
+  border: 1px solid ${BORDER};
+  border-radius: ${RADIUS};
   margin-top: 4px;
   z-index: 10;
   overflow: hidden;
@@ -205,11 +210,6 @@ const LocationResults = styled.div`
 const LocationResult = styled.div`
   padding: 10px 12px;
   cursor: pointer;
-  border-bottom: 1px solid #f5f5f5;
-
-  &:last-child {
-    border-bottom: none;
-  }
 
   &:hover {
     background: #f9f9f9;
@@ -236,7 +236,7 @@ const SelectedLocation = styled.div`
   margin-top: 8px;
   padding: 8px 36px 8px 12px;
   background: #f5f5f5;
-  border-radius: 8px;
+  border-radius: ${RADIUS};
   font-size: 13px;
   color: #333;
 
@@ -282,20 +282,20 @@ const MediaPreviews = styled.div`
 
 const MediaPreview = styled.div`
   position: relative;
-  border-radius: 8px;
+  border-radius: ${RADIUS};
   overflow: hidden;
   max-height: 200px;
 `;
 
 const PreviewImage = styled.img`
   height: 100px;
-  border-radius: 8px;
+  border-radius: ${RADIUS};
   display: block;
 `;
 
 const PreviewVideo = styled.video`
   height: 100px;
-  border-radius: 8px;
+  border-radius: ${RADIUS};
   display: block;
 `;
 
@@ -319,25 +319,25 @@ const RemoveMedia = styled.button`
 
 const PostMediaContainer = styled.div`
   margin-top: 10px;
-  border-radius: 10px;
+  border-radius: ${RADIUS};
   overflow: hidden;
 `;
 
 const PostImage = styled.img`
   width: 100%;
   display: block;
-  border-radius: 10px;
+  border-radius: ${RADIUS};
 `;
 
 const PostVideo = styled.video`
   width: 100%;
   display: block;
-  border-radius: 10px;
+  border-radius: ${RADIUS};
 `;
 
 const PostButton = styled.button`
   padding: 8px 20px;
-  border-radius: 8px;
+  border-radius: ${RADIUS};
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -357,7 +357,6 @@ const PostButton = styled.button`
 
 const PostItem = styled.div`
   padding: 16px 0;
-  border-bottom: 1px solid #eee;
 `;
 
 const PostHeader = styled.div`
@@ -412,8 +411,8 @@ const PostMenu = styled.div`
   right: 0;
   top: 100%;
   background: white;
-  border: 1px solid #eee;
-  border-radius: 8px;
+  border: 1px solid ${BORDER};
+  border-radius: ${RADIUS};
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   z-index: 10;
   overflow: hidden;
@@ -447,9 +446,9 @@ const PostContent = styled.p`
 
 const PostLocation = styled.div`
   margin-top: 10px;
-  border-radius: 10px;
+  border-radius: ${RADIUS};
   overflow: hidden;
-  border: 1px solid #eee;
+  border: 1px solid ${BORDER};
 `;
 
 const PostMap = styled.img`
@@ -477,7 +476,6 @@ const UserRow = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #eee;
 `;
 
 const UserInfo = styled.div`
@@ -500,7 +498,7 @@ const UserName = styled.span`
 
 const FollowButton = styled.button`
   padding: 8px 18px;
-  border-radius: 8px;
+  border-radius: ${RADIUS};
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -857,7 +855,7 @@ function App() {
                             e.stopPropagation();
                             setOpenMenuId(openMenuId === post.id ? null : post.id);
                           }}>
-                            <i className="fa-solid fa-ellipsis" />
+                            <i className="fa-solid fa-ellipsis-vertical" />
                           </PostMenuButton>
                           {openMenuId === post.id && (
                             <PostMenu onClick={(e) => e.stopPropagation()}>

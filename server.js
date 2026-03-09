@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import session from "express-session";
+import BetterSqlite3SessionStore from "better-sqlite3-session-store";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import Database from "better-sqlite3";
@@ -80,8 +81,10 @@ async function cachePicture(userId, url) {
 }
 
 // Session setup
+const SqliteStore = BetterSqlite3SessionStore(session);
 app.use(
   session({
+    store: new SqliteStore({ client: db, expired: { clear: true, intervalMs: 86400000 } }),
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
