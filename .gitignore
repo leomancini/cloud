@@ -4,4 +4,5 @@ dist/
 *.sqlite
 pictures/
 uploads/
+maps/
 
