@@ -331,7 +331,6 @@ const PostImage = styled.img`
   display: block;
   border-radius: ${RADIUS};
   object-fit: cover;
-  aspect-ratio: ${(p) => (p.$single ? "auto" : "1")};
   background: #f0f0f0;
   min-height: ${(p) => (p.$single ? "200px" : "auto")};
 `;
@@ -341,7 +340,6 @@ const PostVideo = styled.video`
   display: block;
   border-radius: ${RADIUS};
   object-fit: cover;
-  aspect-ratio: ${(p) => (p.$single ? "auto" : "1")};
   background: #f0f0f0;
   min-height: ${(p) => (p.$single ? "200px" : "auto")};
 `;
