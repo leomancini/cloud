@@ -1,0 +1,10 @@
+{
+  "app_id": "cloud",
+  "app_name": "Cloud",
+  "domain": "https://cloud.leo.gd",
+  "host": "localhost",
+  "port": "3127",
+  "author": "leo",
+  "anthropic": false,
+  "created_on": "Sun Mar  8 10:58:58 PM EDT 2026"
+}
