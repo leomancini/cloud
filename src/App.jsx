@@ -124,7 +124,7 @@ const ComposeInput = styled.textarea`
   border: 1px solid #eee;
   border-radius: 12px;
   padding: 14px;
-  font-size: 15px;
+  font-size: 16px;
   font-family: inherit;
   resize: none;
   outline: none;
@@ -169,7 +169,7 @@ const LocationInput = styled.input`
   border: 1px solid #eee;
   border-radius: 8px;
   padding: 10px 12px;
-  font-size: 14px;
+  font-size: 16px;
   font-family: inherit;
   outline: none;
   box-sizing: border-box;
