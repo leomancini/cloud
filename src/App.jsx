@@ -762,6 +762,7 @@ function App() {
   const [tab, setTab] = useState("feed");
   const [compose, setCompose] = useState("");
   const [loading, setLoading] = useState(true);
+  const [posting, setPosting] = useState(false);
 
   // Location state
   const [showLocationSearch, setShowLocationSearch] = useState(false);
@@ -864,7 +865,9 @@ function App() {
   };
 
   const handlePost = async () => {
+    if (posting) return;
     if (!compose.trim() && mediaFiles.length === 0) return;
+    setPosting(true);
     const formData = new FormData();
     formData.append("content", compose);
     if (selectedLocation) {
@@ -885,6 +888,7 @@ function App() {
     mediaPreviews.forEach((p) => URL.revokeObjectURL(p.url));
     setMediaFiles([]);
     setMediaPreviews([]);
+    setPosting(false);
     loadFeed();
   };
 
@@ -1142,9 +1146,9 @@ function App() {
                 </ComposeActionsLeft>
                 <PostButton
                   onClick={handlePost}
-                  disabled={!compose.trim() && mediaFiles.length === 0}
+                  disabled={posting || (!compose.trim() && mediaFiles.length === 0)}
                 >
-                  Post
+                  {posting ? <i className="fa-solid fa-spinner fa-spin" /> : "Post"}
                 </PostButton>
               </ComposeActions>
             </ComposeBox>
