@@ -252,8 +252,10 @@ const RemoveLocation = styled.button`
   background: none;
   color: #999;
   cursor: pointer;
-  font-size: 16px;
-  padding: 0 4px;
+  font-size: 14px;
+  padding: 0;
+  display: flex;
+  align-items: center;
 `;
 
 const ComposeActionsLeft = styled.div`
