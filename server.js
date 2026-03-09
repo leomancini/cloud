@@ -310,7 +310,7 @@ app.get("/api/feed", (req, res) => {
 
   const posts = db
     .prepare(
-      `SELECT p.id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng,
+      `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng,
         u.name as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
       FROM posts p
       JOIN users u ON p.user_id = u.id
@@ -346,6 +346,19 @@ app.get("/api/uploads/:filename", (req, res) => {
   } else {
     res.status(404).end();
   }
+});
+
+app.delete("/api/posts/:id", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+
+  const post = db.prepare("SELECT * FROM posts WHERE id = ?").get(Number(req.params.id));
+  if (!post) return res.status(404).json({ error: "Post not found" });
+  if (post.user_id !== req.user.id)
+    return res.status(403).json({ error: "Not your post" });
+
+  db.prepare("DELETE FROM post_media WHERE post_id = ?").run(post.id);
+  db.prepare("DELETE FROM posts WHERE id = ?").run(post.id);
+  res.json({ ok: true });
 });
 
 // Places search proxy

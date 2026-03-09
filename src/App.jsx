@@ -385,6 +385,25 @@ const PostTime = styled.span`
   color: #999;
 `;
 
+const PostHeaderRight = styled.div`
+  margin-left: auto;
+`;
+
+const DeleteButton = styled.button`
+  border: none;
+  background: none;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+
+  &:hover {
+    color: #999;
+  }
+`;
+
 const PostContent = styled.p`
   font-size: 15px;
   color: #333;
@@ -616,6 +635,11 @@ function App() {
     loadFeed();
   };
 
+  const handleDelete = async (id) => {
+    await fetch(`/api/posts/${id}`, { method: "DELETE" });
+    setPosts((prev) => prev.filter((p) => p.id !== id));
+  };
+
   const handleFollow = async (id, isFollowing) => {
     const endpoint = isFollowing ? `/api/unfollow/${id}` : `/api/follow/${id}`;
     await fetch(endpoint, { method: "POST" });
@@ -785,6 +809,13 @@ function App() {
                     <Avatar src={post.author_picture} alt={post.author_name} />
                     <PostAuthor>{post.author_name}</PostAuthor>
                     <PostTime>{timeAgo(post.created_at)}</PostTime>
+                    {post.user_id === user.id && (
+                      <PostHeaderRight>
+                        <DeleteButton onClick={() => handleDelete(post.id)}>
+                          <i className="fa-solid fa-trash" />
+                        </DeleteButton>
+                      </PostHeaderRight>
+                    )}
                   </PostHeader>
                   {post.content && <PostContent>{post.content}</PostContent>}
                   {post.media && post.media.length > 0 && (
