@@ -3,7 +3,7 @@ import styled from "styled-components";
 
 const Page = styled.div`
   min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background: white;
   padding: 40px 20px;
 `;
@@ -134,7 +134,7 @@ const ComposeInput = styled.textarea`
   border-radius: 12px;
   padding: 14px;
   font-size: 16px;
-  font-family: inherit;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   resize: none;
   outline: none;
   box-sizing: border-box;
@@ -180,7 +180,7 @@ const LocationInput = styled.input`
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 16px;
-  font-family: inherit;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   outline: none;
   box-sizing: border-box;
 
@@ -253,7 +253,7 @@ const RemoveLocation = styled.button`
   color: #999;
   cursor: pointer;
   font-size: 14px;
-  padding: 0 2px;
+  padding: 0 6px;
   display: flex;
   align-items: center;
 `;
