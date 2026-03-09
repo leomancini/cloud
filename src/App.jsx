@@ -188,7 +188,7 @@ function App() {
     <Page>
       <Header>
         <HeaderLeft>
-          <SmallAvatar src={user.picture} alt={user.name} referrerPolicy="no-referrer" />
+          <SmallAvatar src={user.picture} alt={user.name} />
           <HeaderName>{user.name}</HeaderName>
         </HeaderLeft>
         <LogoutButton onClick={handleLogout}>Sign out</LogoutButton>
@@ -200,7 +200,7 @@ function App() {
           users.map((u) => (
             <UserRow key={u.id}>
               <UserInfo>
-                <Avatar src={u.picture} alt={u.name} referrerPolicy="no-referrer" />
+                <Avatar src={u.picture} alt={u.name} />
                 <UserName>{u.name}</UserName>
               </UserInfo>
               <FollowButton

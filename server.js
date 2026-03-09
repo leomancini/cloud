@@ -6,6 +6,7 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import Database from "better-sqlite3";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import { mkdirSync, existsSync, writeFileSync } from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -41,6 +42,19 @@ db.exec(`
     UNIQUE(follower_id, following_id)
   )
 `);
+
+// Profile pictures cache
+const picturesDir = join(__dirname, "pictures");
+if (!existsSync(picturesDir)) mkdirSync(picturesDir);
+
+async function cachePicture(userId, url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const buffer = Buffer.from(await res.arrayBuffer());
+    writeFileSync(join(picturesDir, `${userId}.jpg`), buffer);
+  } catch {}
+}
 
 // Session setup
 app.use(
@@ -85,6 +99,7 @@ passport.use(
         db.prepare(
           "UPDATE users SET email = ?, name = ?, picture = ? WHERE google_id = ?"
         ).run(email, name, picture, googleId);
+        if (picture) cachePicture(existing.id, picture);
         return done(null, { ...existing, email, name, picture });
       }
 
@@ -94,8 +109,11 @@ passport.use(
         )
         .run(googleId, email, name, picture);
 
+      const newId = result.lastInsertRowid;
+      if (picture) cachePicture(newId, picture);
+
       done(null, {
-        id: result.lastInsertRowid,
+        id: newId,
         google_id: googleId,
         email,
         name,
@@ -134,7 +152,7 @@ app.get("/api/auth/me", (req, res) => {
       id: req.user.id,
       email: req.user.email,
       name: req.user.name,
-      picture: req.user.picture,
+      picture: `/api/pictures/${req.user.id}.jpg`,
     },
   });
 });
@@ -145,13 +163,24 @@ app.post("/api/auth/logout", (req, res) => {
   });
 });
 
+// Profile picture endpoint
+app.get("/api/pictures/:id.jpg", (req, res) => {
+  const filePath = join(picturesDir, `${req.params.id}.jpg`);
+  if (existsSync(filePath)) {
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.sendFile(filePath);
+  } else {
+    res.status(404).end();
+  }
+});
+
 // Users & follows routes
 app.get("/api/users", (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
 
   const users = db
     .prepare(
-      `SELECT u.id, u.name, u.picture,
+      `SELECT u.id, u.name, '/api/pictures/' || u.id || '.jpg' as picture,
         EXISTS(SELECT 1 FROM follows WHERE follower_id = ? AND following_id = u.id) as is_following
       FROM users u
       WHERE u.id != ?
