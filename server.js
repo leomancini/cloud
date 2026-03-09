@@ -36,7 +36,7 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: !!process.env.BASE_URL,
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     },
   })
@@ -47,8 +47,8 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 const callbackURL =
-  process.env.NODE_ENV === "production"
-    ? "https://cloud.leo.gd/api/auth/google/callback"
+  process.env.BASE_URL
+    ? `${process.env.BASE_URL}/api/auth/google/callback`
     : "http://localhost:3127/api/auth/google/callback";
 
 passport.use(
