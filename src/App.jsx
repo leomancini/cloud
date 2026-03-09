@@ -446,9 +446,6 @@ const PostContent = styled.p`
 
 const PostLocation = styled.div`
   margin-top: 10px;
-  border-radius: ${RADIUS};
-  overflow: hidden;
-  border: 1px solid ${BORDER};
 `;
 
 const PostMap = styled.img`
@@ -456,6 +453,8 @@ const PostMap = styled.img`
   height: 150px;
   object-fit: cover;
   display: block;
+  border-radius: ${RADIUS} ${RADIUS} 0 0;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
 `;
 
 const PostPlaceName = styled.div`
@@ -463,6 +462,9 @@ const PostPlaceName = styled.div`
   font-size: 13px;
   font-weight: 500;
   color: #333;
+  border: 1px solid ${BORDER};
+  border-top: none;
+  border-radius: 0 0 ${RADIUS} ${RADIUS};
 `;
 
 const UserList = styled.div`
