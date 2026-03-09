@@ -16,22 +16,11 @@ const Header = styled.div`
   margin: 0 auto 32px;
 `;
 
-const HeaderLeft = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-`;
-
 const SmallAvatar = styled.img`
   width: 36px;
   height: 36px;
   border-radius: 50%;
-`;
-
-const HeaderName = styled.span`
-  font-size: 15px;
-  font-weight: 600;
-  color: #333;
+  cursor: pointer;
 `;
 
 const LoginCard = styled.div`
@@ -64,24 +53,24 @@ const SignInButton = styled.a`
   }
 `;
 
-const HeaderRight = styled.div`
+const SegmentedControl = styled.div`
   display: flex;
-  align-items: center;
-  gap: 12px;
+  background: #f0f0f0;
+  border-radius: 8px;
+  padding: 3px;
 `;
 
-const NavButton = styled.button`
-  padding: 8px 16px;
-  border-radius: 8px;
+const Segment = styled.button`
+  padding: 6px 16px;
+  border-radius: 6px;
   font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  border: 1px solid ${(p) => (p.$active ? "black" : "#ddd")};
-  background: ${(p) => (p.$active ? "black" : "white")};
-  color: ${(p) => (p.$active ? "white" : "#666")};
-
-  &:hover {
-    background: ${(p) => (p.$active ? "#222" : "#f5f5f5")};
-  }
+  border: none;
+  background: ${(p) => (p.$active ? "white" : "transparent")};
+  color: ${(p) => (p.$active ? "#333" : "#888")};
+  box-shadow: ${(p) => (p.$active ? "0 1px 3px rgba(0,0,0,0.1)" : "none")};
+  transition: all 0.15s ease;
 `;
 
 const LogoutButton = styled.button`
@@ -209,8 +198,8 @@ const UserInfo = styled.div`
 `;
 
 const UserAvatar = styled.img`
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
 `;
 
@@ -240,6 +229,30 @@ const EmptyState = styled.p`
   color: #999;
   font-size: 15px;
   margin-top: 40px;
+`;
+
+const ProfilePage = styled.div`
+  text-align: center;
+  padding-top: 40px;
+`;
+
+const ProfileAvatar = styled.img`
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  margin-bottom: 16px;
+`;
+
+const ProfileName = styled.h2`
+  font-size: 22px;
+  color: #333;
+  margin: 0 0 4px;
+`;
+
+const ProfileEmail = styled.p`
+  font-size: 14px;
+  color: #999;
+  margin: 0 0 32px;
 `;
 
 function timeAgo(dateStr) {
@@ -331,22 +344,29 @@ function App() {
   return (
     <Page>
       <Header>
-        <HeaderLeft>
-          <SmallAvatar src={user.picture} alt={user.name} />
-          <HeaderName>{user.name}</HeaderName>
-        </HeaderLeft>
-        <HeaderRight>
-          <NavButton $active={tab === "feed"} onClick={() => setTab("feed")}>
+        <SegmentedControl>
+          <Segment $active={tab === "feed"} onClick={() => setTab("feed")}>
             Feed
-          </NavButton>
-          <NavButton $active={tab === "people"} onClick={() => setTab("people")}>
+          </Segment>
+          <Segment $active={tab === "people"} onClick={() => setTab("people")}>
             People
-          </NavButton>
-          <LogoutButton onClick={handleLogout}>Sign out</LogoutButton>
-        </HeaderRight>
+          </Segment>
+        </SegmentedControl>
+        <SmallAvatar
+          src={user.picture}
+          alt={user.name}
+          onClick={() => setTab("profile")}
+        />
       </Header>
       <Content>
-        {tab === "feed" ? (
+        {tab === "profile" ? (
+          <ProfilePage>
+            <ProfileAvatar src={user.picture} alt={user.name} />
+            <ProfileName>{user.name}</ProfileName>
+            <ProfileEmail>{user.email}</ProfileEmail>
+            <LogoutButton onClick={handleLogout}>Sign out</LogoutButton>
+          </ProfilePage>
+        ) : tab === "feed" ? (
           <>
             <ComposeBox>
               <ComposeInput
