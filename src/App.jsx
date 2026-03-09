@@ -1094,7 +1094,7 @@ function App() {
   const handleApproveFollow = async (id) => {
     startBusy(`approve-${id}`);
     await fetch(`/api/follow-requests/${id}/approve`, { method: "POST" });
-    setFollowRequests((prev) => prev.filter((r) => r.id !== id));
+    setFollowRequests((prev) => prev.map((r) => (r.id === id ? { ...r, approved: true } : r)));
     endBusy(`approve-${id}`);
     loadFollowers();
     loadUsers();
@@ -1267,14 +1267,25 @@ function App() {
                       <UserAvatar src={r.picture} alt={r.name} />
                       <UserName>{r.name}</UserName>
                     </UserInfo>
-                    <RequestActions>
-                      <ApproveButton disabled={isBusy(`approve-${r.id}`)} onClick={() => handleApproveFollow(r.id)}>
-                        {isBusy(`approve-${r.id}`) ? <Spinner /> : "Approve"}
-                      </ApproveButton>
-                      <RejectButton disabled={isBusy(`reject-${r.id}`)} onClick={() => handleRejectFollow(r.id)}>
-                        {isBusy(`reject-${r.id}`) ? <Spinner /> : "Reject"}
-                      </RejectButton>
-                    </RequestActions>
+                    {r.approved ? (
+                      <FollowButton
+                        $following={false}
+                        $status={null}
+                        disabled={isBusy(`follow-${r.id}`)}
+                        onClick={() => handleFollow(r.id, null)}
+                      >
+                        {isBusy(`follow-${r.id}`) ? <Spinner /> : "Follow back"}
+                      </FollowButton>
+                    ) : (
+                      <RequestActions>
+                        <ApproveButton disabled={isBusy(`approve-${r.id}`)} onClick={() => handleApproveFollow(r.id)}>
+                          {isBusy(`approve-${r.id}`) ? <Spinner /> : "Approve"}
+                        </ApproveButton>
+                        <RejectButton disabled={isBusy(`reject-${r.id}`)} onClick={() => handleRejectFollow(r.id)}>
+                          {isBusy(`reject-${r.id}`) ? <Spinner /> : "Reject"}
+                        </RejectButton>
+                      </RequestActions>
+                    )}
                   </UserRow>
                 ))}
               </SuggestionsBox>
