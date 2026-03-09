@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 
 const Page = styled.div`
@@ -135,8 +135,112 @@ const ComposeInput = styled.textarea`
   }
 `;
 
-const PostButton = styled.button`
+const ComposeActions = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-top: 10px;
+`;
+
+const PinButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid ${(p) => (p.$active ? "black" : "#ddd")};
+  background: ${(p) => (p.$active ? "#f5f5f5" : "white")};
+  color: ${(p) => (p.$active ? "#333" : "#888")};
+
+  &:hover {
+    background: #f5f5f5;
+  }
+`;
+
+const LocationSearch = styled.div`
+  position: relative;
+  margin-top: 8px;
+`;
+
+const LocationInput = styled.input`
+  width: 100%;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+
+  &:focus {
+    border-color: #ccc;
+  }
+`;
+
+const LocationResults = styled.div`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  margin-top: 4px;
+  z-index: 10;
+  overflow: hidden;
+`;
+
+const LocationResult = styled.div`
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f5f5f5;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: #f9f9f9;
+  }
+`;
+
+const LocationName = styled.div`
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+`;
+
+const LocationAddress = styled.div`
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
+`;
+
+const SelectedLocation = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #333;
+`;
+
+const RemoveLocation = styled.button`
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: #999;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+`;
+
+const PostButton = styled.button`
   padding: 8px 20px;
   border-radius: 8px;
   font-size: 14px;
@@ -145,7 +249,6 @@ const PostButton = styled.button`
   border: none;
   background: black;
   color: white;
-  float: right;
 
   &:hover {
     background: #222;
@@ -155,10 +258,6 @@ const PostButton = styled.button`
     background: #ccc;
     cursor: default;
   }
-`;
-
-const ClearFix = styled.div`
-  clear: both;
 `;
 
 const PostItem = styled.div`
@@ -196,6 +295,27 @@ const PostContent = styled.p`
   margin: 0;
   line-height: 1.5;
   white-space: pre-wrap;
+`;
+
+const PostLocation = styled.div`
+  margin-top: 10px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #eee;
+`;
+
+const PostMap = styled.img`
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  display: block;
+`;
+
+const PostPlaceName = styled.div`
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
 `;
 
 const UserList = styled.div`
@@ -295,6 +415,14 @@ function App() {
   const [compose, setCompose] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // Location state
+  const [showLocationSearch, setShowLocationSearch] = useState(false);
+  const [locationQuery, setLocationQuery] = useState("");
+  const [locationResults, setLocationResults] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
+  const searchTimeout = useRef(null);
+
   useEffect(() => {
     fetch("/api/auth/me")
       .then((res) => res.json())
@@ -306,6 +434,14 @@ function App() {
           loadUsers();
         }
       });
+
+    // Get user's location for biasing search results
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => {}
+      );
+    }
   }, []);
 
   const loadFeed = () => {
@@ -320,14 +456,47 @@ function App() {
       .then((data) => setUsers(data.users));
   };
 
+  const searchPlaces = (query) => {
+    setLocationQuery(query);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (!query.trim()) {
+      setLocationResults([]);
+      return;
+    }
+    searchTimeout.current = setTimeout(async () => {
+      const params = new URLSearchParams({ query });
+      if (userLocation) {
+        params.set("lat", userLocation.lat);
+        params.set("lng", userLocation.lng);
+      }
+      const res = await fetch(`/api/places/search?${params}`);
+      const data = await res.json();
+      setLocationResults(data.places || []);
+    }, 300);
+  };
+
+  const selectLocation = (place) => {
+    setSelectedLocation(place);
+    setLocationQuery("");
+    setLocationResults([]);
+    setShowLocationSearch(false);
+  };
+
   const handlePost = async () => {
     if (!compose.trim()) return;
+    const body = { content: compose };
+    if (selectedLocation) {
+      body.place_name = selectedLocation.name;
+      body.place_lat = selectedLocation.lat;
+      body.place_lng = selectedLocation.lng;
+    }
     await fetch("/api/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: compose }),
+      body: JSON.stringify(body),
     });
     setCompose("");
+    setSelectedLocation(null);
     loadFeed();
   };
 
@@ -404,10 +573,53 @@ function App() {
                   if (e.key === "Enter" && e.metaKey) handlePost();
                 }}
               />
-              <PostButton onClick={handlePost} disabled={!compose.trim()}>
-                Post
-              </PostButton>
-              <ClearFix />
+              {selectedLocation && (
+                <SelectedLocation>
+                  <span>📍 {selectedLocation.name}</span>
+                  <RemoveLocation onClick={() => setSelectedLocation(null)}>
+                    ×
+                  </RemoveLocation>
+                </SelectedLocation>
+              )}
+              {showLocationSearch && !selectedLocation && (
+                <LocationSearch>
+                  <LocationInput
+                    placeholder="Search for a place..."
+                    value={locationQuery}
+                    onChange={(e) => searchPlaces(e.target.value)}
+                    autoFocus
+                  />
+                  {locationResults.length > 0 && (
+                    <LocationResults>
+                      {locationResults.map((place, i) => (
+                        <LocationResult key={i} onClick={() => selectLocation(place)}>
+                          <LocationName>{place.name}</LocationName>
+                          <LocationAddress>{place.address}</LocationAddress>
+                        </LocationResult>
+                      ))}
+                    </LocationResults>
+                  )}
+                </LocationSearch>
+              )}
+              <ComposeActions>
+                <PinButton
+                  $active={showLocationSearch || selectedLocation}
+                  onClick={() => {
+                    if (selectedLocation) {
+                      setSelectedLocation(null);
+                    } else {
+                      setShowLocationSearch(!showLocationSearch);
+                    }
+                    setLocationQuery("");
+                    setLocationResults([]);
+                  }}
+                >
+                  📍 Location
+                </PinButton>
+                <PostButton onClick={handlePost} disabled={!compose.trim()}>
+                  Post
+                </PostButton>
+              </ComposeActions>
             </ComposeBox>
             {posts.length === 0 ? (
               <EmptyState>No posts yet. Follow people to see their posts!</EmptyState>
@@ -420,6 +632,15 @@ function App() {
                     <PostTime>{timeAgo(post.created_at)}</PostTime>
                   </PostHeader>
                   <PostContent>{post.content}</PostContent>
+                  {post.place_name && post.place_lat && (
+                    <PostLocation>
+                      <PostMap
+                        src={`https://maps.googleapis.com/maps/api/staticmap?center=${post.place_lat},${post.place_lng}&zoom=15&size=500x150&scale=2&markers=color:red|${post.place_lat},${post.place_lng}&key=***REMOVED***`}
+                        alt={post.place_name}
+                      />
+                      <PostPlaceName>📍 {post.place_name}</PostPlaceName>
+                    </PostLocation>
+                  )}
                 </PostItem>
               ))
             )}

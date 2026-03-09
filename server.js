@@ -223,20 +223,32 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     content TEXT NOT NULL,
+    place_name TEXT,
+    place_lat REAL,
+    place_lng REAL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
   )
 `);
 
+// Add location columns if they don't exist (migration for existing DBs)
+try {
+  db.exec("ALTER TABLE posts ADD COLUMN place_name TEXT");
+  db.exec("ALTER TABLE posts ADD COLUMN place_lat REAL");
+  db.exec("ALTER TABLE posts ADD COLUMN place_lng REAL");
+} catch {}
+
 app.post("/api/posts", (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
-  const { content } = req.body;
+  const { content, place_name, place_lat, place_lng } = req.body;
   if (!content || !content.trim())
     return res.status(400).json({ error: "Content required" });
 
   const result = db
-    .prepare("INSERT INTO posts (user_id, content) VALUES (?, ?)")
-    .run(req.user.id, content.trim());
+    .prepare(
+      "INSERT INTO posts (user_id, content, place_name, place_lat, place_lng) VALUES (?, ?, ?, ?, ?)"
+    )
+    .run(req.user.id, content.trim(), place_name || null, place_lat || null, place_lng || null);
 
   res.json({ id: result.lastInsertRowid });
 });
@@ -246,7 +258,7 @@ app.get("/api/feed", (req, res) => {
 
   const posts = db
     .prepare(
-      `SELECT p.id, p.content, p.created_at,
+      `SELECT p.id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng,
         u.name as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
       FROM posts p
       JOIN users u ON p.user_id = u.id
@@ -259,6 +271,61 @@ app.get("/api/feed", (req, res) => {
     .all(req.user.id, req.user.id);
 
   res.json({ posts });
+});
+
+// Places search proxy
+app.get("/api/places/search", async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const { query, lat, lng } = req.query;
+  if (!query) return res.json({ places: [] });
+
+  try {
+    const params = new URLSearchParams({
+      textQuery: query,
+      languageCode: "en",
+    });
+
+    const body = {
+      textQuery: query,
+      languageCode: "en",
+      maxResultCount: 5,
+    };
+
+    if (lat && lng) {
+      body.locationBias = {
+        circle: {
+          center: { latitude: Number(lat), longitude: Number(lng) },
+          radius: 50000,
+        },
+      };
+    }
+
+    const response = await fetch(
+      "https://places.googleapis.com/v1/places:searchText",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": process.env.GOOGLE_PLACES_API_KEY,
+          "X-Goog-FieldMask":
+            "places.displayName,places.formattedAddress,places.location",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    const data = await response.json();
+    const places = (data.places || []).map((p) => ({
+      name: p.displayName?.text,
+      address: p.formattedAddress,
+      lat: p.location?.latitude,
+      lng: p.location?.longitude,
+    }));
+
+    res.json({ places });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Serve static files from dist
