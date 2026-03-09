@@ -253,7 +253,7 @@ const RemoveLocation = styled.button`
   color: #999;
   cursor: pointer;
   font-size: 14px;
-  padding: 0;
+  padding: 0 2px;
   display: flex;
   align-items: center;
 `;
