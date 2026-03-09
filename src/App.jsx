@@ -388,18 +388,52 @@ const PostHeaderRight = styled.div`
   margin-left: auto;
 `;
 
-const DeleteButton = styled.button`
+const PostMenuWrapper = styled.div`
+  position: relative;
+`;
+
+const PostMenuButton = styled.button`
   border: none;
   background: none;
   color: #ccc;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   padding: 4px;
   display: flex;
   align-items: center;
 
   &:hover {
     color: #999;
+  }
+`;
+
+const PostMenu = styled.div`
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  overflow: hidden;
+  min-width: 120px;
+`;
+
+const PostMenuItem = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  cursor: pointer;
+  color: ${(p) => (p.$danger ? "#e53e3e" : "#333")};
+
+  &:hover {
+    background: #f5f5f5;
   }
 `;
 
@@ -541,6 +575,13 @@ function App() {
   const [mediaFiles, setMediaFiles] = useState([]);
   const [mediaPreviews, setMediaPreviews] = useState([]);
   const fileInputRef = useRef(null);
+  const [openMenuId, setOpenMenuId] = useState(null);
+
+  useEffect(() => {
+    const handleClickOutside = () => setOpenMenuId(null);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -635,6 +676,7 @@ function App() {
   };
 
   const handleDelete = async (id) => {
+    setOpenMenuId(null);
     await fetch(`/api/posts/${id}`, { method: "DELETE" });
     setPosts((prev) => prev.filter((p) => p.id !== id));
   };
@@ -810,9 +852,21 @@ function App() {
                     <PostTime>{timeAgo(post.created_at)}</PostTime>
                     {post.user_id === user.id && (
                       <PostHeaderRight>
-                        <DeleteButton onClick={() => handleDelete(post.id)}>
-                          <i className="fa-solid fa-trash" />
-                        </DeleteButton>
+                        <PostMenuWrapper>
+                          <PostMenuButton onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId(openMenuId === post.id ? null : post.id);
+                          }}>
+                            <i className="fa-solid fa-ellipsis" />
+                          </PostMenuButton>
+                          {openMenuId === post.id && (
+                            <PostMenu onClick={(e) => e.stopPropagation()}>
+                              <PostMenuItem $danger onClick={() => handleDelete(post.id)}>
+                                <i className="fa-solid fa-trash" /> Delete
+                              </PostMenuItem>
+                            </PostMenu>
+                          )}
+                        </PostMenuWrapper>
                       </PostHeaderRight>
                     )}
                   </PostHeader>
