@@ -476,6 +476,10 @@ const UserRow = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
+
+  &:last-child {
+    padding-bottom: 0;
+  }
 `;
 
 const UserInfo = styled.div`
@@ -516,6 +520,20 @@ const EmptyState = styled.p`
   color: #999;
   font-size: 15px;
   margin-top: 40px;
+`;
+
+const SuggestionsBox = styled.div`
+  background: #fafafa;
+  border-radius: ${RADIUS};
+  padding: 16px;
+  margin-bottom: 24px;
+`;
+
+const SuggestionsTitle = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: ${TEXT};
+  margin-bottom: 12px;
 `;
 
 const ProfilePage = styled.div`
@@ -839,6 +857,28 @@ function App() {
                 </PostButton>
               </ComposeActions>
             </ComposeBox>
+            {users.filter((u) => u.is_following).length < 5 &&
+              users.filter((u) => !u.is_following).length > 0 && (
+              <SuggestionsBox>
+                <SuggestionsTitle>People you might know</SuggestionsTitle>
+                {users
+                  .filter((u) => !u.is_following)
+                  .map((u) => (
+                    <UserRow key={u.id}>
+                      <UserInfo>
+                        <UserAvatar src={u.picture} alt={u.name} />
+                        <UserName>{u.name}</UserName>
+                      </UserInfo>
+                      <FollowButton
+                        $following={false}
+                        onClick={() => handleFollow(u.id, u.is_following)}
+                      >
+                        Follow
+                      </FollowButton>
+                    </UserRow>
+                  ))}
+              </SuggestionsBox>
+            )}
             {posts.length === 0 ? (
               <EmptyState>No posts yet. Follow people to see their posts!</EmptyState>
             ) : (
