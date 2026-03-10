@@ -13,6 +13,8 @@ import multer from "multer";
 import sharp from "sharp";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
+import Anthropic from "@anthropic-ai/sdk";
+import { execSync } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -218,10 +220,10 @@ app.get("/api/users", (req, res) => {
         (SELECT status FROM follows WHERE follower_id = ? AND following_id = u.id) as follow_status,
         (SELECT status FROM follows WHERE follower_id = u.id AND following_id = ?) as follows_you
       FROM users u
-      WHERE u.id != ?
+      WHERE u.id != ? AND u.id != ?
       ORDER BY u.created_at DESC`
     )
-    .all(req.user.id, req.user.id, req.user.id);
+    .all(req.user.id, req.user.id, req.user.id, SOL_USER_ID);
 
   res.json({ users: users.map((u) => ({ ...u, is_following: u.follow_status === "approved" ? 1 : 0, follow_status: u.follow_status || null, follows_you: u.follows_you === "approved" })) });
 });
@@ -236,10 +238,10 @@ app.get("/api/followers", (req, res) => {
         f.status as their_follow_status
       FROM users u
       JOIN follows f ON f.follower_id = u.id
-      WHERE f.following_id = ? AND f.status = 'approved'
+      WHERE f.following_id = ? AND f.status = 'approved' AND u.id != ?
       ORDER BY f.created_at DESC`
     )
-    .all(req.user.id, req.user.id);
+    .all(req.user.id, req.user.id, SOL_USER_ID);
 
   res.json({ followers: followers.map((u) => ({ ...u, is_following: u.follow_status === "approved" ? 1 : 0, follow_status: u.follow_status || null })) });
 });
@@ -363,6 +365,131 @@ db.exec(`
   )
 `);
 
+// Ensure Sol AI user exists with avatar
+const existingClaude = db.prepare("SELECT id FROM users WHERE google_id = 'claude-ai'").get();
+const existingSol = db.prepare("SELECT id FROM users WHERE google_id = 'sol-ai'").get();
+if (existingClaude && existingSol) {
+  // Migrate any comments from old claude user to sol user
+  db.prepare("UPDATE comments SET user_id = ? WHERE user_id = ?").run(existingSol.id, existingClaude.id);
+  db.prepare("DELETE FROM users WHERE google_id = 'claude-ai'").run();
+} else if (existingClaude) {
+  db.prepare("UPDATE users SET name = 'Sol', google_id = 'sol-ai', email = 'sol@leo.gd' WHERE google_id = 'claude-ai'").run();
+} else if (!existingSol) {
+  db.prepare("INSERT INTO users (google_id, email, name) VALUES ('sol-ai', 'sol@leo.gd', 'Sol')").run();
+}
+const solAvatarPath = join(picturesDir, "sol.jpg");
+// Always regenerate Sol avatar
+const solSvg = `<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" fill="#DBEAFE"/>
+  <circle cx="100" cy="100" r="25" fill="#F59E0B"/>
+  <g stroke="#F59E0B" stroke-width="5" stroke-linecap="round">
+    <line x1="100" y1="55" x2="100" y2="65"/>
+    <line x1="100" y1="135" x2="100" y2="145"/>
+    <line x1="55" y1="100" x2="65" y2="100"/>
+    <line x1="135" y1="100" x2="145" y2="100"/>
+    <line x1="68" y1="68" x2="75" y2="75"/>
+    <line x1="125" y1="125" x2="132" y2="132"/>
+    <line x1="132" y1="68" x2="125" y2="75"/>
+    <line x1="75" y1="125" x2="68" y2="132"/>
+  </g>
+</svg>`;
+const solUser = db.prepare("SELECT id FROM users WHERE google_id = 'sol-ai'").get();
+const SOL_USER_ID = solUser.id;
+const solAvatarBuf = await sharp(Buffer.from(solSvg)).jpeg({ quality: 90 }).toBuffer();
+writeFileSync(solAvatarPath, solAvatarBuf);
+writeFileSync(join(picturesDir, `${SOL_USER_ID}.jpg`), solAvatarBuf);
+
+const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
+
+async function handleSolMention(postId) {
+  if (!anthropic) return;
+
+  const post = db.prepare("SELECT p.*, u.name as author_name FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?").get(postId);
+  if (!post) return;
+
+  const media = db.prepare("SELECT filename, media_type FROM post_media WHERE post_id = ? ORDER BY id").all(postId);
+  const comments = db.prepare(
+    "SELECT c.content, u.name as author_name FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ? ORDER BY c.created_at ASC"
+  ).all(postId);
+
+  const content = [];
+
+  // Add images/video frames
+  for (const m of media) {
+    try {
+      const filePath = join(uploadsDir, m.filename);
+      if (m.media_type === "image") {
+        const buf = readFileSync(filePath);
+        const base64 = buf.toString("base64");
+        const ext = m.filename.split(".").pop().toLowerCase();
+        const mediaType = ext === "png" ? "image/png" : ext === "gif" ? "image/gif" : ext === "webp" ? "image/webp" : "image/jpeg";
+        content.push({ type: "image", source: { type: "base64", media_type: mediaType, data: base64 } });
+      } else if (m.media_type === "video") {
+        // Extract 3 frames from the video (start, middle, end)
+        const tmpDir = join(uploadsDir, ".tmp_frames");
+        if (!existsSync(tmpDir)) mkdirSync(tmpDir);
+        const duration = parseFloat(execSync(`ffprobe -v error -show_entries format=duration -of csv=p=0 "${filePath}"`).toString().trim()) || 1;
+        const times = [0, duration / 2, Math.max(0, duration - 0.5)];
+        for (const t of times) {
+          const framePath = join(tmpDir, `frame_${m.filename}_${t}.jpg`);
+          try {
+            execSync(`ffmpeg -y -ss ${t} -i "${filePath}" -frames:v 1 -q:v 3 "${framePath}" 2>/dev/null`);
+            const buf = readFileSync(framePath);
+            content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: buf.toString("base64") } });
+            try { execSync(`rm "${framePath}"`); } catch (e) {}
+          } catch (e) {}
+        }
+      }
+    } catch (e) {
+      console.error("Failed to process media for Sol:", e);
+    }
+  }
+
+  // Build text context
+  let textContext = "";
+  if (post.content) textContext += `${post.author_name} posted: "${post.content}"\n\n`;
+  if (post.place_name) textContext += `Location: ${post.place_name}\n\n`;
+  if (comments.length > 0) {
+    textContext += "Comments:\n";
+    for (const c of comments) {
+      textContext += `- ${c.author_name}: ${c.content}\n`;
+    }
+    textContext += "\n";
+  }
+  textContext += "You are Sol, an AI participant in this social feed called Cloud. Write a brief, natural comment responding to this post and its context. Be friendly and conversational. Keep it to 1-2 sentences. Do not use emojis. Always write in all lowercase.";
+
+  content.push({ type: "text", text: textContext });
+
+  // Insert placeholder comment
+  const placeholder = db.prepare("INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)").run(postId, SOL_USER_ID, "thinking...");
+  const placeholderId = placeholder.lastInsertRowid;
+
+  // Notify all relevant users about the thinking comment
+  notifyUser(post.user_id, "feed-update");
+  const postFollowers = db.prepare("SELECT follower_id FROM follows WHERE following_id = ? AND status = 'approved'").all(post.user_id);
+  for (const f of postFollowers) notifyUser(f.follower_id, "feed-update");
+
+  try {
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 200,
+      messages: [{ role: "user", content }],
+    });
+
+    const reply = response.content[0].text.trim();
+
+    db.prepare("UPDATE comments SET content = ? WHERE id = ?").run(reply, placeholderId);
+
+    // Notify again with the real response
+    notifyUser(post.user_id, "feed-update");
+    for (const f of postFollowers) notifyUser(f.follower_id, "feed-update");
+  } catch (e) {
+    console.error("Sol response error:", e);
+    db.prepare("UPDATE comments SET content = ? WHERE id = ?").run("Sorry, I couldn't respond right now.", placeholderId);
+    notifyUser(post.user_id, "feed-update");
+  }
+}
+
 app.post("/api/posts", upload.array("media", 10), async (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
   const { content, place_name, place_lat, place_lng, place_address } = req.body;
@@ -407,6 +534,10 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
 
   const followers = db.prepare("SELECT follower_id FROM follows WHERE following_id = ? AND status = 'approved'").all(req.user.id);
   for (const f of followers) notifyUser(f.follower_id, "feed-update");
+
+  if ((content || "").toLowerCase().includes("@sol")) {
+    handleSolMention(postId);
+  }
 
   res.json({ id: postId });
 });
@@ -537,6 +668,10 @@ app.post("/api/posts/:id/comments", (req, res) => {
     .run(post.id, req.user.id, content.trim());
 
   if (post.user_id !== req.user.id) notifyUser(post.user_id, "feed-update");
+
+  if (content.toLowerCase().includes("@sol")) {
+    handleSolMention(post.id);
+  }
 
   res.json({
     id: result.lastInsertRowid,
