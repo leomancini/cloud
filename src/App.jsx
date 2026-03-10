@@ -1,12 +1,74 @@
-import React, { useState, useEffect, useRef } from "react";
-import styled from "styled-components";
+import React, { useState, useEffect, useRef, createContext, useContext } from "react";
+import styled, { ThemeProvider, createGlobalStyle } from "styled-components";
 
 const RADIUS = "10px";
 const RADIUS_SM = "6px";
-const BORDER = "#eee";
-const TEXT = "#333";
-const TEXT_SECONDARY = "#999";
 const ICON_GAP = "8px";
+
+// ── Theme tokens ──────────────────────────────────────────────────────────────
+const lightTheme = {
+  bg: "#ffffff",
+  bgSecondary: "#fafafa",
+  bgTertiary: "#f0f0f0",
+  bgInput: "transparent",
+  border: "#eee",
+  borderFocus: "#ccc",
+  text: "#333333",
+  textSecondary: "#999999",
+  textMuted: "#888888",
+  btnPrimary: "#000000",
+  btnPrimaryHover: "#222222",
+  btnPrimaryText: "#ffffff",
+  btnSecondary: "#ffffff",
+  btnSecondaryBorder: "#dddddd",
+  btnSecondaryText: "#666666",
+  btnSecondaryHover: "#f5f5f5",
+  menuBg: "#ffffff",
+  menuHover: "#f5f5f5",
+  chipBg: "none",
+  mentionBg: "#e8e8e8",
+  shadow: "rgba(0,0,0,0.1)",
+  placeName: "#ffffff",
+};
+
+const darkTheme = {
+  bg: "#0f0f0f",
+  bgSecondary: "#1a1a1a",
+  bgTertiary: "#2a2a2a",
+  bgInput: "transparent",
+  border: "#2e2e2e",
+  borderFocus: "#555555",
+  text: "#e8e8e8",
+  textSecondary: "#777777",
+  textMuted: "#666666",
+  btnPrimary: "#e8e8e8",
+  btnPrimaryHover: "#ffffff",
+  btnPrimaryText: "#0f0f0f",
+  btnSecondary: "#1a1a1a",
+  btnSecondaryBorder: "#3a3a3a",
+  btnSecondaryText: "#aaaaaa",
+  btnSecondaryHover: "#2a2a2a",
+  menuBg: "#1e1e1e",
+  menuHover: "#2a2a2a",
+  chipBg: "none",
+  mentionBg: "#2e3a4e",
+  shadow: "rgba(0,0,0,0.4)",
+  placeName: "#1e1e1e",
+};
+
+// ── Theme context ─────────────────────────────────────────────────────────────
+const ThemeContext = createContext({ isDark: false, toggleTheme: () => {} });
+const useThemeContext = () => useContext(ThemeContext);
+
+const GlobalStyle = createGlobalStyle`
+  body {
+    background: ${(p) => p.theme.bg};
+    color: ${(p) => p.theme.text};
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+  * { box-sizing: border-box; }
+`;
+
 const Spinner = () => <i className="fa-solid fa-spinner fa-spin" />;
 
 const parseText = (text, users = []) => {
@@ -45,7 +107,7 @@ const MentionSpan = styled.span`
 `;
 
 const MentionHighlight = styled.span`
-  background: #e8e8e8;
+  background: ${(p) => p.theme.mentionBg};
   border-radius: 3px;
 `;
 
@@ -54,13 +116,13 @@ const MentionDropdown = styled.div`
   top: 100%;
   left: 0;
   right: 0;
-  background: white;
-  border: 1px solid ${BORDER};
+  background: ${(p) => p.theme.menuBg};
+  border: 1px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS_SM};
   max-height: 150px;
   overflow-y: auto;
   z-index: 10;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px ${(p) => p.theme.shadow};
 `;
 
 const MentionOption = styled.div`
@@ -70,7 +132,8 @@ const MentionOption = styled.div`
   padding: 8px 12px;
   cursor: pointer;
   font-size: 14px;
-  &:hover { background: #f5f5f5; }
+  color: ${(p) => p.theme.text};
+  &:hover { background: ${(p) => p.theme.menuHover}; }
 `;
 
 const MentionAvatar = styled.img`
@@ -82,8 +145,9 @@ const MentionAvatar = styled.img`
 const Page = styled.div`
   min-height: 100vh;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: white;
+  background: ${(p) => p.theme.bg};
   padding: 40px 20px;
+  transition: background 0.2s ease;
 `;
 
 const Header = styled.div`
@@ -110,7 +174,33 @@ const SmallAvatar = styled.img`
 const HeaderName = styled.span`
   font-size: 15px;
   font-weight: 600;
-  color: #333;
+  color: ${(p) => p.theme.text};
+`;
+
+const HeaderRight = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const ThemeToggle = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: ${RADIUS};
+  border: none;
+  background: ${(p) => p.theme.bgTertiary};
+  color: ${(p) => p.theme.textSecondary};
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+
+  &:hover {
+    background: ${(p) => p.theme.border};
+    color: ${(p) => p.theme.text};
+  }
 `;
 
 const LoginCard = styled.div`
@@ -123,13 +213,13 @@ const LoginCard = styled.div`
 
 const Title = styled.h1`
   font-size: 22px;
-  color: #333;
+  color: ${(p) => p.theme.text};
   margin: 0 0 6px;
 `;
 
 const Subtitle = styled.p`
   font-size: 15px;
-  color: #999;
+  color: ${(p) => p.theme.textSecondary};
   margin: 0 0 24px;
 `;
 
@@ -141,17 +231,17 @@ const SignInButton = styled.a`
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
-  background: black;
-  color: white;
+  background: ${(p) => p.theme.btnPrimary};
+  color: ${(p) => p.theme.btnPrimaryText};
 
   &:hover {
-    background: #222;
+    background: ${(p) => p.theme.btnPrimaryHover};
   }
 `;
 
 const SegmentedControl = styled.div`
   display: flex;
-  background: #f0f0f0;
+  background: ${(p) => p.theme.bgTertiary};
   border-radius: ${RADIUS};
   padding: 3px;
 `;
@@ -163,9 +253,9 @@ const Segment = styled.button`
   font-weight: 500;
   cursor: pointer;
   border: none;
-  background: ${(p) => (p.$active ? "white" : "transparent")};
-  color: ${(p) => (p.$active ? "#333" : "#888")};
-  box-shadow: ${(p) => (p.$active ? "0 1px 3px rgba(0,0,0,0.1)" : "none")};
+  background: ${(p) => (p.$active ? p.theme.bg : "transparent")};
+  color: ${(p) => (p.$active ? p.theme.text : p.theme.textMuted)};
+  box-shadow: ${(p) => (p.$active ? `0 1px 3px ${p.theme.shadow}` : "none")};
   transition: all 0.15s ease;
 `;
 
@@ -175,7 +265,7 @@ const BackButton = styled.button`
   cursor: pointer;
   border: none;
   background: none;
-  color: #333;
+  color: ${(p) => p.theme.text};
   display: flex;
   align-items: center;
   gap: 8px;
@@ -186,12 +276,12 @@ const LogoutButton = styled.button`
   border-radius: ${RADIUS};
   font-size: 13px;
   cursor: pointer;
-  border: 1px solid #ddd;
-  background: white;
-  color: #666;
+  border: 1px solid ${(p) => p.theme.btnSecondaryBorder};
+  background: ${(p) => p.theme.btnSecondary};
+  color: ${(p) => p.theme.btnSecondaryText};
 
   &:hover {
-    background: #f5f5f5;
+    background: ${(p) => p.theme.btnSecondaryHover};
   }
 `;
 
@@ -212,7 +302,7 @@ const ComposeWrapper = styled.div`
 
 const ComposeInput = styled.textarea`
   width: 100%;
-  border: 1px solid ${BORDER};
+  border: 1px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
   padding: 14px;
   font-size: 16px;
@@ -221,13 +311,17 @@ const ComposeInput = styled.textarea`
   outline: none;
   box-sizing: border-box;
   color: transparent;
-  caret-color: ${TEXT};
+  caret-color: ${(p) => p.theme.text};
   position: relative;
   z-index: 1;
   background: transparent;
 
   &:focus {
-    border-color: #ccc;
+    border-color: ${(p) => p.theme.borderFocus};
+  }
+
+  &::placeholder {
+    color: ${(p) => p.theme.textSecondary};
   }
 `;
 
@@ -243,7 +337,7 @@ const ComposeHighlight = styled.div`
   line-height: normal;
   white-space: pre-wrap;
   word-wrap: break-word;
-  color: ${TEXT};
+  color: ${(p) => p.theme.text};
   pointer-events: none;
   border: 1px solid transparent;
   border-radius: ${RADIUS};
@@ -267,11 +361,11 @@ const IconButton = styled.button`
   font-size: 14px;
   cursor: pointer;
   border: none;
-  background: ${(p) => (p.$active ? "#f0f0f0" : "transparent")};
-  color: ${(p) => (p.$active ? "#333" : "#999")};
+  background: ${(p) => (p.$active ? p.theme.bgTertiary : "transparent")};
+  color: ${(p) => (p.$active ? p.theme.text : p.theme.textSecondary)};
 
   &:hover {
-    background: #f0f0f0;
+    background: ${(p) => p.theme.bgTertiary};
   }
 `;
 
@@ -282,16 +376,22 @@ const LocationSearch = styled.div`
 
 const LocationInput = styled.input`
   width: 100%;
-  border: 1px solid ${BORDER};
+  border: 1px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
   padding: 10px 12px;
   font-size: 16px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   outline: none;
   box-sizing: border-box;
+  background: ${(p) => p.theme.bg};
+  color: ${(p) => p.theme.text};
 
   &:focus {
-    border-color: #ccc;
+    border-color: ${(p) => p.theme.borderFocus};
+  }
+
+  &::placeholder {
+    color: ${(p) => p.theme.textSecondary};
   }
 `;
 
@@ -300,8 +400,8 @@ const LocationResults = styled.div`
   top: 100%;
   left: 0;
   right: 0;
-  background: white;
-  border: 1px solid ${BORDER};
+  background: ${(p) => p.theme.menuBg};
+  border: 1px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
   margin-top: 4px;
   z-index: 10;
@@ -313,19 +413,19 @@ const LocationResult = styled.div`
   cursor: pointer;
 
   &:hover {
-    background: #f9f9f9;
+    background: ${(p) => p.theme.menuHover};
   }
 `;
 
 const LocationName = styled.div`
   font-size: 14px;
   font-weight: 500;
-  color: #333;
+  color: ${(p) => p.theme.text};
 `;
 
 const LocationAddress = styled.div`
   font-size: 12px;
-  color: #999;
+  color: ${(p) => p.theme.textSecondary};
   margin-top: 2px;
 `;
 
@@ -336,10 +436,10 @@ const SelectedLocation = styled.div`
   gap: ${ICON_GAP};
   margin-top: 8px;
   padding: 8px 36px 8px 12px;
-  background: #f5f5f5;
+  background: ${(p) => p.theme.bgTertiary};
   border-radius: ${RADIUS};
   font-size: 13px;
-  color: #333;
+  color: ${(p) => p.theme.text};
 
   span {
     display: flex;
@@ -355,7 +455,7 @@ const RemoveLocation = styled.button`
   transform: translateY(-50%);
   border: none;
   background: none;
-  color: #999;
+  color: ${(p) => p.theme.textSecondary};
   cursor: pointer;
   font-size: 14px;
   padding: 0;
@@ -450,15 +550,16 @@ const PostButton = styled.button`
   font-weight: 500;
   cursor: pointer;
   border: none;
-  background: black;
-  color: white;
+  background: ${(p) => p.theme.btnPrimary};
+  color: ${(p) => p.theme.btnPrimaryText};
 
   &:hover {
-    background: #222;
+    background: ${(p) => p.theme.btnPrimaryHover};
   }
 
   &:disabled {
-    background: #ccc;
+    background: ${(p) => p.theme.bgTertiary};
+    color: ${(p) => p.theme.textSecondary};
     cursor: default;
   }
 `;
@@ -491,12 +592,12 @@ const Avatar = styled.img`
 const PostAuthor = styled.span`
   font-size: 15px;
   font-weight: 600;
-  color: #333;
+  color: ${(p) => p.theme.text};
 `;
 
 const PostTime = styled.span`
   font-size: 12px;
-  color: #999;
+  color: ${(p) => p.theme.textSecondary};
 `;
 
 const PostHeaderRight = styled.div`
