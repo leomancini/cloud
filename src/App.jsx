@@ -450,11 +450,11 @@ const PostButton = styled.button`
   font-weight: 500;
   cursor: pointer;
   border: none;
-  background: black;
+  background: #0066ff;
   color: white;
 
   &:hover {
-    background: #222;
+    background: #0052cc;
   }
 
   &:disabled {

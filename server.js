@@ -14,9 +14,7 @@ import sharp from "sharp";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
 import Anthropic from "@anthropic-ai/sdk";
-import { exec, execSync, execFileSync } from "child_process";
-import { promisify } from "util";
-const execAsync = promisify(exec);
+import { execSync, execFileSync } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -444,31 +442,76 @@ async function handleSolCodeChange(description) {
     execFileSync("git", ["worktree", "add", worktreePath, "-b", branchName], { cwd: __dirname });
     console.log(`[Sol] Worktree created at ${worktreePath}`);
 
-    // Run Claude Code CLI (async so it doesn't block the event loop)
-    const prompt = `Make this change to the Cloud app: ${description}. Do not commit. Just make the code changes.`;
-    console.log("[Sol] Running claude -p ...");
-    await new Promise((resolve, reject) => {
-      const env = { ...process.env };
-      delete env.CLAUDECODE;
-      const proc = exec(`claude -p ${JSON.stringify(prompt)} --dangerously-skip-permissions --output-format stream-json`, {
-        cwd: worktreePath,
-        timeout: 300000,
-        maxBuffer: 10 * 1024 * 1024,
-        env,
-      });
-      proc.stdout.on("data", (d) => {
-        for (const line of d.toString().split("\n").filter(Boolean)) {
-          try {
-            const msg = JSON.parse(line);
-            if (msg.type === "tool_use") console.log(`[Sol] Tool: ${msg.tool} ${msg.input?.file_path || msg.input?.command || ""}`);
-            else if (msg.type === "result") console.log("[Sol] Done.");
-          } catch {}
+    // Agent loop with direct API
+    const agentMessages = [{
+      role: "user",
+      content: `You are Sol, an AI developer making changes to Cloud, a social feed app.
+
+Tech stack: Express backend (server.js), React frontend (src/App.jsx — entire UI in one file), SQLite (better-sqlite3), styled-components, Vite.
+
+Requested change: ${description}
+
+Steps: 1) Read the file(s) you need to change. 2) Use edit_file for targeted replacements. 3) Stop — do not re-read or verify. Get it right the first time.`
+    }];
+
+    const agentTools = [
+      { name: "read_file", description: "Read a file from the repo", input_schema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] } },
+      { name: "edit_file", description: "Replace old_string with new_string in a file. old_string must be unique.", input_schema: { type: "object", properties: { path: { type: "string" }, old_string: { type: "string" }, new_string: { type: "string" } }, required: ["path", "old_string", "new_string"] } },
+      { name: "write_file", description: "Create a new file or overwrite a small file", input_schema: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"] } },
+    ];
+
+    const runTool = (name, input) => {
+      const safePath = join(worktreePath, input.path);
+      if (!safePath.startsWith(worktreePath + "/")) throw new Error("Path outside repo");
+      if (name === "read_file") {
+        if (!existsSync(safePath)) return `File not found: ${input.path}`;
+        return readFileSync(safePath, "utf-8");
+      } else if (name === "edit_file") {
+        if (!existsSync(safePath)) return `File not found: ${input.path}`;
+        const content = readFileSync(safePath, "utf-8");
+        const count = content.split(input.old_string).length - 1;
+        if (count === 0) return `Error: old_string not found in ${input.path}`;
+        if (count > 1) return `Error: old_string found ${count} times — include more context to make it unique.`;
+        writeFileSync(safePath, content.replace(input.old_string, input.new_string));
+        return `Edited ${input.path}`;
+      } else if (name === "write_file") {
+        const dir = dirname(safePath);
+        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+        writeFileSync(safePath, input.content);
+        return `Written ${input.path}`;
+      }
+      return `Unknown tool: ${name}`;
+    };
+
+    for (let i = 0; i < 7; i++) {
+      console.log(`[Sol] Agent iteration ${i + 1}...`);
+      let response;
+      for (let retry = 0; retry < 3; retry++) {
+        try {
+          response = await anthropic.messages.create({ model: "claude-sonnet-4-6", max_tokens: 8192, tools: agentTools, messages: agentMessages });
+          break;
+        } catch (e) {
+          if (e.status === 429 && retry < 2) {
+            const wait = (retry + 1) * 60;
+            console.log(`[Sol] Rate limited, waiting ${wait}s...`);
+            await new Promise(r => setTimeout(r, wait * 1000));
+          } else throw e;
         }
-      });
-      proc.stderr.on("data", (d) => process.stderr.write(`[Sol err] ${d}`));
-      proc.on("close", (code) => code === 0 ? resolve() : reject(new Error(`claude exited with code ${code}`)));
-      proc.on("error", reject);
-    });
+      }
+
+      agentMessages.push({ role: "assistant", content: response.content });
+      const toolBlocks = response.content.filter(b => b.type === "tool_use");
+      if (toolBlocks.length === 0) { console.log("[Sol] Agent done."); break; }
+
+      const results = [];
+      for (const block of toolBlocks) {
+        console.log(`[Sol] Tool: ${block.name} (${block.input.path})`);
+        let result;
+        try { result = runTool(block.name, block.input); } catch (e) { result = `Error: ${e.message}`; }
+        results.push({ type: "tool_result", tool_use_id: block.id, content: result });
+      }
+      agentMessages.push({ role: "user", content: results });
+    }
 
     // Check for changes
     const status = execFileSync("git", ["status", "--porcelain"], { cwd: worktreePath }).toString();
