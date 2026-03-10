@@ -1642,12 +1642,7 @@ function App() {
                   <CommentsSection>
                     {post.comments && post.comments.length > 0 && (
                       <>
-                        {!expandedComments[post.id] && post.comments.length > 2 && (
-                          <CommentCount onClick={() => setExpandedComments((prev) => ({ ...prev, [post.id]: true }))}>
-                            View all {post.comments.length} comments
-                          </CommentCount>
-                        )}
-                        {(expandedComments[post.id] ? post.comments : post.comments.slice(-2)).map((c) => (
+                        {post.comments.map((c) => (
                           <CommentRow key={c.id}>
                             <CommentAvatar src={c.author_picture} alt={c.author_name} />
                             <CommentBody>
