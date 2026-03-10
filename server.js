@@ -14,7 +14,9 @@ import sharp from "sharp";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
 import Anthropic from "@anthropic-ai/sdk";
-import { execSync, execFileSync } from "child_process";
+import { exec, execSync, execFileSync } from "child_process";
+import { promisify } from "util";
+const execAsync = promisify(exec);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -442,13 +444,30 @@ async function handleSolCodeChange(description) {
     execFileSync("git", ["worktree", "add", worktreePath, "-b", branchName], { cwd: __dirname });
     console.log(`[Sol] Worktree created at ${worktreePath}`);
 
-    // Run Claude Code CLI
+    // Run Claude Code CLI (async so it doesn't block the event loop)
     const prompt = `Make this change to the Cloud app: ${description}. Do not commit. Just make the code changes.`;
     console.log("[Sol] Running claude -p ...");
-    execSync(`claude -p ${JSON.stringify(prompt)} --allowedTools Edit,Write,Read,Glob,Grep,Bash`, {
-      cwd: worktreePath,
-      timeout: 300000,
-      stdio: "inherit",
+    await new Promise((resolve, reject) => {
+      const env = { ...process.env };
+      delete env.CLAUDECODE;
+      const proc = exec(`claude -p ${JSON.stringify(prompt)} --dangerously-skip-permissions --output-format stream-json`, {
+        cwd: worktreePath,
+        timeout: 300000,
+        maxBuffer: 10 * 1024 * 1024,
+        env,
+      });
+      proc.stdout.on("data", (d) => {
+        for (const line of d.toString().split("\n").filter(Boolean)) {
+          try {
+            const msg = JSON.parse(line);
+            if (msg.type === "tool_use") console.log(`[Sol] Tool: ${msg.tool} ${msg.input?.file_path || msg.input?.command || ""}`);
+            else if (msg.type === "result") console.log("[Sol] Done.");
+          } catch {}
+        }
+      });
+      proc.stderr.on("data", (d) => process.stderr.write(`[Sol err] ${d}`));
+      proc.on("close", (code) => code === 0 ? resolve() : reject(new Error(`claude exited with code ${code}`)));
+      proc.on("error", reject);
     });
 
     // Check for changes
