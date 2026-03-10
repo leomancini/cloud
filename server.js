@@ -726,20 +726,26 @@ Choose one action:
 
     const toolBlock = response.content.find(b => b.type === "tool_use");
 
-    const solComment = (text) => {
-      db.prepare("INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)").run(postId, SOL_USER_ID, text);
+    const notify = () => {
       notifyUser(post.user_id, "feed-update");
       for (const f of postFollowers) notifyUser(f.follower_id, "feed-update");
     };
 
-    // Remove thinking placeholder
-    db.prepare("DELETE FROM comments WHERE id = ?").run(placeholderId);
+    const solComment = (text) => {
+      db.prepare("INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)").run(postId, SOL_USER_ID, text);
+      notify();
+    };
+
+    const updatePlaceholder = (text) => {
+      db.prepare("UPDATE comments SET content = ? WHERE id = ?").run(text, placeholderId);
+      notify();
+    };
 
     console.log("[Sol] Classified as:", toolBlock?.name || "text");
 
     if (toolBlock && toolBlock.name === "make_code_change" && process.env.GITHUB_TOKEN) {
       console.log("[Sol] Posting acknowledgment:", toolBlock.input.message);
-      solComment(toolBlock.input.message);
+      updatePlaceholder(toolBlock.input.message);
 
       const prUrl = await handleSolCodeChange(toolBlock.input.description);
       console.log("[Sol] PR result:", prUrl || "failed");
@@ -750,15 +756,14 @@ Choose one action:
         solComment("i tried but couldn't make that change, sorry");
       }
     } else if (toolBlock && toolBlock.name === "post_comment") {
-      solComment(toolBlock.input.comment);
+      updatePlaceholder(toolBlock.input.comment);
     } else {
       const textBlock = response.content.find(b => b.type === "text");
-      solComment(textBlock?.text?.trim() || "hmm, not sure what to say");
+      updatePlaceholder(textBlock?.text?.trim() || "hmm, not sure what to say");
     }
   } catch (e) {
     console.error("Sol response error:", e);
-    db.prepare("DELETE FROM comments WHERE id = ?").run(placeholderId);
-    db.prepare("INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)").run(postId, SOL_USER_ID, "sorry, i couldn't respond right now.");
+    db.prepare("UPDATE comments SET content = ? WHERE id = ?").run("sorry, i couldn't respond right now.", placeholderId);
     notifyUser(post.user_id, "feed-update");
   }
 }
