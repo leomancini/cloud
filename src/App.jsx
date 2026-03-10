@@ -11,7 +11,8 @@ const Spinner = () => <i className="fa-solid fa-spinner fa-spin" />;
 
 const parseText = (text, users = []) => {
   if (!text) return [];
-  const sorted = [...users].sort((a, b) => b.name.length - a.name.length);
+  const allUsers = users.some((u) => u.name === "Sol") ? users : [...users, { id: "sol-ai", name: "Sol" }];
+  const sorted = [...allUsers].sort((a, b) => b.name.length - a.name.length);
   const mentions = [];
   const atRegex = /@/g;
   let m;
@@ -470,7 +471,15 @@ const PostHeader = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 16px;
+`;
+
+const PostHeaderText = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
 `;
 
 const Avatar = styled.img`
@@ -480,7 +489,7 @@ const Avatar = styled.img`
 `;
 
 const PostAuthor = styled.span`
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #333;
 `;
@@ -547,7 +556,7 @@ const PostContent = styled.p`
   font-size: 15px;
   color: #333;
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.4;
   white-space: pre-wrap;
 `;
 
@@ -556,7 +565,7 @@ const REACTION_EMOJIS = ["\u2764\uFE0F", "\uD83D\uDE02", "\uD83D\uDE2E", "\uD83D
 const ReactionsRow = styled.div`
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 12px;
   margin-top: 14px;
   flex-wrap: wrap;
 `;
@@ -564,7 +573,7 @@ const ReactionsRow = styled.div`
 const ReactionChip = styled.button`
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   padding: 0;
   border: none;
   background: none;
@@ -573,7 +582,7 @@ const ReactionChip = styled.button`
 `;
 
 const ReactionNames = styled.span`
-  font-size: 13px;
+  font-size: 15px;
   color: ${TEXT};
   font-weight: 600;
 `;
@@ -585,14 +594,15 @@ const EmojiOption = styled.button`
   width: 34px;
   height: 34px;
   border: none;
-  background: ${(p) => (p.$active ? "#f0f0f0" : "none")};
+  background: none;
   font-size: 20px;
   line-height: 34px;
   padding: 2px 0 0;
   cursor: pointer;
   border-radius: ${RADIUS_SM};
+  opacity: ${(p) => (p.$dimmed ? 0.35 : 1)};
   &:hover {
-    background: #f0f0f0;
+    background: none;
   }
 `;
 
@@ -602,7 +612,7 @@ const CommentsSection = styled.div`
 
 const CommentRow = styled.div`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   margin-top: 10px;
 `;
@@ -617,10 +627,11 @@ const CommentAvatar = styled.img`
 const CommentBody = styled.div`
   flex: 1;
   min-width: 0;
+  padding-top: 2px;
 `;
 
 const CommentAuthor = styled.span`
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: ${TEXT};
   margin-right: 6px;
@@ -629,20 +640,21 @@ const CommentAuthor = styled.span`
 const CommentText = styled.span`
   font-size: 15px;
   color: ${TEXT};
-  line-height: 1.2;
+  line-height: 1.4;
 `;
 
 const CommentTime = styled.span`
   font-size: 12px;
   color: ${TEXT_SECONDARY};
   margin-left: 8px;
+  vertical-align: baseline;
 `;
 
 const CommentInputRow = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 16px;
 `;
 
 const CommentInputWrapper = styled.div`
@@ -988,6 +1000,10 @@ function App() {
       p.type === "mention" ? <MentionHighlight key={i}>@{p.content}</MentionHighlight> : <span key={i}>{p.content}</span>
     );
   };
+
+  const mentionUsers = users.some((u) => u.name === "Sol")
+    ? users
+    : [...users, { id: "sol-ai", name: "Sol", picture: "/api/pictures/sol.jpg" }];
 
   const handleMentionInput = (value, field) => {
     const ref = field === "compose" ? composeRef.current : commentRefs.current[field];
@@ -1392,7 +1408,7 @@ function App() {
                 />
                 {mentionQuery && mentionQuery.field === "compose" && (
                   <MentionDropdown>
-                    {users.filter((u) => u.name.toLowerCase().includes(mentionQuery.query)).map((u) => (
+                    {mentionUsers.filter((u) => u.name.toLowerCase().includes(mentionQuery.query)).map((u) => (
                       <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, "compose"); }}>
                         <MentionAvatar src={u.picture} /> {u.name}
                       </MentionOption>
@@ -1539,8 +1555,10 @@ function App() {
                 <PostItem key={post.id}>
                   <PostHeader>
                     <Avatar src={post.author_picture} alt={post.author_name} />
-                    <PostAuthor>{post.author_name}</PostAuthor>
-                    <PostTime>{timeAgo(post.created_at)}</PostTime>
+                    <PostHeaderText>
+                      <PostAuthor>{post.author_name}</PostAuthor>
+                      <PostTime>{timeAgo(post.created_at)}</PostTime>
+                    </PostHeaderText>
                     {post.user_id === user.id && (
                       <PostHeaderRight>
                         <PostMenuWrapper>
@@ -1596,7 +1614,7 @@ function App() {
                     </PostLocation>
                   )}
                   {(post.reactions || []).length > 0 && (
-                    <ReactionsRow>
+                    <ReactionsRow style={{ marginLeft: 1 }}>
                       {(post.reactions || []).map((r) => (
                         <ReactionChip
                           key={r.emoji}
@@ -1608,15 +1626,18 @@ function App() {
                       ))}
                     </ReactionsRow>
                   )}
-                  <ReactionsRow>
-                    {REACTION_EMOJIS.map((emoji) => {
-                      const userReacted = (post.reactions || []).some((r) => r.emoji === emoji && r.user_reacted);
-                      return (
-                        <EmojiOption key={emoji} $active={userReacted} onClick={() => handleReact(post.id, emoji)}>
-                          {emoji}
-                        </EmojiOption>
-                      );
-                    })}
+                  <ReactionsRow style={{ marginLeft: -5 }}>
+                    {(() => {
+                      const hasAnyReaction = (post.reactions || []).some((r) => r.user_reacted);
+                      return REACTION_EMOJIS.map((emoji) => {
+                        const userReacted = (post.reactions || []).some((r) => r.emoji === emoji && r.user_reacted);
+                        return (
+                          <EmojiOption key={emoji} $dimmed={hasAnyReaction && !userReacted} onClick={() => handleReact(post.id, emoji)}>
+                            {emoji}
+                          </EmojiOption>
+                        );
+                      });
+                    })()}
                   </ReactionsRow>
                   <CommentsSection>
                     {post.comments && post.comments.length > 0 && (
@@ -1648,8 +1669,10 @@ function App() {
                                 </CommentInputRow>
                               ) : (
                                 <>
-                                  <CommentText>{renderText(c.content)}</CommentText>
-                                  <CommentTime>{timeAgo(c.created_at)}</CommentTime>
+                                  <CommentText style={c.content === "thinking..." ? { color: TEXT_SECONDARY, fontStyle: "italic" } : undefined}>
+                                    {c.content === "thinking..." ? "thinking..." : renderText(c.content)}
+                                  </CommentText>
+                                  {c.content !== "thinking..." && <CommentTime>{timeAgo(c.created_at)}</CommentTime>}
                                 </>
                               )}
                             </CommentBody>
@@ -1703,7 +1726,7 @@ function App() {
                       </CommentInputRow>
                       {mentionQuery && mentionQuery.field === post.id && (
                         <MentionDropdown>
-                          {users.filter((u) => u.name.toLowerCase().includes(mentionQuery.query)).map((u) => (
+                          {mentionUsers.filter((u) => u.name.toLowerCase().includes(mentionQuery.query)).map((u) => (
                             <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, post.id); }}>
                               <MentionAvatar src={u.picture} /> {u.name}
                             </MentionOption>
