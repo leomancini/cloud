@@ -6,7 +6,7 @@ import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import Database from "better-sqlite3";
 import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import { dirname, join, resolve } from "path";
 import { mkdirSync, existsSync, writeFileSync, readFileSync, renameSync } from "fs";
 import crypto from "crypto";
 import multer from "multer";
@@ -14,7 +14,7 @@ import sharp from "sharp";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
 import Anthropic from "@anthropic-ai/sdk";
-import { execSync } from "child_process";
+import { execSync, execFileSync } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -401,7 +401,246 @@ writeFileSync(join(picturesDir, `${SOL_USER_ID}.jpg`), solAvatarBuf);
 
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
 
-async function handleSolMention(postId) {
+const GITHUB_OWNER = "leomancini";
+const GITHUB_REPO = "cloud";
+
+const CLASSIFY_TOOLS = [
+  {
+    name: "post_comment",
+    description: "Reply with a conversational comment on the post",
+    input_schema: {
+      type: "object",
+      properties: {
+        comment: { type: "string", description: "The comment to post. Must be all lowercase, 1-2 sentences, no emojis." }
+      },
+      required: ["comment"]
+    }
+  },
+  {
+    name: "make_code_change",
+    description: "Make a code change to the Cloud app and open a GitHub pull request. Use this when the user is asking to change, add, fix, or build something in the app's code.",
+    input_schema: {
+      type: "object",
+      properties: {
+        description: { type: "string", description: "Detailed description of what code changes to make" },
+        message: { type: "string", description: "A brief comment acknowledging what the user asked for and letting them know you're on it and will comment here when it's ready. Reference the specific request. All lowercase, no emojis." }
+      },
+      required: ["description", "message"]
+    }
+  }
+];
+
+const CODE_TOOLS = [
+  {
+    name: "read_file",
+    description: "Read a file from the repository",
+    input_schema: {
+      type: "object",
+      properties: { path: { type: "string", description: "File path relative to repo root, e.g. 'server.js' or 'src/App.jsx'" } },
+      required: ["path"]
+    }
+  },
+  {
+    name: "write_file",
+    description: "Create a new file or overwrite a small file. For editing existing large files, use edit_file instead.",
+    input_schema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "File path relative to repo root" },
+        content: { type: "string", description: "Complete file content to write" }
+      },
+      required: ["path", "content"]
+    }
+  },
+  {
+    name: "edit_file",
+    description: "Edit an existing file by replacing a specific string with a new string. Use this for targeted changes to large files like src/App.jsx or server.js.",
+    input_schema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "File path relative to repo root" },
+        old_string: { type: "string", description: "The exact string to find in the file (must be unique)" },
+        new_string: { type: "string", description: "The replacement string" }
+      },
+      required: ["path", "old_string", "new_string"]
+    }
+  },
+  {
+    name: "list_files",
+    description: "List tracked files in the repository, optionally matching a glob pattern",
+    input_schema: {
+      type: "object",
+      properties: { pattern: { type: "string", description: "Optional glob pattern, e.g. 'src/*.jsx' or '*.js'" } },
+      required: []
+    }
+  },
+  {
+    name: "search",
+    description: "Search for a regex pattern in repository files",
+    input_schema: {
+      type: "object",
+      properties: {
+        pattern: { type: "string", description: "Regex pattern to search for" },
+        glob: { type: "string", description: "Optional file glob filter, e.g. '*.js'" }
+      },
+      required: ["pattern"]
+    }
+  }
+];
+
+function executeToolInWorktree(worktreePath, toolName, input) {
+  const safePath = (p) => {
+    const resolved = resolve(worktreePath, p);
+    if (!resolved.startsWith(worktreePath + "/") && resolved !== worktreePath) {
+      throw new Error("Path outside repository");
+    }
+    return resolved;
+  };
+
+  switch (toolName) {
+    case "read_file": {
+      const fullPath = safePath(input.path);
+      if (!existsSync(fullPath)) return `File not found: ${input.path}`;
+      return readFileSync(fullPath, "utf-8");
+    }
+    case "write_file": {
+      const fullPath = safePath(input.path);
+      const dir = dirname(fullPath);
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      writeFileSync(fullPath, input.content);
+      return `Written ${input.path}`;
+    }
+    case "edit_file": {
+      const fullPath = safePath(input.path);
+      if (!existsSync(fullPath)) return `File not found: ${input.path}`;
+      const content = readFileSync(fullPath, "utf-8");
+      const count = content.split(input.old_string).length - 1;
+      if (count === 0) return `Error: old_string not found in ${input.path}`;
+      if (count > 1) return `Error: old_string found ${count} times in ${input.path} — must be unique. Include more surrounding context.`;
+      writeFileSync(fullPath, content.replace(input.old_string, input.new_string));
+      return `Edited ${input.path}`;
+    }
+    case "list_files": {
+      try {
+        const args = ["ls-files"];
+        if (input.pattern) args.push(input.pattern);
+        return execFileSync("git", args, { cwd: worktreePath }).toString() || "No files found.";
+      } catch { return "No files found."; }
+    }
+    case "search": {
+      try {
+        const args = ["-rn", "--exclude-dir=node_modules", "--exclude-dir=.git"];
+        if (input.glob) args.push(`--include=${input.glob}`);
+        args.push(input.pattern, ".");
+        return execFileSync("grep", args, { cwd: worktreePath, maxBuffer: 1024 * 1024 }).toString().slice(0, 10000);
+      } catch (e) {
+        return e.stdout?.toString()?.slice(0, 10000) || "No matches found.";
+      }
+    }
+    default:
+      return `Unknown tool: ${toolName}`;
+  }
+}
+
+async function handleSolCodeChange(description) {
+  if (!process.env.GITHUB_TOKEN) return null;
+
+  const slug = `sol-${Date.now()}`;
+  const branchName = `sol/${slug}`;
+  const worktreePath = `/tmp/${slug}`;
+
+  try {
+    execFileSync("git", ["worktree", "add", worktreePath, "-b", branchName], { cwd: __dirname });
+    console.log(`[Sol] Worktree created at ${worktreePath}`);
+
+    const messages = [{
+      role: "user",
+      content: `You are Sol, an AI developer making changes to Cloud, a social feed app.
+
+Tech stack: Express backend (server.js), React frontend (src/App.jsx — entire UI in one file), SQLite (better-sqlite3), styled-components, Vite.
+
+Key files:
+- server.js — All API routes, DB schema, WebSocket server, Sol AI integration
+- src/App.jsx — Entire React frontend (styled-components, state, all components)
+- vite.config.js — Vite config with proxy to backend
+- package.json — Dependencies
+
+Requested change: ${description}
+
+Steps: 1) Read the file(s) you need to change. 2) Use edit_file to make targeted replacements (preferred for large files) or write_file for new/small files. 3) Stop — do not re-read, verify, or re-write. Get it right the first time.`
+    }];
+
+    for (let i = 0; i < 7; i++) {
+      console.log(`[Sol] Agent loop iteration ${i + 1}...`);
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 8192,
+        tools: CODE_TOOLS,
+        messages
+      });
+
+      messages.push({ role: "assistant", content: response.content });
+
+      const toolUseBlocks = response.content.filter(b => b.type === "tool_use");
+      if (toolUseBlocks.length === 0) {
+        console.log("[Sol] Agent done.");
+        break;
+      }
+
+      const toolResults = [];
+      for (const block of toolUseBlocks) {
+        console.log(`[Sol] Tool: ${block.name}${block.name === "read_file" || block.name === "write_file" ? ` (${block.input.path})` : ""}`);
+        let result;
+        try {
+          result = executeToolInWorktree(worktreePath, block.name, block.input);
+        } catch (e) {
+          result = `Error: ${e.message}`;
+        }
+        toolResults.push({ type: "tool_result", tool_use_id: block.id, content: result });
+      }
+      messages.push({ role: "user", content: toolResults });
+    }
+
+    // Check for changes
+    const status = execFileSync("git", ["status", "--porcelain"], { cwd: worktreePath }).toString();
+    if (!status.trim()) {
+      execFileSync("git", ["worktree", "remove", worktreePath], { cwd: __dirname });
+      return null;
+    }
+
+    // Commit and push
+    execFileSync("git", ["add", "-A"], { cwd: worktreePath });
+    execFileSync("git", ["commit", "-m", `sol: ${description.slice(0, 200)}`], { cwd: worktreePath });
+
+    const pushUrl = `https://x-access-token:${process.env.GITHUB_TOKEN}@github.com/${GITHUB_OWNER}/${GITHUB_REPO}.git`;
+    execFileSync("git", ["push", pushUrl, branchName], { cwd: worktreePath });
+
+    // Create PR via GitHub API
+    const prRes = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/pulls`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: `sol: ${description.slice(0, 72)}`,
+        body: `requested via cloud\n\n> ${description}`,
+        head: branchName,
+        base: "main",
+      }),
+    });
+    const pr = await prRes.json();
+
+    // Clean up worktree
+    execFileSync("git", ["worktree", "remove", worktreePath], { cwd: __dirname });
+
+    return pr.html_url || null;
+  } catch (e) {
+    console.error("Sol PR error:", e);
+    try { execFileSync("git", ["worktree", "remove", worktreePath], { cwd: __dirname }); } catch {}
+    try { execFileSync("git", ["branch", "-D", branchName], { cwd: __dirname }); } catch {}
+    return null;
+  }
+}
+
+async function handleSolMention(postId, triggerText = null) {
   if (!anthropic) return;
 
   const post = db.prepare("SELECT p.*, u.name as author_name FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?").get(postId);
@@ -425,7 +664,6 @@ async function handleSolMention(postId) {
         const mediaType = ext === "png" ? "image/png" : ext === "gif" ? "image/gif" : ext === "webp" ? "image/webp" : "image/jpeg";
         content.push({ type: "image", source: { type: "base64", media_type: mediaType, data: base64 } });
       } else if (m.media_type === "video") {
-        // Extract 3 frames from the video (start, middle, end)
         const tmpDir = join(uploadsDir, ".tmp_frames");
         if (!existsSync(tmpDir)) mkdirSync(tmpDir);
         const duration = parseFloat(execSync(`ffprobe -v error -show_entries format=duration -of csv=p=0 "${filePath}"`).toString().trim()) || 1;
@@ -456,7 +694,16 @@ async function handleSolMention(postId) {
     }
     textContext += "\n";
   }
-  textContext += "You are Sol, an AI participant in this social feed called Cloud. Write a brief, natural comment responding to this post and its context. Be friendly and conversational. Keep it to 1-2 sentences. Do not use emojis. Always write in all lowercase.";
+  if (triggerText) {
+    textContext += `The message you are responding to: "${triggerText}"\n\n`;
+  }
+  textContext += `You are Sol, an AI participant in this social feed called Cloud. Cloud is also the name of the app's codebase. You are powered by Claude Sonnet 4.6 (Anthropic). When making code changes, you also use Claude Sonnet 4.6.
+
+Respond to the most recent message directed at you (above). The post and comment thread are context, but focus on what was just said to you.
+
+Choose one action:
+- post_comment: Write a brief, natural comment. Be friendly and conversational. 1-2 sentences. No emojis. Always all lowercase. Use this for casual messages, greetings, questions, or anything that isn't explicitly asking for a code change.
+- make_code_change: ONLY use this if the message directed at you is explicitly asking you to change, add, fix, or build something in the app's code. Do not use this for casual conversation even if the surrounding thread mentions code.${!process.env.GITHUB_TOKEN ? " (Currently unavailable — no GitHub token configured)" : ""}`;
 
   content.push({ type: "text", text: textContext });
 
@@ -464,28 +711,54 @@ async function handleSolMention(postId) {
   const placeholder = db.prepare("INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)").run(postId, SOL_USER_ID, "thinking...");
   const placeholderId = placeholder.lastInsertRowid;
 
-  // Notify all relevant users about the thinking comment
   notifyUser(post.user_id, "feed-update");
   const postFollowers = db.prepare("SELECT follower_id FROM follows WHERE following_id = ? AND status = 'approved'").all(post.user_id);
   for (const f of postFollowers) notifyUser(f.follower_id, "feed-update");
 
   try {
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 200,
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 300,
+      tools: CLASSIFY_TOOLS,
+      tool_choice: { type: "any" },
       messages: [{ role: "user", content }],
     });
 
-    const reply = response.content[0].text.trim();
+    const toolBlock = response.content.find(b => b.type === "tool_use");
 
-    db.prepare("UPDATE comments SET content = ? WHERE id = ?").run(reply, placeholderId);
+    const solComment = (text) => {
+      db.prepare("INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)").run(postId, SOL_USER_ID, text);
+      notifyUser(post.user_id, "feed-update");
+      for (const f of postFollowers) notifyUser(f.follower_id, "feed-update");
+    };
 
-    // Notify again with the real response
-    notifyUser(post.user_id, "feed-update");
-    for (const f of postFollowers) notifyUser(f.follower_id, "feed-update");
+    // Remove thinking placeholder
+    db.prepare("DELETE FROM comments WHERE id = ?").run(placeholderId);
+
+    console.log("[Sol] Classified as:", toolBlock?.name || "text");
+
+    if (toolBlock && toolBlock.name === "make_code_change" && process.env.GITHUB_TOKEN) {
+      console.log("[Sol] Posting acknowledgment:", toolBlock.input.message);
+      solComment(toolBlock.input.message);
+
+      const prUrl = await handleSolCodeChange(toolBlock.input.description);
+      console.log("[Sol] PR result:", prUrl || "failed");
+
+      if (prUrl) {
+        solComment(`i opened a pr for that — ${prUrl}`);
+      } else {
+        solComment("i tried but couldn't make that change, sorry");
+      }
+    } else if (toolBlock && toolBlock.name === "post_comment") {
+      solComment(toolBlock.input.comment);
+    } else {
+      const textBlock = response.content.find(b => b.type === "text");
+      solComment(textBlock?.text?.trim() || "hmm, not sure what to say");
+    }
   } catch (e) {
     console.error("Sol response error:", e);
-    db.prepare("UPDATE comments SET content = ? WHERE id = ?").run("Sorry, I couldn't respond right now.", placeholderId);
+    db.prepare("DELETE FROM comments WHERE id = ?").run(placeholderId);
+    db.prepare("INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)").run(postId, SOL_USER_ID, "sorry, i couldn't respond right now.");
     notifyUser(post.user_id, "feed-update");
   }
 }
@@ -536,7 +809,7 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
   for (const f of followers) notifyUser(f.follower_id, "feed-update");
 
   if ((content || "").toLowerCase().includes("@sol")) {
-    handleSolMention(postId);
+    handleSolMention(postId, (content || "").trim());
   }
 
   res.json({ id: postId });
@@ -670,7 +943,7 @@ app.post("/api/posts/:id/comments", (req, res) => {
   if (post.user_id !== req.user.id) notifyUser(post.user_id, "feed-update");
 
   if (content.toLowerCase().includes("@sol")) {
-    handleSolMention(post.id);
+    handleSolMention(post.id, content.trim());
   }
 
   res.json({
