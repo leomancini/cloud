@@ -1,12 +1,85 @@
-import React, { useState, useEffect, useRef } from "react";
-import styled from "styled-components";
+import React, { useState, useEffect, useRef, createContext, useContext } from "react";
+import styled, { ThemeProvider, createGlobalStyle } from "styled-components";
 
 const RADIUS = "10px";
 const RADIUS_SM = "6px";
-const BORDER = "#eee";
-const TEXT = "#333";
-const TEXT_SECONDARY = "#999";
 const ICON_GAP = "8px";
+
+// ─── Themes ──────────────────────────────────────────────────────────────────
+const lightTheme = {
+  bg:               "#ffffff",
+  bgSecondary:      "#fafafa",
+  bgElevated:       "#ffffff",
+  bgHover:          "#f5f5f5",
+  bgInput:          "transparent",
+  bgControl:        "#f0f0f0",
+  bgSegmentActive:  "#ffffff",
+  bgTag:            "#f5f5f5",
+  bgOverlay:        "rgba(0,0,0,0.6)",
+  border:           "#eee",
+  borderStrong:     "#ddd",
+  text:             "#333",
+  textSecondary:    "#999",
+  textMuted:        "#888",
+  textOnDark:       "#ffffff",
+  btnPrimary:       "#000000",
+  btnPrimaryHover:  "#222222",
+  btnPrimaryText:   "#ffffff",
+  shadow:           "rgba(0,0,0,0.1)",
+  shadowMd:         "rgba(0,0,0,0.1)",
+  mentionBg:        "#e8e8e8",
+  mapBorder:        "rgba(0,0,0,0.1)",
+};
+
+const darkTheme = {
+  bg:               "#0f0f0f",
+  bgSecondary:      "#1a1a1a",
+  bgElevated:       "#1e1e1e",
+  bgHover:          "#2a2a2a",
+  bgInput:          "transparent",
+  bgControl:        "#2a2a2a",
+  bgSegmentActive:  "#3a3a3a",
+  bgTag:            "#2a2a2a",
+  bgOverlay:        "rgba(0,0,0,0.7)",
+  border:           "#2e2e2e",
+  borderStrong:     "#3a3a3a",
+  text:             "#e8e8e8",
+  textSecondary:    "#888",
+  textMuted:        "#666",
+  textOnDark:       "#ffffff",
+  btnPrimary:       "#e8e8e8",
+  btnPrimaryHover:  "#ffffff",
+  btnPrimaryText:   "#0f0f0f",
+  shadow:           "rgba(0,0,0,0.4)",
+  shadowMd:         "rgba(0,0,0,0.4)",
+  mentionBg:        "#3a3a3a",
+  mapBorder:        "rgba(255,255,255,0.08)",
+};
+
+// ─── System-preference hook ───────────────────────────────────────────────────
+function useSystemDark() {
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  const [dark, setDark] = useState(mq.matches);
+  useEffect(() => {
+    const handler = (e) => setDark(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return dark;
+}
+
+// ─── Theme context (for user override) ───────────────────────────────────────
+// preference: "system" | "light" | "dark"
+const ThemePrefContext = createContext({ preference: "system", setPreference: () => {} });
+
+const GlobalStyle = createGlobalStyle`
+  body {
+    background: ${(p) => p.theme.bg};
+    color: ${(p) => p.theme.text};
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+`;
+
 const Spinner = () => <i className="fa-solid fa-spinner fa-spin" />;
 
 const parseText = (text, users = []) => {
@@ -45,7 +118,7 @@ const MentionSpan = styled.span`
 `;
 
 const MentionHighlight = styled.span`
-  background: #e8e8e8;
+  background: ${(p) => p.theme.mentionBg};
   border-radius: 3px;
 `;
 
@@ -54,13 +127,13 @@ const MentionDropdown = styled.div`
   top: 100%;
   left: 0;
   right: 0;
-  background: white;
-  border: 1px solid ${BORDER};
+  background: ${(p) => p.theme.bgElevated};
+  border: 1px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS_SM};
   max-height: 150px;
   overflow-y: auto;
   z-index: 10;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px ${(p) => p.theme.shadowMd};
 `;
 
 const MentionOption = styled.div`
@@ -70,7 +143,8 @@ const MentionOption = styled.div`
   padding: 8px 12px;
   cursor: pointer;
   font-size: 14px;
-  &:hover { background: #f5f5f5; }
+  color: ${(p) => p.theme.text};
+  &:hover { background: ${(p) => p.theme.bgHover}; }
 `;
 
 const MentionAvatar = styled.img`
@@ -82,8 +156,10 @@ const MentionAvatar = styled.img`
 const Page = styled.div`
   min-height: 100vh;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: white;
+  background: ${(p) => p.theme.bg};
+  color: ${(p) => p.theme.text};
   padding: 40px 20px;
+  transition: background 0.2s ease, color 0.2s ease;
 `;
 
 const Header = styled.div`
