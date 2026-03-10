@@ -572,12 +572,26 @@ Steps: 1) Read the file(s) you need to change. 2) Use edit_file to make targeted
 
     for (let i = 0; i < 7; i++) {
       console.log(`[Sol] Agent loop iteration ${i + 1}...`);
-      const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-6",
-        max_tokens: 8192,
-        tools: CODE_TOOLS,
-        messages
-      });
+      let response;
+      for (let retry = 0; retry < 3; retry++) {
+        try {
+          response = await anthropic.messages.create({
+            model: "claude-sonnet-4-6",
+            max_tokens: 8192,
+            tools: CODE_TOOLS,
+            messages
+          });
+          break;
+        } catch (e) {
+          if (e.status === 429 && retry < 2) {
+            const wait = (retry + 1) * 60;
+            console.log(`[Sol] Rate limited, waiting ${wait}s...`);
+            await new Promise(r => setTimeout(r, wait * 1000));
+          } else {
+            throw e;
+          }
+        }
+      }
 
       messages.push({ role: "assistant", content: response.content });
 
@@ -604,7 +618,7 @@ Steps: 1) Read the file(s) you need to change. 2) Use edit_file to make targeted
     // Check for changes
     const status = execFileSync("git", ["status", "--porcelain"], { cwd: worktreePath }).toString();
     if (!status.trim()) {
-      execFileSync("git", ["worktree", "remove", worktreePath], { cwd: __dirname });
+      execFileSync("git", ["worktree", "remove", "--force", worktreePath], { cwd: __dirname });
       return null;
     }
 
@@ -629,12 +643,12 @@ Steps: 1) Read the file(s) you need to change. 2) Use edit_file to make targeted
     const pr = await prRes.json();
 
     // Clean up worktree
-    execFileSync("git", ["worktree", "remove", worktreePath], { cwd: __dirname });
+    execFileSync("git", ["worktree", "remove", "--force", worktreePath], { cwd: __dirname });
 
     return pr.html_url || null;
   } catch (e) {
     console.error("Sol PR error:", e);
-    try { execFileSync("git", ["worktree", "remove", worktreePath], { cwd: __dirname }); } catch {}
+    try { execFileSync("git", ["worktree", "remove", "--force", worktreePath], { cwd: __dirname }); } catch {}
     try { execFileSync("git", ["branch", "-D", branchName], { cwd: __dirname }); } catch {}
     return null;
   }
