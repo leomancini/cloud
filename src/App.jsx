@@ -987,10 +987,18 @@ function App() {
   const composeRef = useRef(null);
   const commentRefs = useRef({});
 
+  const renderTextPart = (str, keyPrefix) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const pieces = str.split(urlRegex);
+    return pieces.map((piece, j) =>
+      urlRegex.test(piece) ? <a key={`${keyPrefix}-${j}`} href={piece} target="_blank" rel="noopener noreferrer" style={{ color: "#2563EB" }}>{piece}</a> : <span key={`${keyPrefix}-${j}`}>{piece}</span>
+    );
+  };
+
   const renderText = (text) => {
     const parts = parseText(text, users);
     return parts.map((p, i) =>
-      p.type === "mention" ? <MentionSpan key={i}>@{p.content}</MentionSpan> : <span key={i}>{p.content}</span>
+      p.type === "mention" ? <MentionSpan key={i}>@{p.content}</MentionSpan> : <span key={i}>{renderTextPart(p.content, i)}</span>
     );
   };
 
@@ -1614,7 +1622,7 @@ function App() {
                     </PostLocation>
                   )}
                   {(post.reactions || []).length > 0 && (
-                    <ReactionsRow style={{ marginLeft: 1 }}>
+                    <ReactionsRow>
                       {(post.reactions || []).map((r) => (
                         <ReactionChip
                           key={r.emoji}
@@ -1626,7 +1634,7 @@ function App() {
                       ))}
                     </ReactionsRow>
                   )}
-                  <ReactionsRow style={{ marginLeft: -5 }}>
+                  <ReactionsRow style={{ marginLeft: -6 }}>
                     {(() => {
                       const hasAnyReaction = (post.reactions || []).some((r) => r.user_reacted);
                       return REACTION_EMOJIS.map((emoji) => {
@@ -1664,8 +1672,8 @@ function App() {
                                 </CommentInputRow>
                               ) : (
                                 <>
-                                  <CommentText style={c.content === "thinking..." ? { color: TEXT_SECONDARY, fontStyle: "italic" } : undefined}>
-                                    {c.content === "thinking..." ? "thinking..." : renderText(c.content)}
+                                  <CommentText style={c.content === "thinking..." ? { color: TEXT_SECONDARY } : undefined}>
+                                    {c.content === "thinking..." ? c.content : renderText(c.content)}
                                   </CommentText>
                                   {c.content !== "thinking..." && <CommentTime>{timeAgo(c.created_at)}</CommentTime>}
                                 </>
