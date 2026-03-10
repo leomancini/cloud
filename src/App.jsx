@@ -9,6 +9,75 @@ const TEXT_SECONDARY = "#999";
 const ICON_GAP = "8px";
 const Spinner = () => <i className="fa-solid fa-spinner fa-spin" />;
 
+const parseText = (text, users = []) => {
+  if (!text) return [];
+  const sorted = [...users].sort((a, b) => b.name.length - a.name.length);
+  const mentions = [];
+  const atRegex = /@/g;
+  let m;
+  while ((m = atRegex.exec(text)) !== null) {
+    const after = text.slice(m.index + 1);
+    for (const u of sorted) {
+      if (after.toLowerCase().startsWith(u.name.toLowerCase())) {
+        const ch = after[u.name.length];
+        if (!ch || /[^a-zA-Z0-9]/.test(ch)) {
+          mentions.push({ start: m.index, end: m.index + 1 + u.name.length, name: u.name, userId: u.id });
+          break;
+        }
+      }
+    }
+  }
+  const parts = [];
+  let last = 0;
+  for (const mn of mentions) {
+    if (mn.start < last) continue;
+    if (mn.start > last) parts.push({ type: "text", content: text.slice(last, mn.start) });
+    parts.push({ type: "mention", content: mn.name, userId: mn.userId });
+    last = mn.end;
+  }
+  if (last < text.length) parts.push({ type: "text", content: text.slice(last) });
+  return parts.length > 0 ? parts : [{ type: "text", content: text }];
+};
+
+const MentionSpan = styled.span`
+  font-weight: bold;
+`;
+
+const MentionHighlight = styled.span`
+  background: #e8e8e8;
+  border-radius: 3px;
+`;
+
+const MentionDropdown = styled.div`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid ${BORDER};
+  border-radius: ${RADIUS_SM};
+  max-height: 150px;
+  overflow-y: auto;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+`;
+
+const MentionOption = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  &:hover { background: #f5f5f5; }
+`;
+
+const MentionAvatar = styled.img`
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+`;
+
 const Page = styled.div`
   min-height: 100vh;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -135,6 +204,11 @@ const ComposeBox = styled.div`
   padding-bottom: 24px;
 `;
 
+const ComposeWrapper = styled.div`
+  position: relative;
+  width: 100%;
+`;
+
 const ComposeInput = styled.textarea`
   width: 100%;
   border: 1px solid ${BORDER};
@@ -145,10 +219,34 @@ const ComposeInput = styled.textarea`
   resize: none;
   outline: none;
   box-sizing: border-box;
+  color: transparent;
+  caret-color: ${TEXT};
+  position: relative;
+  z-index: 1;
+  background: transparent;
 
   &:focus {
     border-color: #ccc;
   }
+`;
+
+const ComposeHighlight = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 14px;
+  font-size: 16px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: normal;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: ${TEXT};
+  pointer-events: none;
+  border: 1px solid transparent;
+  border-radius: ${RADIUS};
+  box-sizing: border-box;
 `;
 
 const ComposeActions = styled.div`
@@ -547,8 +645,14 @@ const CommentInputRow = styled.div`
   margin-top: 12px;
 `;
 
-const CommentInput = styled.input`
+const CommentInputWrapper = styled.div`
+  position: relative;
   flex: 1;
+  min-width: 0;
+`;
+
+const CommentInput = styled.input`
+  width: 100%;
   border: 1px solid ${BORDER};
   border-radius: ${RADIUS};
   padding: 8px 12px;
@@ -556,10 +660,35 @@ const CommentInput = styled.input`
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   outline: none;
   min-width: 0;
+  color: transparent;
+  caret-color: ${TEXT};
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  box-sizing: border-box;
 
   &:focus {
     border-color: #ccc;
   }
+`;
+
+const CommentHighlight = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 12px;
+  font-size: 16px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  color: ${TEXT};
+  pointer-events: none;
+  border: 1px solid transparent;
+  border-radius: ${RADIUS};
+  box-sizing: border-box;
 `;
 
 const CommentPostButton = styled.button`
@@ -842,6 +971,61 @@ function App() {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [commentInputs, setCommentInputs] = useState({});
   const [expandedComments, setExpandedComments] = useState({});
+  const [mentionQuery, setMentionQuery] = useState(null); // { field: "compose" | postId, query: string }
+  const composeRef = useRef(null);
+  const commentRefs = useRef({});
+
+  const renderText = (text) => {
+    const parts = parseText(text, users);
+    return parts.map((p, i) =>
+      p.type === "mention" ? <MentionSpan key={i}>@{p.content}</MentionSpan> : <span key={i}>{p.content}</span>
+    );
+  };
+
+  const renderHighlight = (text) => {
+    const parts = parseText(text, users);
+    return parts.map((p, i) =>
+      p.type === "mention" ? <MentionHighlight key={i}>@{p.content}</MentionHighlight> : <span key={i}>{p.content}</span>
+    );
+  };
+
+  const handleMentionInput = (value, field) => {
+    const ref = field === "compose" ? composeRef.current : commentRefs.current[field];
+    if (!ref) return setMentionQuery(null);
+    const pos = ref.selectionStart;
+    const before = value.slice(0, pos);
+    const atIdx = before.lastIndexOf("@");
+    if (atIdx === -1 || (atIdx > 0 && /\S/.test(before[atIdx - 1]))) return setMentionQuery(null);
+    const query = before.slice(atIdx + 1);
+    if (/\s/.test(query) && query.length > 0) return setMentionQuery(null);
+    setMentionQuery({ field, query: query.toLowerCase() });
+  };
+
+  const insertMention = (userName, field) => {
+    const ref = field === "compose" ? composeRef.current : commentRefs.current[field];
+    const val = ref.value;
+    const pos = ref.selectionStart;
+    const before = val.slice(0, pos);
+    const atIdx = before.lastIndexOf("@");
+    const after = val.slice(pos);
+    const insertion = "@" + userName + "\u00A0";
+    const newVal = before.slice(0, atIdx) + insertion + after;
+    const newPos = atIdx + insertion.length;
+
+    // Use native setter to trigger React's onChange
+    const nativeSetter = Object.getOwnPropertyDescriptor(
+      field === "compose" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype,
+      "value"
+    ).set;
+    nativeSetter.call(ref, newVal);
+    ref.dispatchEvent(new Event("input", { bubbles: true }));
+
+    setMentionQuery(null);
+    requestAnimationFrame(() => {
+      ref.focus();
+      ref.setSelectionRange(newPos, newPos);
+    });
+  };
   const [openCommentMenuId, setOpenCommentMenuId] = useState(null);
   const [editingComment, setEditingComment] = useState(null);
   const [editCommentText, setEditCommentText] = useState("");
@@ -988,6 +1172,7 @@ function App() {
       body: formData,
     });
     setCompose("");
+    setMentionQuery(null);
     setSelectedLocation(null);
     mediaPreviews.forEach((p) => URL.revokeObjectURL(p.url));
     setMediaFiles([]);
@@ -1063,6 +1248,7 @@ function App() {
       )
     );
     setCommentInputs((prev) => ({ ...prev, [postId]: "" }));
+    setMentionQuery(null);
     endBusy(`comment-${postId}`);
   };
 
@@ -1192,15 +1378,28 @@ function App() {
         ) : tab === "feed" ? (
           <>
             <ComposeBox>
-              <ComposeInput
-                rows={3}
-                placeholder="What's on your mind?"
-                value={compose}
-                onChange={(e) => setCompose(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && e.metaKey) handlePost();
-                }}
-              />
+              <ComposeWrapper>
+                <ComposeHighlight>{renderHighlight(compose)}</ComposeHighlight>
+                <ComposeInput
+                  ref={composeRef}
+                  rows={3}
+                  placeholder="What's on your mind?"
+                  value={compose}
+                  onChange={(e) => { setCompose(e.target.value); handleMentionInput(e.target.value, "compose"); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && e.metaKey) handlePost();
+                  }}
+                />
+                {mentionQuery && mentionQuery.field === "compose" && (
+                  <MentionDropdown>
+                    {users.filter((u) => u.name.toLowerCase().includes(mentionQuery.query)).map((u) => (
+                      <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, "compose"); }}>
+                        <MentionAvatar src={u.picture} /> {u.name}
+                      </MentionOption>
+                    ))}
+                  </MentionDropdown>
+                )}
+              </ComposeWrapper>
               {selectedLocation && (
                 <SelectedLocation>
                   <span><i className="fa-solid fa-location-dot" /> <strong>{selectedLocation.name}</strong></span>
@@ -1362,7 +1561,7 @@ function App() {
                       </PostHeaderRight>
                     )}
                   </PostHeader>
-                  {post.content && <PostContent>{post.content}</PostContent>}
+                  {post.content && <PostContent>{renderText(post.content)}</PostContent>}
                   {post.media && post.media.length > 0 && (
                     <PostMediaContainer $count={post.media.length}>
                       {post.media.map((m, i) =>
@@ -1449,7 +1648,7 @@ function App() {
                                 </CommentInputRow>
                               ) : (
                                 <>
-                                  <CommentText>{c.content}</CommentText>
+                                  <CommentText>{renderText(c.content)}</CommentText>
                                   <CommentTime>{timeAgo(c.created_at)}</CommentTime>
                                 </>
                               )}
@@ -1482,21 +1681,36 @@ function App() {
                         ))}
                       </>
                     )}
-                    <CommentInputRow>
-                      <CommentInput
-                        placeholder="Add a comment..."
-                        value={commentInputs[post.id] || ""}
-                        onChange={(e) => setCommentInputs((prev) => ({ ...prev, [post.id]: e.target.value }))}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleComment(post.id);
-                        }}
-                      />
-                      {(commentInputs[post.id] || "").trim() && (
-                        <CommentPostButton onClick={() => handleComment(post.id)} disabled={isBusy(`comment-${post.id}`)}>
-                          {isBusy(`comment-${post.id}`) ? <Spinner /> : <i className="fa-solid fa-arrow-up" />}
-                        </CommentPostButton>
+                    <div style={{ position: "relative" }}>
+                      <CommentInputRow>
+                        <CommentInputWrapper>
+                          <CommentHighlight>{renderHighlight(commentInputs[post.id] || "")}</CommentHighlight>
+                          <CommentInput
+                            ref={(el) => (commentRefs.current[post.id] = el)}
+                            placeholder="Add a comment..."
+                            value={commentInputs[post.id] || ""}
+                            onChange={(e) => { setCommentInputs((prev) => ({ ...prev, [post.id]: e.target.value })); handleMentionInput(e.target.value, post.id); }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleComment(post.id);
+                            }}
+                          />
+                        </CommentInputWrapper>
+                        {(commentInputs[post.id] || "").trim() && (
+                          <CommentPostButton onClick={() => handleComment(post.id)} disabled={isBusy(`comment-${post.id}`)}>
+                            {isBusy(`comment-${post.id}`) ? <Spinner /> : <i className="fa-solid fa-arrow-up" />}
+                          </CommentPostButton>
+                        )}
+                      </CommentInputRow>
+                      {mentionQuery && mentionQuery.field === post.id && (
+                        <MentionDropdown>
+                          {users.filter((u) => u.name.toLowerCase().includes(mentionQuery.query)).map((u) => (
+                            <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, post.id); }}>
+                              <MentionAvatar src={u.picture} /> {u.name}
+                            </MentionOption>
+                          ))}
+                        </MentionDropdown>
                       )}
-                    </CommentInputRow>
+                    </div>
                   </CommentsSection>
                 </PostItem>
               ))
