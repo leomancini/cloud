@@ -6,7 +6,7 @@ import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import Database from "better-sqlite3";
 import { fileURLToPath } from "url";
-import { dirname, join, resolve } from "path";
+import { dirname, join } from "path";
 import { mkdirSync, existsSync, writeFileSync, readFileSync, renameSync } from "fs";
 import crypto from "crypto";
 import multer from "multer";
@@ -430,117 +430,6 @@ const CLASSIFY_TOOLS = [
   }
 ];
 
-const CODE_TOOLS = [
-  {
-    name: "read_file",
-    description: "Read a file from the repository",
-    input_schema: {
-      type: "object",
-      properties: { path: { type: "string", description: "File path relative to repo root, e.g. 'server.js' or 'src/App.jsx'" } },
-      required: ["path"]
-    }
-  },
-  {
-    name: "write_file",
-    description: "Create a new file or overwrite a small file. For editing existing large files, use edit_file instead.",
-    input_schema: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "File path relative to repo root" },
-        content: { type: "string", description: "Complete file content to write" }
-      },
-      required: ["path", "content"]
-    }
-  },
-  {
-    name: "edit_file",
-    description: "Edit an existing file by replacing a specific string with a new string. Use this for targeted changes to large files like src/App.jsx or server.js.",
-    input_schema: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "File path relative to repo root" },
-        old_string: { type: "string", description: "The exact string to find in the file (must be unique)" },
-        new_string: { type: "string", description: "The replacement string" }
-      },
-      required: ["path", "old_string", "new_string"]
-    }
-  },
-  {
-    name: "list_files",
-    description: "List tracked files in the repository, optionally matching a glob pattern",
-    input_schema: {
-      type: "object",
-      properties: { pattern: { type: "string", description: "Optional glob pattern, e.g. 'src/*.jsx' or '*.js'" } },
-      required: []
-    }
-  },
-  {
-    name: "search",
-    description: "Search for a regex pattern in repository files",
-    input_schema: {
-      type: "object",
-      properties: {
-        pattern: { type: "string", description: "Regex pattern to search for" },
-        glob: { type: "string", description: "Optional file glob filter, e.g. '*.js'" }
-      },
-      required: ["pattern"]
-    }
-  }
-];
-
-function executeToolInWorktree(worktreePath, toolName, input) {
-  const safePath = (p) => {
-    const resolved = resolve(worktreePath, p);
-    if (!resolved.startsWith(worktreePath + "/") && resolved !== worktreePath) {
-      throw new Error("Path outside repository");
-    }
-    return resolved;
-  };
-
-  switch (toolName) {
-    case "read_file": {
-      const fullPath = safePath(input.path);
-      if (!existsSync(fullPath)) return `File not found: ${input.path}`;
-      return readFileSync(fullPath, "utf-8");
-    }
-    case "write_file": {
-      const fullPath = safePath(input.path);
-      const dir = dirname(fullPath);
-      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-      writeFileSync(fullPath, input.content);
-      return `Written ${input.path}`;
-    }
-    case "edit_file": {
-      const fullPath = safePath(input.path);
-      if (!existsSync(fullPath)) return `File not found: ${input.path}`;
-      const content = readFileSync(fullPath, "utf-8");
-      const count = content.split(input.old_string).length - 1;
-      if (count === 0) return `Error: old_string not found in ${input.path}`;
-      if (count > 1) return `Error: old_string found ${count} times in ${input.path} — must be unique. Include more surrounding context.`;
-      writeFileSync(fullPath, content.replace(input.old_string, input.new_string));
-      return `Edited ${input.path}`;
-    }
-    case "list_files": {
-      try {
-        const args = ["ls-files"];
-        if (input.pattern) args.push(input.pattern);
-        return execFileSync("git", args, { cwd: worktreePath }).toString() || "No files found.";
-      } catch { return "No files found."; }
-    }
-    case "search": {
-      try {
-        const args = ["-rn", "--exclude-dir=node_modules", "--exclude-dir=.git"];
-        if (input.glob) args.push(`--include=${input.glob}`);
-        args.push(input.pattern, ".");
-        return execFileSync("grep", args, { cwd: worktreePath, maxBuffer: 1024 * 1024 }).toString().slice(0, 10000);
-      } catch (e) {
-        return e.stdout?.toString()?.slice(0, 10000) || "No matches found.";
-      }
-    }
-    default:
-      return `Unknown tool: ${toolName}`;
-  }
-}
 
 async function handleSolCodeChange(description) {
   if (!process.env.GITHUB_TOKEN) return null;
@@ -553,71 +442,19 @@ async function handleSolCodeChange(description) {
     execFileSync("git", ["worktree", "add", worktreePath, "-b", branchName], { cwd: __dirname });
     console.log(`[Sol] Worktree created at ${worktreePath}`);
 
-    const messages = [{
-      role: "user",
-      content: `You are Sol, an AI developer making changes to Cloud, a social feed app.
-
-Tech stack: Express backend (server.js), React frontend (src/App.jsx — entire UI in one file), SQLite (better-sqlite3), styled-components, Vite.
-
-Key files:
-- server.js — All API routes, DB schema, WebSocket server, Sol AI integration
-- src/App.jsx — Entire React frontend (styled-components, state, all components)
-- vite.config.js — Vite config with proxy to backend
-- package.json — Dependencies
-
-Requested change: ${description}
-
-Steps: 1) Read the file(s) you need to change. 2) Use edit_file to make targeted replacements (preferred for large files) or write_file for new/small files. 3) Stop — do not re-read, verify, or re-write. Get it right the first time.`
-    }];
-
-    for (let i = 0; i < 7; i++) {
-      console.log(`[Sol] Agent loop iteration ${i + 1}...`);
-      let response;
-      for (let retry = 0; retry < 3; retry++) {
-        try {
-          response = await anthropic.messages.create({
-            model: "claude-sonnet-4-6",
-            max_tokens: 8192,
-            tools: CODE_TOOLS,
-            messages
-          });
-          break;
-        } catch (e) {
-          if (e.status === 429 && retry < 2) {
-            const wait = (retry + 1) * 60;
-            console.log(`[Sol] Rate limited, waiting ${wait}s...`);
-            await new Promise(r => setTimeout(r, wait * 1000));
-          } else {
-            throw e;
-          }
-        }
-      }
-
-      messages.push({ role: "assistant", content: response.content });
-
-      const toolUseBlocks = response.content.filter(b => b.type === "tool_use");
-      if (toolUseBlocks.length === 0) {
-        console.log("[Sol] Agent done.");
-        break;
-      }
-
-      const toolResults = [];
-      for (const block of toolUseBlocks) {
-        console.log(`[Sol] Tool: ${block.name}${block.name === "read_file" || block.name === "write_file" ? ` (${block.input.path})` : ""}`);
-        let result;
-        try {
-          result = executeToolInWorktree(worktreePath, block.name, block.input);
-        } catch (e) {
-          result = `Error: ${e.message}`;
-        }
-        toolResults.push({ type: "tool_result", tool_use_id: block.id, content: result });
-      }
-      messages.push({ role: "user", content: toolResults });
-    }
+    // Run Claude Code CLI
+    const prompt = `Make this change to the Cloud app: ${description}. Do not commit. Just make the code changes.`;
+    console.log("[Sol] Running claude -p ...");
+    execSync(`claude -p ${JSON.stringify(prompt)} --allowedTools Edit,Write,Read,Glob,Grep,Bash`, {
+      cwd: worktreePath,
+      timeout: 300000,
+      stdio: "inherit",
+    });
 
     // Check for changes
     const status = execFileSync("git", ["status", "--porcelain"], { cwd: worktreePath }).toString();
     if (!status.trim()) {
+      console.log("[Sol] No changes made.");
       execFileSync("git", ["worktree", "remove", "--force", worktreePath], { cwd: __dirname });
       return null;
     }
@@ -641,6 +478,7 @@ Steps: 1) Read the file(s) you need to change. 2) Use edit_file to make targeted
       }),
     });
     const pr = await prRes.json();
+    console.log("[Sol] PR created:", pr.html_url);
 
     // Clean up worktree
     execFileSync("git", ["worktree", "remove", "--force", worktreePath], { cwd: __dirname });
