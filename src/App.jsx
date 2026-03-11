@@ -3,9 +3,6 @@ import styled, { ThemeProvider, createGlobalStyle } from "styled-components";
 
 const RADIUS = "10px";
 const RADIUS_SM = "6px";
-const BORDER = "#eee";
-const TEXT = "#333";
-const TEXT_SECONDARY = "#999";
 const ICON_GAP = "8px";
 
 // ─── Themes ──────────────────────────────────────────────────────────────────
@@ -189,7 +186,7 @@ const SmallAvatar = styled.img`
 const HeaderName = styled.span`
   font-size: 15px;
   font-weight: 600;
-  color: #333;
+  color: ${(p) => p.theme.text};
 `;
 
 const LoginCard = styled.div`
@@ -202,13 +199,13 @@ const LoginCard = styled.div`
 
 const Title = styled.h1`
   font-size: 22px;
-  color: #333;
+  color: ${(p) => p.theme.text};
   margin: 0 0 6px;
 `;
 
 const Subtitle = styled.p`
   font-size: 15px;
-  color: #999;
+  color: ${(p) => p.theme.textSecondary};
   margin: 0 0 24px;
 `;
 
@@ -220,17 +217,17 @@ const SignInButton = styled.a`
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
-  background: black;
-  color: white;
+  background: ${(p) => p.theme.btnPrimary};
+  color: ${(p) => p.theme.btnPrimaryText};
 
   &:hover {
-    background: #222;
+    background: ${(p) => p.theme.btnPrimaryHover};
   }
 `;
 
 const SegmentedControl = styled.div`
   display: flex;
-  background: #f0f0f0;
+  background: ${(p) => p.theme.bgControl};
   border-radius: ${RADIUS};
   padding: 3px;
 `;
@@ -242,9 +239,9 @@ const Segment = styled.button`
   font-weight: 500;
   cursor: pointer;
   border: none;
-  background: ${(p) => (p.$active ? "white" : "transparent")};
-  color: ${(p) => (p.$active ? "#333" : "#888")};
-  box-shadow: ${(p) => (p.$active ? "0 1px 3px rgba(0,0,0,0.1)" : "none")};
+  background: ${(p) => (p.$active ? p.theme.bgElevated : "transparent")};
+  color: ${(p) => (p.$active ? p.theme.text : p.theme.textMuted)};
+  box-shadow: ${(p) => (p.$active ? `0 1px 3px ${p.theme.shadow}` : "none")};
   transition: all 0.15s ease;
 `;
 
@@ -254,7 +251,7 @@ const BackButton = styled.button`
   cursor: pointer;
   border: none;
   background: none;
-  color: #333;
+  color: ${(p) => p.theme.text};
   display: flex;
   align-items: center;
   gap: 8px;
@@ -265,12 +262,12 @@ const LogoutButton = styled.button`
   border-radius: ${RADIUS};
   font-size: 13px;
   cursor: pointer;
-  border: 1px solid #ddd;
-  background: white;
+  border: 1px solid ${(p) => p.theme.borderStrong};
+  background: ${(p) => p.theme.bgElevated};
   color: #666;
 
   &:hover {
-    background: #f5f5f5;
+    background: ${(p) => p.theme.bgHover};
   }
 `;
 
@@ -291,7 +288,7 @@ const ComposeWrapper = styled.div`
 
 const ComposeInput = styled.textarea`
   width: 100%;
-  border: 1px solid ${BORDER};
+  border: 1px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
   padding: 14px;
   font-size: 16px;
@@ -300,7 +297,7 @@ const ComposeInput = styled.textarea`
   outline: none;
   box-sizing: border-box;
   color: transparent;
-  caret-color: ${TEXT};
+  caret-color: ${(p) => p.theme.text};
   position: relative;
   z-index: 1;
   background: transparent;
@@ -322,7 +319,7 @@ const ComposeHighlight = styled.div`
   line-height: normal;
   white-space: pre-wrap;
   word-wrap: break-word;
-  color: ${TEXT};
+  color: ${(p) => p.theme.text};
   pointer-events: none;
   border: 1px solid transparent;
   border-radius: ${RADIUS};
@@ -346,11 +343,11 @@ const IconButton = styled.button`
   font-size: 14px;
   cursor: pointer;
   border: none;
-  background: ${(p) => (p.$active ? "#f0f0f0" : "transparent")};
-  color: ${(p) => (p.$active ? "#333" : "#999")};
+  background: ${(p) => (p.$active ? p.theme.bgControl : "transparent")};
+  color: ${(p) => (p.$active ? p.theme.text : p.theme.textSecondary)};
 
   &:hover {
-    background: #f0f0f0;
+    background: ${(p) => p.theme.bgControl};
   }
 `;
 
@@ -361,7 +358,7 @@ const LocationSearch = styled.div`
 
 const LocationInput = styled.input`
   width: 100%;
-  border: 1px solid ${BORDER};
+  border: 1px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
   padding: 10px 12px;
   font-size: 16px;
@@ -379,8 +376,8 @@ const LocationResults = styled.div`
   top: 100%;
   left: 0;
   right: 0;
-  background: white;
-  border: 1px solid ${BORDER};
+  background: ${(p) => p.theme.bgElevated};
+  border: 1px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
   margin-top: 4px;
   z-index: 10;
@@ -399,12 +396,12 @@ const LocationResult = styled.div`
 const LocationName = styled.div`
   font-size: 14px;
   font-weight: 500;
-  color: #333;
+  color: ${(p) => p.theme.text};
 `;
 
 const LocationAddress = styled.div`
   font-size: 12px;
-  color: #999;
+  color: ${(p) => p.theme.textSecondary};
   margin-top: 2px;
 `;
 
@@ -415,10 +412,10 @@ const SelectedLocation = styled.div`
   gap: ${ICON_GAP};
   margin-top: 8px;
   padding: 8px 36px 8px 12px;
-  background: #f5f5f5;
+  background: ${(p) => p.theme.bgHover};
   border-radius: ${RADIUS};
   font-size: 13px;
-  color: #333;
+  color: ${(p) => p.theme.text};
 
   span {
     display: flex;
@@ -434,7 +431,7 @@ const RemoveLocation = styled.button`
   transform: translateY(-50%);
   border: none;
   background: none;
-  color: #999;
+  color: ${(p) => p.theme.textSecondary};
   cursor: pointer;
   font-size: 14px;
   padding: 0;
@@ -509,7 +506,7 @@ const PostImage = styled.img`
   display: block;
   border-radius: ${RADIUS};
   object-fit: cover;
-  background: #f0f0f0;
+  background: ${(p) => p.theme.bgControl};
   min-height: ${(p) => (p.$single ? "200px" : "auto")};
 `;
 
@@ -518,7 +515,7 @@ const PostVideo = styled.video`
   display: block;
   border-radius: ${RADIUS};
   object-fit: cover;
-  background: #f0f0f0;
+  background: ${(p) => p.theme.bgControl};
   min-height: ${(p) => (p.$single ? "200px" : "auto")};
 `;
 
@@ -529,11 +526,11 @@ const PostButton = styled.button`
   font-weight: 500;
   cursor: pointer;
   border: none;
-  background: black;
-  color: white;
+  background: ${(p) => p.theme.btnPrimary};
+  color: ${(p) => p.theme.btnPrimaryText};
 
   &:hover {
-    background: #222;
+    background: ${(p) => p.theme.btnPrimaryHover};
   }
 
   &:disabled {
@@ -570,12 +567,12 @@ const Avatar = styled.img`
 const PostAuthor = styled.span`
   font-size: 15px;
   font-weight: 600;
-  color: #333;
+  color: ${(p) => p.theme.text};
 `;
 
 const PostTime = styled.span`
   font-size: 12px;
-  color: #999;
+  color: ${(p) => p.theme.textSecondary};
 `;
 
 const PostHeaderRight = styled.div`
@@ -597,7 +594,7 @@ const PostMenuButton = styled.button`
   align-items: center;
 
   &:hover {
-    color: #999;
+    color: ${(p) => p.theme.textSecondary};
   }
 `;
 
@@ -605,10 +602,10 @@ const PostMenu = styled.div`
   position: absolute;
   right: 0;
   top: 100%;
-  background: white;
-  border: 1px solid ${BORDER};
+  background: ${(p) => p.theme.bgElevated};
+  border: 1px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px ${(p) => p.theme.shadow};
   z-index: 10;
   overflow: hidden;
   min-width: 120px;
@@ -624,16 +621,16 @@ const PostMenuItem = styled.button`
   background: none;
   font-size: 14px;
   cursor: pointer;
-  color: ${(p) => (p.$danger ? "#e53e3e" : "#333")};
+  color: ${(p) => (p.$danger ? "#e53e3e" : p.theme.text)};
 
   &:hover {
-    background: #f5f5f5;
+    background: ${(p) => p.theme.bgHover};
   }
 `;
 
 const PostContent = styled.p`
   font-size: 15px;
-  color: #333;
+  color: ${(p) => p.theme.text};
   margin: 0;
   line-height: 1.4;
   white-space: pre-wrap;
@@ -662,7 +659,7 @@ const ReactionChip = styled.button`
 
 const ReactionNames = styled.span`
   font-size: 15px;
-  color: ${TEXT};
+  color: ${(p) => p.theme.text};
   font-weight: 600;
 `;
 
@@ -712,19 +709,19 @@ const CommentBody = styled.div`
 const CommentAuthor = styled.span`
   font-size: 15px;
   font-weight: 600;
-  color: ${TEXT};
+  color: ${(p) => p.theme.text};
   margin-right: 6px;
 `;
 
 const CommentText = styled.span`
   font-size: 15px;
-  color: ${TEXT};
+  color: ${(p) => p.theme.text};
   line-height: 1.4;
 `;
 
 const CommentTime = styled.span`
   font-size: 12px;
-  color: ${TEXT_SECONDARY};
+  color: ${(p) => p.theme.textSecondary};
   margin-left: 8px;
   vertical-align: baseline;
 `;
@@ -744,7 +741,7 @@ const CommentInputWrapper = styled.div`
 
 const CommentInput = styled.input`
   width: 100%;
-  border: 1px solid ${BORDER};
+  border: 1px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
   padding: 8px 12px;
   font-size: 16px;
@@ -752,7 +749,7 @@ const CommentInput = styled.input`
   outline: none;
   min-width: 0;
   color: transparent;
-  caret-color: ${TEXT};
+  caret-color: ${(p) => p.theme.text};
   position: relative;
   z-index: 1;
   background: transparent;
@@ -775,7 +772,7 @@ const CommentHighlight = styled.div`
   line-height: normal;
   white-space: nowrap;
   overflow: hidden;
-  color: ${TEXT};
+  color: ${(p) => p.theme.text};
   pointer-events: none;
   border: 1px solid transparent;
   border-radius: ${RADIUS};
@@ -785,7 +782,7 @@ const CommentHighlight = styled.div`
 const CommentPostButton = styled.button`
   border: none;
   background: none;
-  color: ${TEXT_SECONDARY};
+  color: ${(p) => p.theme.textSecondary};
   font-size: 14px;
   cursor: pointer;
   padding: 8px;
@@ -793,21 +790,21 @@ const CommentPostButton = styled.button`
   align-items: center;
 
   &:hover {
-    color: ${TEXT};
+    color: ${(p) => p.theme.text};
   }
 `;
 
 const CommentCount = styled.button`
   border: none;
   background: none;
-  color: ${TEXT_SECONDARY};
+  color: ${(p) => p.theme.textSecondary};
   font-size: 13px;
   cursor: pointer;
   padding: 0;
   margin-top: 8px;
 
   &:hover {
-    color: ${TEXT};
+    color: ${(p) => p.theme.text};
   }
 `;
 
@@ -828,7 +825,7 @@ const PostMapWrapper = styled.div`
     right: 0;
     bottom: 0;
     border-radius: ${RADIUS} ${RADIUS} 0 0;
-    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+    box-shadow: inset 0 0 0 1px ${(p) => p.theme.shadow};
     pointer-events: none;
   }
 `;
@@ -844,8 +841,8 @@ const PostPlaceName = styled.div`
   padding: 10px 12px;
   font-size: 13px;
   font-weight: 500;
-  color: ${TEXT};
-  border: 1px solid ${BORDER};
+  color: ${(p) => p.theme.text};
+  border: 1px solid ${(p) => p.theme.border};
   border-top: none;
   border-radius: 0 0 ${RADIUS} ${RADIUS};
   display: flex;
@@ -855,7 +852,7 @@ const PostPlaceName = styled.div`
 
 const PostPlaceAddress = styled.span`
   font-weight: 400;
-  color: ${TEXT_SECONDARY};
+  color: ${(p) => p.theme.textSecondary};
 `;
 
 const UserList = styled.div`
@@ -890,12 +887,12 @@ const UserAvatar = styled.img`
 const UserName = styled.span`
   font-size: 15px;
   font-weight: 500;
-  color: #333;
+  color: ${(p) => p.theme.text};
 `;
 
 const UserStatus = styled.div`
   font-size: 12px;
-  color: ${TEXT_SECONDARY};
+  color: ${(p) => p.theme.textSecondary};
   margin-top: 1px;
 `;
 
@@ -905,12 +902,12 @@ const FollowButton = styled.button`
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  border: 1px solid ${(p) => (p.$status === "pending" ? "#ddd" : p.$following ? "#ddd" : "black")};
-  background: ${(p) => (p.$status === "pending" ? "white" : p.$following ? "white" : "black")};
-  color: ${(p) => (p.$status === "pending" ? "#999" : p.$following ? "#666" : "white")};
+  border: 1px solid ${(p) => (p.$status === "pending" ? p.theme.borderStrong : p.$following ? p.theme.borderStrong : p.theme.btnPrimary)};
+  background: ${(p) => (p.$status === "pending" ? p.theme.bgElevated : p.$following ? p.theme.bgElevated : p.theme.btnPrimary)};
+  color: ${(p) => (p.$status === "pending" ? p.theme.textSecondary : p.$following ? p.theme.textMuted : p.theme.btnPrimaryText)};
 
   &:hover {
-    background: ${(p) => (p.$status === "pending" ? "#f5f5f5" : p.$following ? "#f5f5f5" : "#222")};
+    background: ${(p) => (p.$status === "pending" ? p.theme.bgHover : p.$following ? p.theme.bgHover : p.theme.btnPrimaryHover)};
   }
 `;
 
@@ -943,11 +940,11 @@ const ApproveButton = styled.button`
   font-weight: 500;
   cursor: pointer;
   border: none;
-  background: black;
-  color: white;
+  background: ${(p) => p.theme.btnPrimary};
+  color: ${(p) => p.theme.btnPrimaryText};
 
   &:hover {
-    background: #222;
+    background: ${(p) => p.theme.btnPrimaryHover};
   }
 `;
 
@@ -957,24 +954,24 @@ const RejectButton = styled.button`
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  border: 1px solid #ddd;
-  background: white;
+  border: 1px solid ${(p) => p.theme.borderStrong};
+  background: ${(p) => p.theme.bgElevated};
   color: #666;
 
   &:hover {
-    background: #f5f5f5;
+    background: ${(p) => p.theme.bgHover};
   }
 `;
 
 const EmptyState = styled.p`
   text-align: center;
-  color: #999;
+  color: ${(p) => p.theme.textSecondary};
   font-size: 15px;
   margin-top: 40px;
 `;
 
 const SuggestionsBox = styled.div`
-  background: #fafafa;
+  background: ${(p) => p.theme.bgSecondary};
   border-radius: ${RADIUS};
   padding: 16px;
   margin-bottom: 24px;
@@ -983,7 +980,7 @@ const SuggestionsBox = styled.div`
 const SectionTitle = styled.div`
   font-size: 14px;
   font-weight: 600;
-  color: ${TEXT};
+  color: ${(p) => p.theme.text};
   margin-bottom: 12px;
 `;
 
@@ -1001,14 +998,50 @@ const ProfileAvatar = styled.img`
 
 const ProfileName = styled.h2`
   font-size: 22px;
-  color: #333;
+  color: ${(p) => p.theme.text};
   margin: 0 0 4px;
 `;
 
 const ProfileEmail = styled.p`
   font-size: 14px;
-  color: #999;
+  color: ${(p) => p.theme.textSecondary};
   margin: 0 0 32px;
+`;
+
+const ThemeToggleLabel = styled.div`
+  font-size: 13px;
+  font-weight: 500;
+  color: ${(p) => p.theme.textSecondary};
+  margin-bottom: 8px;
+`;
+
+const ThemeToggleWrap = styled.div`
+  margin-bottom: 24px;
+`;
+
+const ThemeToggle = styled.div`
+  display: inline-flex;
+  background: ${(p) => p.theme.bgControl};
+  border-radius: ${RADIUS};
+  padding: 3px;
+
+  @media (max-width: 600px) {
+    display: flex;
+  }
+`;
+
+const ThemeSegment = styled.button`
+  flex: 1;
+  padding: 6px 20px;
+  border-radius: ${RADIUS_SM};
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: ${(p) => (p.$active ? p.theme.bgElevated : "transparent")};
+  color: ${(p) => (p.$active ? p.theme.text : p.theme.textMuted)};
+  box-shadow: ${(p) => (p.$active ? `0 1px 3px ${p.theme.shadow}` : "none")};
+  transition: all 0.15s ease;
 `;
 
 function shortAddress(address) {
@@ -1036,6 +1069,15 @@ function timeAgo(dateStr) {
 }
 
 function App() {
+  const [themePref, setThemePref] = useState(() => localStorage.getItem("theme-pref") || "system");
+  const systemDark = useSystemDark();
+  const resolvedTheme = themePref === "system" ? (systemDark ? darkTheme : lightTheme) : themePref === "dark" ? darkTheme : lightTheme;
+
+  const updateThemePref = (pref) => {
+    setThemePref(pref);
+    localStorage.setItem("theme-pref", pref);
+  };
+
   const [user, setUser] = useState(null);
   const [users, setUsers] = useState([]);
   const [posts, setPosts] = useState([]);
@@ -1438,18 +1480,26 @@ function App() {
 
   if (!user) {
     return (
-      <Page>
-        <LoginCard>
-          <Title>Cloud</Title>
-          <Subtitle>Share your day</Subtitle>
-          <SignInButton href="/api/auth/google">Log in with Google</SignInButton>
-        </LoginCard>
-      </Page>
+      <ThemePrefContext.Provider value={{ preference: themePref, setPreference: updateThemePref }}>
+        <ThemeProvider theme={resolvedTheme}>
+          <GlobalStyle />
+          <Page>
+            <LoginCard>
+              <Title>Cloud</Title>
+              <Subtitle>Share your day</Subtitle>
+              <SignInButton href="/api/auth/google">Log in with Google</SignInButton>
+            </LoginCard>
+          </Page>
+        </ThemeProvider>
+      </ThemePrefContext.Provider>
     );
   }
 
   return (
-    <Page>
+    <ThemePrefContext.Provider value={{ preference: themePref, setPreference: updateThemePref }}>
+      <ThemeProvider theme={resolvedTheme}>
+        <GlobalStyle />
+        <Page>
       <Header>
         {tab === "profile" ? (
           <BackButton onClick={() => setTab("feed")}><i className="fa-solid fa-arrow-left" /> Back</BackButton>
@@ -1476,6 +1526,14 @@ function App() {
             <ProfileAvatar src={user.picture} alt={user.name} />
             <ProfileName>{user.name}</ProfileName>
             <ProfileEmail>{user.email}</ProfileEmail>
+            <ThemeToggleWrap>
+              <ThemeToggleLabel>Appearance</ThemeToggleLabel>
+              <ThemeToggle>
+                <ThemeSegment $active={themePref === "system"} onClick={() => updateThemePref("system")}>System</ThemeSegment>
+                <ThemeSegment $active={themePref === "light"} onClick={() => updateThemePref("light")}>Light</ThemeSegment>
+                <ThemeSegment $active={themePref === "dark"} onClick={() => updateThemePref("dark")}>Dark</ThemeSegment>
+              </ThemeToggle>
+            </ThemeToggleWrap>
             <LogoutButton onClick={handleLogout} disabled={isBusy("logout")}>{isBusy("logout") ? <Spinner /> : "Log out"}</LogoutButton>
           </ProfilePage>
         ) : tab === "feed" ? (
@@ -1751,7 +1809,7 @@ function App() {
                                 </CommentInputRow>
                               ) : (
                                 <>
-                                  <CommentText style={c.content === "thinking..." ? { color: TEXT_SECONDARY } : undefined}>
+                                  <CommentText style={c.content === "thinking..." ? { color: "#999" } : undefined}>
                                     {c.content === "thinking..." ? c.content : renderText(c.content)}
                                   </CommentText>
                                   {c.content !== "thinking..." && <CommentTime>{timeAgo(c.created_at)}</CommentTime>}
@@ -1847,6 +1905,8 @@ function App() {
         )}
       </Content>
     </Page>
+    </ThemeProvider>
+    </ThemePrefContext.Provider>
   );
 }
 
