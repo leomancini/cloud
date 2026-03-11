@@ -1285,7 +1285,7 @@ function App() {
 
     // Use native setter to trigger React's onChange
     const nativeSetter = Object.getOwnPropertyDescriptor(
-      field === "compose" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype,
+      HTMLTextAreaElement.prototype,
       "value"
     ).set;
     nativeSetter.call(ref, newVal);
@@ -1683,7 +1683,7 @@ function App() {
                 {mentionQuery && mentionQuery.field === "compose" && (
                   <MentionDropdown>
                     {mentionUsers.filter((u) => u.name.toLowerCase().includes(mentionQuery.query)).map((u) => (
-                      <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, "compose"); }}>
+                      <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, "compose"); }} onTouchEnd={(e) => { e.preventDefault(); insertMention(u.name, "compose"); }}>
                         <MentionAvatar src={u.picture} /> {u.name}
                       </MentionOption>
                     ))}
@@ -2008,7 +2008,7 @@ function App() {
                       {mentionQuery && mentionQuery.field === post.id && (
                         <MentionDropdown>
                           {mentionUsers.filter((u) => u.name.toLowerCase().includes(mentionQuery.query)).map((u) => (
-                            <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, post.id); }}>
+                            <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, post.id); }} onTouchEnd={(e) => { e.preventDefault(); insertMention(u.name, post.id); }}>
                               <MentionAvatar src={u.picture} /> {u.name}
                             </MentionOption>
                           ))}
