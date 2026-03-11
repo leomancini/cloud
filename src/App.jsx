@@ -201,8 +201,8 @@ const Content = styled.div`
 `;
 
 const ComposeBox = styled.div`
-  margin-bottom: 24px;
-  padding-bottom: 24px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
 `;
 
 const ComposeWrapper = styled.div`
