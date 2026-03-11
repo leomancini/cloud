@@ -846,13 +846,15 @@ const CommentPostButton = styled.button`
   color: ${(p) => p.theme.btnPrimaryText};
   font-size: 14px;
   cursor: pointer;
-  padding: 0 12px;
+  padding: 8px 12px;
   border-radius: ${RADIUS};
   display: flex;
   align-items: center;
-  align-self: stretch;
+  align-self: flex-end;
   flex-shrink: 0;
   box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: calc(16px * 1.4);
 
   &:hover {
     background: ${(p) => p.theme.btnPrimaryHover};
