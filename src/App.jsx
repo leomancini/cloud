@@ -783,7 +783,7 @@ const CommentTime = styled.span`
 
 const CommentInputRow = styled.div`
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
   margin-top: 16px;
 `;
@@ -794,7 +794,7 @@ const CommentInputWrapper = styled.div`
   min-width: 0;
 `;
 
-const CommentInput = styled.input`
+const CommentInput = styled.textarea`
   width: 100%;
   border: 1px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
@@ -809,6 +809,11 @@ const CommentInput = styled.input`
   z-index: 1;
   background: transparent;
   box-sizing: border-box;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.4;
+  display: block;
+  vertical-align: top;
 
   &:focus {
     border-color: #ccc;
@@ -824,8 +829,9 @@ const CommentHighlight = styled.div`
   padding: 8px 12px;
   font-size: 16px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  line-height: normal;
-  white-space: nowrap;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-wrap: break-word;
   overflow: hidden;
   color: ${(p) => p.theme.text};
   pointer-events: none;
@@ -835,17 +841,21 @@ const CommentHighlight = styled.div`
 `;
 
 const CommentPostButton = styled.button`
-  border: none;
-  background: none;
-  color: ${(p) => p.theme.textSecondary};
+  border: 1px solid transparent;
+  background: ${(p) => p.theme.btnPrimary};
+  color: ${(p) => p.theme.btnPrimaryText};
   font-size: 14px;
   cursor: pointer;
-  padding: 8px;
+  padding: 0 12px;
+  border-radius: ${RADIUS};
   display: flex;
   align-items: center;
+  align-self: stretch;
+  flex-shrink: 0;
+  box-sizing: border-box;
 
   &:hover {
-    color: ${(p) => p.theme.text};
+    background: ${(p) => p.theme.btnPrimaryHover};
   }
 `;
 
@@ -1508,6 +1518,7 @@ function App() {
       )
     );
     setCommentInputs((prev) => ({ ...prev, [postId]: "" }));
+    if (commentRefs.current[postId]) commentRefs.current[postId].style.height = "auto";
     setMentionQuery(null);
     endBusy(`comment-${postId}`);
   };
@@ -1973,10 +1984,16 @@ function App() {
                           <CommentInput
                             ref={(el) => (commentRefs.current[post.id] = el)}
                             placeholder="Add a comment..."
+                            rows={1}
                             value={commentInputs[post.id] || ""}
-                            onChange={(e) => { setCommentInputs((prev) => ({ ...prev, [post.id]: e.target.value })); handleMentionInput(e.target.value, post.id); }}
+                            onChange={(e) => {
+                              setCommentInputs((prev) => ({ ...prev, [post.id]: e.target.value }));
+                              handleMentionInput(e.target.value, post.id);
+                              e.target.style.height = "auto";
+                              e.target.style.height = e.target.scrollHeight + "px";
+                            }}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") handleComment(post.id);
+                              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleComment(post.id); }
                             }}
                           />
                         </CommentInputWrapper>
