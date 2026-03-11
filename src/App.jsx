@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, createContext, useContext } from "react";
-import styled, { ThemeProvider, createGlobalStyle } from "styled-components";
+import React, { useState, useEffect, useRef, useCallback, createContext, useContext } from "react";
+import styled, { ThemeProvider, createGlobalStyle, keyframes, css } from "styled-components";
 
 const RADIUS = "10px";
 const RADIUS_SM = "6px";
@@ -277,8 +277,8 @@ const Content = styled.div`
 `;
 
 const ComposeBox = styled.div`
-  margin-bottom: 24px;
-  padding-bottom: 24px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
 `;
 
 const ComposeWrapper = styled.div`
@@ -508,6 +508,9 @@ const PostImage = styled.img`
   object-fit: cover;
   background: ${(p) => p.theme.bgControl};
   min-height: ${(p) => (p.$single ? "200px" : "auto")};
+  cursor: ${(p) => (p.$tappable ? "zoom-in" : "default")};
+  transition: opacity 0.15s ease;
+  &:active { opacity: ${(p) => (p.$tappable ? "0.85" : "1")}; }
 `;
 
 const PostVideo = styled.video`
@@ -517,6 +520,58 @@ const PostVideo = styled.video`
   object-fit: cover;
   background: ${(p) => p.theme.bgControl};
   min-height: ${(p) => (p.$single ? "200px" : "auto")};
+`;
+
+/* ── Lightbox ── */
+const fadeIn = keyframes`from { opacity: 0; } to { opacity: 1; }`;
+const fadeOut = keyframes`from { opacity: 1; } to { opacity: 0; }`;
+const slideUp = keyframes`from { transform: translateY(20px) scale(0.96); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; }`;
+const slideDown = keyframes`from { transform: translateY(0) scale(1); opacity: 1; } to { transform: translateY(40px) scale(0.94); opacity: 0; }`;
+
+const LightboxBackdrop = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  animation: ${(p) => (p.$closing ? css`${fadeOut} 0.22s ease forwards` : css`${fadeIn} 0.18s ease forwards`)};
+  touch-action: none;
+`;
+
+const LightboxImg = styled.img`
+  max-width: 100%;
+  max-height: 90vh;
+  width: 100%;
+  object-fit: contain;
+  border-radius: ${RADIUS};
+  display: block;
+  animation: ${(p) => (p.$closing ? css`${slideDown} 0.22s ease forwards` : css`${slideUp} 0.18s ease forwards`)};
+  pointer-events: none;
+  user-select: none;
+`;
+
+const LightboxClose = styled.button`
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  transition: background 0.15s ease;
+  &:hover { background: rgba(255, 255, 255, 0.25); }
 `;
 
 const PostButton = styled.button`
@@ -1068,6 +1123,65 @@ function timeAgo(dateStr) {
   });
 }
 
+function PhotoLightbox({ src, onClose }) {
+  const [closing, setClosing] = useState(false);
+  const touchStartY = useRef(null);
+  const touchStartX = useRef(null);
+
+  const dismiss = useCallback(() => {
+    setClosing(true);
+    setTimeout(onClose, 220);
+  }, [onClose]);
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === "Escape") dismiss(); };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [dismiss]);
+
+  // Prevent body scroll while open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  const handleTouchStart = (e) => {
+    touchStartY.current = e.touches[0].clientY;
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e) => {
+    if (touchStartY.current === null) return;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+    const deltaX = Math.abs(e.changedTouches[0].clientX - touchStartX.current);
+    // Swipe down ≥ 60px and more vertical than horizontal → dismiss
+    if (deltaY > 60 && deltaX < deltaY) dismiss();
+    touchStartY.current = null;
+    touchStartX.current = null;
+  };
+
+  return (
+    <LightboxBackdrop
+      $closing={closing}
+      onClick={dismiss}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      <LightboxClose onClick={(e) => { e.stopPropagation(); dismiss(); }} aria-label="Close">
+        <i className="fa-solid fa-xmark" />
+      </LightboxClose>
+      <LightboxImg
+        $closing={closing}
+        src={src}
+        onClick={(e) => e.stopPropagation()}
+        draggable={false}
+      />
+    </LightboxBackdrop>
+  );
+}
+
 function App() {
   const [themePref, setThemePref] = useState(() => localStorage.getItem("theme-pref") || "system");
   const systemDark = useSystemDark();
@@ -1174,6 +1288,7 @@ function App() {
   const [openCommentMenuId, setOpenCommentMenuId] = useState(null);
   const [editingComment, setEditingComment] = useState(null);
   const [editCommentText, setEditCommentText] = useState("");
+  const [lightboxSrc, setLightboxSrc] = useState(null);
 
   const startBusy = (key) => setBusyActions((prev) => new Set(prev).add(key));
   const endBusy = (key) => setBusyActions((prev) => { const next = new Set(prev); next.delete(key); return next; });
@@ -1500,6 +1615,7 @@ function App() {
       <ThemeProvider theme={resolvedTheme}>
         <GlobalStyle />
         <Page>
+      {lightboxSrc && <PhotoLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
       <Header>
         {tab === "profile" ? (
           <BackButton onClick={() => setTab("feed")}><i className="fa-solid fa-arrow-left" /> Back</BackButton>
@@ -1739,7 +1855,13 @@ function App() {
                             $single={post.media.length === 1}
                           />
                         ) : (
-                          <PostImage key={i} src={m.url} $single={post.media.length === 1} />
+                          <PostImage
+                            key={i}
+                            src={m.url}
+                            $single={post.media.length === 1}
+                            $tappable={post.media.length > 1}
+                            onClick={post.media.length > 1 ? () => setLightboxSrc(m.url) : undefined}
+                          />
                         )
                       )}
                     </PostMediaContainer>
