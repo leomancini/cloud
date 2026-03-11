@@ -1051,6 +1051,34 @@ const SectionTitle = styled.div`
   margin-bottom: 12px;
 `;
 
+const SectionHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: ${(p) => (p.$open ? "12px" : "0")};
+`;
+
+const CollapseButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  color: ${(p) => p.theme.textSecondary};
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  border-radius: ${RADIUS_SM};
+  transition: color 0.15s ease, background 0.15s ease;
+
+  &:hover {
+    color: ${(p) => p.theme.text};
+    background: ${(p) => p.theme.bgHover};
+  }
+`;
+
 const ProfilePage = styled.div`
   text-align: center;
   padding-top: 40px;
@@ -1297,6 +1325,7 @@ function App() {
       ref.setSelectionRange(newPos, newPos);
     });
   };
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [openCommentMenuId, setOpenCommentMenuId] = useState(null);
   const [editingComment, setEditingComment] = useState(null);
   const [editCommentText, setEditCommentText] = useState("");
@@ -1808,8 +1837,16 @@ function App() {
             {users.filter((u) => u.is_following).length < 5 &&
               users.filter((u) => !u.is_following).length > 0 && (
               <SuggestionsBox>
-                <SectionTitle>People you might know</SectionTitle>
-                {users
+                <SectionHeader $open={suggestionsOpen}>
+                  <SectionTitle style={{ marginBottom: 0 }}>People you might know</SectionTitle>
+                  <CollapseButton
+                    onClick={() => setSuggestionsOpen((o) => !o)}
+                    aria-label={suggestionsOpen ? "Collapse suggestions" : "Expand suggestions"}
+                  >
+                    <i className={`fa-solid fa-chevron-${suggestionsOpen ? "up" : "down"}`} />
+                  </CollapseButton>
+                </SectionHeader>
+                {suggestionsOpen && users
                   .filter((u) => !u.is_following)
                   .map((u) => (
                     <UserRow key={u.id}>
