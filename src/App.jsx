@@ -3,6 +3,9 @@ import styled, { ThemeProvider, createGlobalStyle } from "styled-components";
 
 const RADIUS = "10px";
 const RADIUS_SM = "6px";
+const BORDER = "#eee";
+const TEXT = "#333";
+const TEXT_SECONDARY = "#999";
 const ICON_GAP = "8px";
 
 // ─── Themes ──────────────────────────────────────────────────────────────────
