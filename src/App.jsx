@@ -2164,16 +2164,50 @@ function App() {
           </>
         ) : (
           <>
+            <DegreeFilterBar>
+              <DegreeFilterLabel>Filter</DegreeFilterLabel>
+              <DegreeFilterChip
+                $active={selectedDegrees.has(1)}
+                $degree={1}
+                onClick={() => setSelectedDegrees((prev) => {
+                  const next = new Set(prev);
+                  next.has(1) ? next.delete(1) : next.add(1);
+                  return next;
+                })}
+              >
+                <i className="fa-solid fa-user" /> 1st
+              </DegreeFilterChip>
+              <DegreeFilterChip
+                $active={selectedDegrees.has(2)}
+                $degree={2}
+                onClick={() => setSelectedDegrees((prev) => {
+                  const next = new Set(prev);
+                  next.has(2) ? next.delete(2) : next.add(2);
+                  return next;
+                })}
+              >
+                <i className="fa-solid fa-user-group" /> 2nd
+              </DegreeFilterChip>
+            </DegreeFilterBar>
             <UserList>
               {users.length === 0 ? (
                 <EmptyState>No other users yet</EmptyState>
               ) : (
-                users.map((u) => (
+                users
+                  .filter((u) => selectedDegrees.size === 0 || selectedDegrees.has(connectionDegrees[u.id]))
+                  .map((u) => (
                   <UserRow key={u.id}>
                     <UserInfo>
                       <UserAvatar src={u.picture} alt={u.name} />
                       <div>
-                        <UserName>{u.name}</UserName>
+                        <UserName>
+                          {u.name}
+                          {connectionDegrees[u.id] && (
+                            <>{" "}<DegreeBadge $degree={connectionDegrees[u.id]}>
+                              {connectionDegrees[u.id] === 1 ? "1st" : "2nd"}
+                            </DegreeBadge></>
+                          )}
+                        </UserName>
                         {u.follows_you && (
                           <UserStatus>Follows you</UserStatus>
                         )}
