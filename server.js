@@ -1050,11 +1050,18 @@ app.get("/api/staticmap", async (req, res) => {
   }
 });
 
-// Serve static files from dist
-app.use(express.static(join(__dirname, "dist")));
+// Serve static files from dist (hashed assets get long cache, HTML does not)
+app.use(express.static(join(__dirname, "dist"), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith(".html")) {
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    }
+  }
+}));
 
 // SPA fallback
 app.get("*", (req, res) => {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.sendFile(join(__dirname, "dist", "index.html"));
 });
 
