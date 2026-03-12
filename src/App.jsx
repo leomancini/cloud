@@ -301,6 +301,7 @@ const ComposeInput = styled.textarea`
   position: relative;
   z-index: 1;
   background: transparent;
+  overflow-x: scroll;
 
   &:focus {
     border-color: #ccc;
