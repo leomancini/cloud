@@ -301,7 +301,7 @@ const ComposeInput = styled.textarea`
   position: relative;
   z-index: 1;
   background: transparent;
-  overflow-x: scroll;
+  overflow: auto;
 
   &:focus {
     border-color: #ccc;
@@ -320,6 +320,7 @@ const ComposeHighlight = styled.div`
   line-height: normal;
   white-space: pre-wrap;
   word-wrap: break-word;
+  overflow: hidden;
   color: ${(p) => p.theme.text};
   pointer-events: none;
   border: 1px solid transparent;
@@ -1353,6 +1354,7 @@ function App() {
   const [expandedComments, setExpandedComments] = useState({});
   const [mentionQuery, setMentionQuery] = useState(null); // { field: "compose" | postId, query: string }
   const composeRef = useRef(null);
+  const composeHighlightRef = useRef(null);
   const commentRefs = useRef({});
 
   const renderTextPart = (str, keyPrefix) => {
@@ -1800,13 +1802,14 @@ function App() {
           <>
             <ComposeBox>
               <ComposeWrapper>
-                <ComposeHighlight>{renderHighlight(compose)}</ComposeHighlight>
+                <ComposeHighlight ref={composeHighlightRef}>{renderHighlight(compose)}</ComposeHighlight>
                 <ComposeInput
                   ref={composeRef}
                   rows={3}
                   placeholder="What's on your mind?"
                   value={compose}
                   onChange={(e) => { setCompose(e.target.value); handleMentionInput(e.target.value, "compose"); }}
+                  onScroll={(e) => { if (composeHighlightRef.current) composeHighlightRef.current.scrollTop = e.target.scrollTop; }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && e.metaKey) handlePost();
                   }}
