@@ -228,6 +228,57 @@ app.get("/api/users", (req, res) => {
   res.json({ users: users.map((u) => ({ ...u, is_following: u.follow_status === "approved" ? 1 : 0, follow_status: u.follow_status || null, follows_you: u.follows_you === "approved" })) });
 });
 
+// Connection degree endpoint
+app.get("/api/users/connections", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+
+  // First-degree: users the current user follows OR who follow the current user (approved)
+  const firstDegreeRows = db.prepare(`
+    SELECT DISTINCT u.id
+    FROM users u
+    WHERE u.id != ? AND u.id != ?
+      AND (
+        EXISTS (SELECT 1 FROM follows WHERE follower_id = ? AND following_id = u.id AND status = 'approved')
+        OR EXISTS (SELECT 1 FROM follows WHERE follower_id = u.id AND following_id = ? AND status = 'approved')
+      )
+  `).all(req.user.id, SOL_USER_ID, req.user.id, req.user.id);
+
+  const firstDegreeIds = new Set(firstDegreeRows.map((r) => r.id));
+
+  // Second-degree: users connected (follows or followed-by) to any first-degree person,
+  // excluding the current user and first-degree people already found
+  let secondDegreeIds = new Set();
+  if (firstDegreeIds.size > 0) {
+    const placeholders = Array.from(firstDegreeIds).map(() => "?").join(",");
+    const secondDegreeRows = db.prepare(`
+      SELECT DISTINCT u.id
+      FROM users u
+      WHERE u.id != ? AND u.id != ?
+        AND (
+          EXISTS (
+            SELECT 1 FROM follows
+            WHERE follower_id IN (${placeholders}) AND following_id = u.id AND status = 'approved'
+          )
+          OR EXISTS (
+            SELECT 1 FROM follows
+            WHERE following_id IN (${placeholders}) AND follower_id = u.id AND status = 'approved'
+          )
+        )
+    `).all(req.user.id, SOL_USER_ID, ...Array.from(firstDegreeIds), ...Array.from(firstDegreeIds));
+
+    for (const r of secondDegreeRows) {
+      if (!firstDegreeIds.has(r.id)) secondDegreeIds.add(r.id);
+    }
+  }
+
+  // Build degree map: userId -> 1 | 2 | null
+  const degrees = {};
+  for (const id of firstDegreeIds) degrees[id] = 1;
+  for (const id of secondDegreeIds) degrees[id] = 2;
+
+  res.json({ degrees });
+});
+
 app.get("/api/followers", (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
 
