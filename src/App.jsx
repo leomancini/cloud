@@ -848,15 +848,13 @@ const CommentPostButton = styled.button`
   color: ${(p) => p.theme.btnPrimaryText};
   font-size: 14px;
   cursor: pointer;
-  padding: 8px 12px;
+  padding: 0 12px;
   border-radius: ${RADIUS};
   display: flex;
   align-items: center;
-  align-self: flex-end;
+  align-self: stretch;
   flex-shrink: 0;
   box-sizing: border-box;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  line-height: calc(16px * 1.4);
 
   &:hover {
     background: ${(p) => p.theme.btnPrimaryHover};
@@ -2130,6 +2128,7 @@ function App() {
                             placeholder="Add a comment..."
                             rows={1}
                             value={commentInputs[post.id] || ""}
+                            onFocus={(e) => { e.target.style.height = e.target.scrollHeight + "px"; }}
                             onChange={(e) => {
                               setCommentInputs((prev) => ({ ...prev, [post.id]: e.target.value }));
                               handleMentionInput(e.target.value, post.id);
