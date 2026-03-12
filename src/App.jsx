@@ -963,6 +963,98 @@ const UserStatus = styled.div`
   margin-top: 1px;
 `;
 
+const DegreeBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  letter-spacing: 0.01em;
+  background: ${(p) =>
+    p.$degree === 1
+      ? "rgba(37,99,235,0.12)"
+      : p.$degree === 2
+      ? "rgba(124,58,237,0.12)"
+      : p.theme.bgTag};
+  color: ${(p) =>
+    p.$degree === 1
+      ? "#2563EB"
+      : p.$degree === 2
+      ? "#7C3AED"
+      : p.theme.textMuted};
+`;
+
+const DegreeFilterBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+`;
+
+const DegreeFilterLabel = styled.span`
+  font-size: 12px;
+  font-weight: 600;
+  color: ${(p) => p.theme.textMuted};
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 2px;
+`;
+
+const DegreeFilterChip = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid
+    ${(p) =>
+      p.$active
+        ? p.$degree === 1
+          ? "#2563EB"
+          : p.$degree === 2
+          ? "#7C3AED"
+          : p.theme.borderStrong
+        : p.theme.border};
+  background: ${(p) =>
+    p.$active
+      ? p.$degree === 1
+        ? "rgba(37,99,235,0.1)"
+        : p.$degree === 2
+        ? "rgba(124,58,237,0.1)"
+        : p.theme.bgControl
+      : "transparent"};
+  color: ${(p) =>
+    p.$active
+      ? p.$degree === 1
+        ? "#2563EB"
+        : p.$degree === 2
+        ? "#7C3AED"
+        : p.theme.text
+      : p.theme.textMuted};
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: ${(p) =>
+      p.$degree === 1
+        ? "#2563EB"
+        : p.$degree === 2
+        ? "#7C3AED"
+        : p.theme.borderStrong};
+    background: ${(p) =>
+      p.$degree === 1
+        ? "rgba(37,99,235,0.08)"
+        : p.$degree === 2
+        ? "rgba(124,58,237,0.08)"
+        : p.theme.bgHover};
+  }
+`;
+
 const FollowButton = styled.button`
   padding: 8px 18px;
   border-radius: ${RADIUS};
@@ -1327,6 +1419,8 @@ function App() {
   };
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [openCommentMenuId, setOpenCommentMenuId] = useState(null);
+  const [connectionDegrees, setConnectionDegrees] = useState({}); // userId -> 1 | 2
+  const [selectedDegrees, setSelectedDegrees] = useState(new Set()); // empty = show all
   const [editingComment, setEditingComment] = useState(null);
   const [editCommentText, setEditCommentText] = useState("");
   const [lightboxSrc, setLightboxSrc] = useState(null);
@@ -1352,6 +1446,7 @@ function App() {
           loadUsers();
           loadFollowers();
           loadFollowRequests();
+          loadConnectionDegrees();
         }
       });
   }, []);
@@ -1391,6 +1486,12 @@ function App() {
     fetch("/api/users")
       .then((res) => res.json())
       .then((data) => setUsers(data.users));
+  };
+
+  const loadConnectionDegrees = () => {
+    fetch("/api/users/connections")
+      .then((res) => res.json())
+      .then((data) => setConnectionDegrees(data.degrees || {}));
   };
 
   const searchPlaces = (query) => {
@@ -1671,7 +1772,7 @@ function App() {
               <Segment $active={tab === "feed"} onClick={() => setTab("feed")}>
                 Feed
               </Segment>
-              <Segment $active={tab === "people"} onClick={() => { setTab("people"); loadUsers(); loadFollowRequests(); loadFollowers(); }}>
+              <Segment $active={tab === "people"} onClick={() => { setTab("people"); loadUsers(); loadFollowRequests(); loadFollowers(); loadConnectionDegrees(); }}>
                 People
               </Segment>
             </SegmentedControl>
