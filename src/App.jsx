@@ -114,7 +114,7 @@ const parseText = (text, users = []) => {
 };
 
 const MentionSpan = styled.span`
-  font-weight: bold;
+  font-weight: 600;
 `;
 
 const MentionHighlight = styled.span`
