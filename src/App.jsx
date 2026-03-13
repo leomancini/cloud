@@ -798,10 +798,11 @@ const CommentInputWrapper = styled.div`
 
 const CommentInput = styled.textarea`
   width: 100%;
+  min-height: 40px;
   border: 1px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
   padding: 8px 12px;
-  font-size: 16px;
+  font-size: 15px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   outline: none;
   min-width: 0;
@@ -813,7 +814,7 @@ const CommentInput = styled.textarea`
   box-sizing: border-box;
   resize: none;
   overflow: hidden;
-  line-height: 1.4;
+  line-height: 22px;
   display: block;
   vertical-align: top;
 
@@ -829,9 +830,9 @@ const CommentHighlight = styled.div`
   right: 0;
   bottom: 0;
   padding: 8px 12px;
-  font-size: 16px;
+  font-size: 15px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  line-height: 1.4;
+  line-height: 22px;
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow: hidden;
@@ -848,11 +849,13 @@ const CommentPostButton = styled.button`
   color: ${(p) => p.theme.btnPrimaryText};
   font-size: 14px;
   cursor: pointer;
-  padding: 0 12px;
+  padding: 0;
+  width: 40px;
+  height: 40px;
   border-radius: ${RADIUS};
   display: flex;
   align-items: center;
-  align-self: stretch;
+  justify-content: center;
   flex-shrink: 0;
   box-sizing: border-box;
 
