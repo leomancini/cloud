@@ -2799,6 +2799,7 @@ function App() {
                                       if (e.key === "Escape") { setEditingComment(null); setEditCommentText(""); }
                                     }}
                                     autoFocus
+                                    style={{ color: resolvedTheme.text }}
                                   />
                                   <CommentPostButton onClick={() => handleEditComment(c.id, post.id)} disabled={isBusy(`edit-comment-${c.id}`)}>
                                     {isBusy(`edit-comment-${c.id}`) ? <Spinner /> : <i className="fa-solid fa-check" />}
