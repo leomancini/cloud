@@ -2246,7 +2246,7 @@ function App() {
                                 </>
                               )}
                             </CommentBody>
-                            {c.user_id === user.id && editingComment !== c.id && (
+                            {(c.user_id === user.id || (c.author_name === "Sol" && user.email === "leo@leomancinidesign.com")) && editingComment !== c.id && (
                               <PostMenuWrapper>
                                 <PostMenuButton onClick={(e) => {
                                   e.stopPropagation();
@@ -2256,13 +2256,15 @@ function App() {
                                 </PostMenuButton>
                                 {openCommentMenuId === c.id && (
                                   <PostMenu onClick={(e) => e.stopPropagation()}>
-                                    <PostMenuItem onClick={() => {
-                                      setOpenCommentMenuId(null);
-                                      setEditingComment(c.id);
-                                      setEditCommentText(c.content);
-                                    }}>
-                                      <i className="fa-solid fa-pen" /> Edit
-                                    </PostMenuItem>
+                                    {c.user_id === user.id && (
+                                      <PostMenuItem onClick={() => {
+                                        setOpenCommentMenuId(null);
+                                        setEditingComment(c.id);
+                                        setEditCommentText(c.content);
+                                      }}>
+                                        <i className="fa-solid fa-pen" /> Edit
+                                      </PostMenuItem>
+                                    )}
                                     <PostMenuItem $danger onClick={() => handleDeleteComment(c.id, post.id)}>
                                       <i className="fa-solid fa-trash" /> Delete
                                     </PostMenuItem>
