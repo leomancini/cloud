@@ -1237,7 +1237,7 @@ app.post("/api/push/subscribe", (req, res) => {
       VALUES (?, 1, 1, 1, 1, 1, 1)
     `).run(req.user.id);
   } else {
-    db.prepare("UPDATE push_prefs SET enabled = 1 WHERE user_id = ?").run(req.user.id);
+    db.prepare("UPDATE push_prefs SET enabled = 1, new_posts = 1, mentions = 1, reactions = 1, comments = 1, replies = 1 WHERE user_id = ?").run(req.user.id);
   }
 
   res.json({ ok: true });
