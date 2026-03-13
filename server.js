@@ -446,6 +446,19 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS comment_reactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    comment_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    emoji TEXT NOT NULL DEFAULT '👍',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (comment_id) REFERENCES comments(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(comment_id, user_id, emoji)
+  )
+`);
+
 // Reaction preferences table — stores custom emoji sets per user, per context
 // context: "global" | "posts" | "comments" (extendable)
 db.exec(`
@@ -931,13 +944,27 @@ app.get("/api/feed", (req, res) => {
     ORDER BY r.created_at`
   );
 
+  const getCommentReactions = db.prepare(
+    `SELECT cr.emoji, cr.user_id
+    FROM comment_reactions cr
+    WHERE cr.comment_id = ?`
+  );
+
   const postsWithMedia = posts.map((post) => ({
     ...post,
     media: getMedia.all(post.id).map((m) => ({
       url: `/api/uploads/${m.filename}`,
       type: m.media_type,
     })),
-    comments: getComments.all(post.id),
+    comments: getComments.all(post.id).map((c) => {
+      const cReactions = getCommentReactions.all(c.id);
+      const thumbsUp = cReactions.filter((r) => r.emoji === "👍");
+      return {
+        ...c,
+        thumbs_up_count: thumbsUp.length,
+        user_thumbed_up: thumbsUp.some((r) => r.user_id === req.user.id) ? 1 : 0,
+      };
+    }),
     reactions: (() => {
       const raw = getReactions.all(post.id);
       const grouped = {};
@@ -1067,6 +1094,32 @@ app.put("/api/comments/:id", (req, res) => {
 
   db.prepare("UPDATE comments SET content = ? WHERE id = ?").run(content.trim(), comment.id);
   res.json({ ok: true, content: content.trim() });
+});
+
+// Comment reactions (thumbs up via double-tap)
+app.post("/api/comments/:id/react", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+
+  const commentId = Number(req.params.id);
+  const comment = db.prepare("SELECT * FROM comments WHERE id = ?").get(commentId);
+  if (!comment) return res.status(404).json({ error: "Comment not found" });
+
+  const emoji = "👍";
+  const existing = db
+    .prepare("SELECT id FROM comment_reactions WHERE comment_id = ? AND user_id = ? AND emoji = ?")
+    .get(commentId, req.user.id, emoji);
+
+  if (existing) {
+    db.prepare("DELETE FROM comment_reactions WHERE id = ?").run(existing.id);
+    const count = db.prepare("SELECT COUNT(*) as c FROM comment_reactions WHERE comment_id = ? AND emoji = ?").get(commentId, emoji).c;
+    return res.json({ action: "removed", thumbs_up_count: count, user_thumbed_up: 0 });
+  } else {
+    db.prepare("INSERT INTO comment_reactions (comment_id, user_id, emoji) VALUES (?, ?, ?)").run(commentId, req.user.id, emoji);
+    const count = db.prepare("SELECT COUNT(*) as c FROM comment_reactions WHERE comment_id = ? AND emoji = ?").get(commentId, emoji).c;
+    // Notify the post author and comment author of the reaction
+    if (comment.user_id !== req.user.id) notifyUser(comment.user_id, "feed-update");
+    return res.json({ action: "added", thumbs_up_count: count, user_thumbed_up: 1 });
+  }
 });
 
 // Places search proxy
