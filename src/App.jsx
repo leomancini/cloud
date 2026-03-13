@@ -1275,6 +1275,55 @@ const ToggleThumb = styled.div`
   transition: left 0.2s ease, background 0.2s ease;
 `;
 
+const Banner = styled.div`
+  max-width: 500px;
+  margin: 0 auto 20px;
+  padding: 14px 16px;
+  background: ${(p) => p.theme.bgSecondary};
+  border: 1px solid ${(p) => p.theme.border};
+  border-radius: ${RADIUS};
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  @media (min-width: 601px) {
+    display: none;
+  }
+`;
+
+const BannerText = styled.span`
+  font-size: 14px;
+  color: ${(p) => p.theme.text};
+`;
+
+const BannerButton = styled.button`
+  padding: 8px 14px;
+  border-radius: ${RADIUS};
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: ${(p) => p.theme.btnPrimary};
+  color: ${(p) => p.theme.btnPrimaryText};
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  &:hover {
+    background: ${(p) => p.theme.btnPrimaryHover};
+  }
+`;
+
+const BannerDismiss = styled.button`
+  border: none;
+  background: none;
+  color: ${(p) => p.theme.textMuted};
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  flex-shrink: 0;
+`;
+
 function shortAddress(address) {
   if (!address) return null;
   const parts = address.split(",").map((s) => s.trim());
@@ -1482,6 +1531,9 @@ function App() {
   // Push notification state
   const [pushPrefs, setPushPrefs] = useState(null);
   const [pushSupported] = useState(() => "serviceWorker" in navigator && "PushManager" in window);
+  const [isStandalone] = useState(() => window.navigator.standalone || window.matchMedia("(display-mode: standalone)").matches);
+  const [isMobile] = useState(() => /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+  const [bannerDismissed, setBannerDismissed] = useState(() => localStorage.getItem("banner-dismissed") === "true");
 
   const startBusy = (key) => setBusyActions((prev) => new Set(prev).add(key));
   const endBusy = (key) => setBusyActions((prev) => { const next = new Set(prev); next.delete(key); return next; });
@@ -1560,7 +1612,7 @@ function App() {
   };
 
   useEffect(() => {
-    if (user && pushSupported) loadPushPrefs();
+    if (user) loadPushPrefs();
   }, [user]);
 
   const subscribeToPush = async () => {
@@ -1903,6 +1955,37 @@ function App() {
         )}
       </Header>
       <Content>
+        {isMobile && !bannerDismissed && tab === "feed" && (() => {
+          if (!isStandalone) {
+            return (
+              <Banner>
+                <BannerText>Add Cloud to your home screen</BannerText>
+                <BannerButton onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({ url: window.location.href }).catch(() => {});
+                  } else {
+                    alert("Tap the share button in your browser, then \"Add to Home Screen\"");
+                  }
+                }}>Add</BannerButton>
+                <BannerDismiss onClick={() => { setBannerDismissed(true); localStorage.setItem("banner-dismissed", "true"); }}>
+                  <i className="fa-solid fa-xmark" />
+                </BannerDismiss>
+              </Banner>
+            );
+          }
+          if (isStandalone && pushPrefs && !pushPrefs.enabled && pushSupported) {
+            return (
+              <Banner>
+                <BannerText>Turn on notifications</BannerText>
+                <BannerButton onClick={subscribeToPush}>Enable</BannerButton>
+                <BannerDismiss onClick={() => { setBannerDismissed(true); localStorage.setItem("banner-dismissed", "true"); }}>
+                  <i className="fa-solid fa-xmark" />
+                </BannerDismiss>
+              </Banner>
+            );
+          }
+          return null;
+        })()}
         {tab === "profile" ? (
           <ProfilePage>
             <ProfileAvatar src={user.picture} alt={user.name} />
@@ -1916,10 +1999,10 @@ function App() {
                 <ThemeSegment $active={themePref === "dark"} onClick={() => updateThemePref("dark")}>Dark</ThemeSegment>
               </ThemeToggle>
             </ThemeToggleWrap>
-            {pushSupported && pushPrefs && (
+            {pushPrefs && (
               <PushSection>
                 <ThemeToggleLabel>Push Notifications</ThemeToggleLabel>
-                <PushRow onClick={(e) => { e.preventDefault(); pushPrefs.enabled ? unsubscribeFromPush() : subscribeToPush(); }}>
+                <PushRow onClick={(e) => { e.preventDefault(); if (pushSupported) { pushPrefs.enabled ? unsubscribeFromPush() : subscribeToPush(); } }}>
                   <PushRowLabel>Enable notifications</PushRowLabel>
                   <ToggleTrack $on={pushPrefs.enabled}><ToggleThumb $on={pushPrefs.enabled} /></ToggleTrack>
                 </PushRow>
