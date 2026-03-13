@@ -2776,11 +2776,15 @@ function App() {
                     {post.comments && post.comments.length > 0 && (
                       <>
                         {post.comments.map((c) => (
-                          <CommentRow key={c.id} onDoubleClick={() => handleCommentReact(post.id, c.id)} onTouchEnd={(e) => {
+                          <CommentRow key={c.id} onDoubleClick={(e) => {
+                            if (e.currentTarget._touchHandled) { e.currentTarget._touchHandled = false; return; }
+                            handleCommentReact(post.id, c.id);
+                          }} onTouchStart={(e) => {
                             const now = Date.now();
                             const el = e.currentTarget;
-                            if (now - (el._lastTap || 0) < 300) {
+                            if (now - (el._lastTap || 0) < 400) {
                               el._lastTap = 0;
+                              el._touchHandled = true;
                               handleCommentReact(post.id, c.id);
                             } else {
                               el._lastTap = now;
