@@ -2570,7 +2570,7 @@ function App() {
                   )}
                   {emojiPickerPostId === post.id ? (
                     <>
-                      <ReactionsRow style={{ marginLeft: -6 }}>
+                      <ReactionsRow style={{ marginLeft: -4 }}>
                         {getReactionEmojis("global").slice(0, 6).map((emoji, i) => (
                           <EmojiOption
                             key={emoji + i}
@@ -2610,7 +2610,7 @@ function App() {
                       )}
                     </>
                   ) : (
-                    <ReactionsRow style={{ marginLeft: -6 }}>
+                    <ReactionsRow style={{ marginLeft: -4 }}>
                       {(() => {
                         const hasAnyReaction = (post.reactions || []).some((r) => r.user_reacted);
                         return getReactionEmojis("posts").map((emoji) => {
