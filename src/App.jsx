@@ -1294,6 +1294,7 @@ const Banner = styled.div`
 const BannerText = styled.span`
   font-size: 14px;
   color: ${(p) => p.theme.text};
+  flex: 1;
 `;
 
 const BannerButton = styled.button`
