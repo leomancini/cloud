@@ -2316,44 +2316,6 @@ function App() {
                 )}
               </PushSection>
             )}
-            <ReactionSettingsSection>
-              <ThemeToggleLabel>Reactions</ThemeToggleLabel>
-              <EmojiChipRow>
-                {getReactionEmojis("global").slice(0, 6).map((emoji, i) => (
-                  <EmojiChip
-                    key={emoji + i}
-                    onClick={() => setEditingEmojiSlot(editingEmojiSlot === i ? null : i)}
-                    style={{ cursor: "pointer", outline: editingEmojiSlot === i ? `2px solid ${resolvedTheme.btnPrimary}` : "none" }}
-                  >
-                    {emoji}
-                  </EmojiChip>
-                ))}
-              </EmojiChipRow>
-              {editingEmojiSlot != null && (
-                <EmojiPickerWrap>
-                  <Picker
-                    data={data}
-                    dynamicWidth={true}
-                    theme={resolvedTheme === darkTheme ? "dark" : "light"}
-                    previewPosition="none"
-                    maxFrequentRows={0}
-                    emojiSize={32}
-                    emojiButtonSize={48}
-                    emojiButtonRadius="0.5rem"
-                    searchPosition="static"
-                    onEmojiSelect={(e) => {
-                      replaceEmojiInSlot("global", editingEmojiSlot, e.native);
-                    }}
-                    onClickOutside={() => setEditingEmojiSlot(null)}
-                  />
-                </EmojiPickerWrap>
-              )}
-              {reactionPrefs?.global?.length > 0 && (
-                <ReactionResetButton onClick={() => { resetContextToInherited("global"); setEditingEmojiSlot(null); }}>
-                  Reset to defaults
-                </ReactionResetButton>
-              )}
-            </ReactionSettingsSection>
             <LogoutButton onClick={handleLogout} disabled={isBusy("logout")}>{isBusy("logout") ? <Spinner /> : "Log out"}</LogoutButton>
           </ProfilePage>
         ) : tab === "feed" ? (
@@ -2616,62 +2578,53 @@ function App() {
                             key={emoji}
                             $dimmed={hasAnyReaction && !userReacted}
                             onClick={() => handleReact(post.id, emoji)}
-                            onContextMenu={(e) => {
-                              e.preventDefault();
-                              setEmojiPickerPostId(post.id);
-                              setEmojiPickerSlot(i);
-                            }}
                           >
                             {emoji}
                           </EmojiOption>
                         );
                       });
                     })()}
-                    <EmojiEditButton onMouseDown={(e) => e.preventDefault()} onClick={() => {
-                      if (emojiPickerPostId === post.id) {
-                        setEmojiPickerPostId(null);
-                        setEmojiPickerSlot(null);
-                      } else {
-                        setTimeout(() => {
-                          setEmojiPickerPostId(post.id);
-                          setEmojiPickerSlot(null);
-                        }, 0);
-                      }
+                    <EmojiEditButton onClick={() => {
+                      setEmojiPickerPostId(emojiPickerPostId === post.id ? null : post.id);
+                      setEmojiPickerSlot(null);
                     }}>
                       <i className="fa-solid fa-pen" />
                     </EmojiEditButton>
                   </ReactionsRow>
                   {emojiPickerPostId === post.id && (
                     <EmojiPickerWrap>
+                      <EmojiChipRow>
+                        {getReactionEmojis("global").slice(0, 6).map((emoji, i) => (
+                          <EmojiChip
+                            key={emoji + i}
+                            onClick={() => setEmojiPickerSlot(emojiPickerSlot === i ? null : i)}
+                            style={{ cursor: "pointer", outline: emojiPickerSlot === i ? `2px solid ${resolvedTheme.btnPrimary}` : "none" }}
+                          >
+                            {emoji}
+                          </EmojiChip>
+                        ))}
+                        {reactionPrefs?.global?.length > 0 && (
+                          <ReactionResetButton onClick={() => { resetContextToInherited("global"); setEmojiPickerSlot(null); }}>
+                            Reset
+                          </ReactionResetButton>
+                        )}
+                      </EmojiChipRow>
                       {emojiPickerSlot != null && (
-                        <div style={{ fontSize: 13, color: resolvedTheme.textSecondary, marginBottom: 6 }}>
-                          Replacing {getReactionEmojis("posts")[emojiPickerSlot]}…
-                        </div>
-                      )}
-                      <Picker
-                        data={data}
-                        dynamicWidth={true}
-                        theme={resolvedTheme === darkTheme ? "dark" : "light"}
-                        previewPosition="none"
-                        maxFrequentRows={0}
-                        emojiSize={32}
-                        emojiButtonSize={48}
-                        emojiButtonRadius="0.5rem"
-                        searchPosition="static"
-                        onEmojiSelect={(e) => {
-                          if (emojiPickerSlot != null) {
+                        <Picker
+                          data={data}
+                          dynamicWidth={true}
+                          theme={resolvedTheme === darkTheme ? "dark" : "light"}
+                          previewPosition="none"
+                          maxFrequentRows={0}
+                          emojiSize={32}
+                          emojiButtonSize={48}
+                          emojiButtonRadius="0.5rem"
+                          searchPosition="static"
+                          onEmojiSelect={(e) => {
                             replaceEmojiInSlot("global", emojiPickerSlot, e.native);
-                          } else {
-                            handleReact(post.id, e.native);
-                          }
-                          setEmojiPickerPostId(null);
-                          setEmojiPickerSlot(null);
-                        }}
-                        onClickOutside={() => {
-                          setEmojiPickerPostId(null);
-                          setEmojiPickerSlot(null);
-                        }}
-                      />
+                          }}
+                        />
+                      )}
                     </EmojiPickerWrap>
                   )}
                   <CommentsSection>
