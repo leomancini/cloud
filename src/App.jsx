@@ -1533,7 +1533,8 @@ function App() {
   const [pushSupported] = useState(() => "serviceWorker" in navigator && "PushManager" in window);
   const [isStandalone] = useState(() => window.navigator.standalone || window.matchMedia("(display-mode: standalone)").matches);
   const [isMobile] = useState(() => /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
-  const [bannerDismissed, setBannerDismissed] = useState(() => localStorage.getItem("banner-dismissed") === "true");
+  const [installBannerDismissed, setInstallBannerDismissed] = useState(() => localStorage.getItem("install-banner-dismissed") === "true");
+  const [notifBannerDismissed, setNotifBannerDismissed] = useState(() => localStorage.getItem("notif-banner-dismissed") === "true");
 
   const startBusy = (key) => setBusyActions((prev) => new Set(prev).add(key));
   const endBusy = (key) => setBusyActions((prev) => { const next = new Set(prev); next.delete(key); return next; });
@@ -1955,37 +1956,23 @@ function App() {
         )}
       </Header>
       <Content>
-        {isMobile && !bannerDismissed && tab === "feed" && (() => {
-          if (!isStandalone) {
-            return (
-              <Banner>
-                <BannerText>Add Cloud to your home screen</BannerText>
-                <BannerButton onClick={() => {
-                  if (navigator.share) {
-                    navigator.share({ url: window.location.href }).catch(() => {});
-                  } else {
-                    alert("Tap the share button in your browser, then \"Add to Home Screen\"");
-                  }
-                }}>Add</BannerButton>
-                <BannerDismiss onClick={() => { setBannerDismissed(true); localStorage.setItem("banner-dismissed", "true"); }}>
-                  <i className="fa-solid fa-xmark" />
-                </BannerDismiss>
-              </Banner>
-            );
-          }
-          if (isStandalone && pushPrefs && !pushPrefs.enabled && pushSupported) {
-            return (
-              <Banner>
-                <BannerText>Turn on notifications</BannerText>
-                <BannerButton onClick={subscribeToPush}>Enable</BannerButton>
-                <BannerDismiss onClick={() => { setBannerDismissed(true); localStorage.setItem("banner-dismissed", "true"); }}>
-                  <i className="fa-solid fa-xmark" />
-                </BannerDismiss>
-              </Banner>
-            );
-          }
-          return null;
-        })()}
+        {isMobile && !isStandalone && !installBannerDismissed && tab === "feed" && (
+          <Banner>
+            <BannerText>Add Cloud to your home screen to turn on push notifications</BannerText>
+            <BannerDismiss onClick={() => { setInstallBannerDismissed(true); localStorage.setItem("install-banner-dismissed", "true"); }}>
+              <i className="fa-solid fa-xmark" />
+            </BannerDismiss>
+          </Banner>
+        )}
+        {isMobile && isStandalone && !notifBannerDismissed && pushSupported && pushPrefs && !pushPrefs.enabled && tab === "feed" && (
+          <Banner>
+            <BannerText>Turn on notifications</BannerText>
+            <BannerButton onClick={subscribeToPush}>Enable</BannerButton>
+            <BannerDismiss onClick={() => { setNotifBannerDismissed(true); localStorage.setItem("notif-banner-dismissed", "true"); }}>
+              <i className="fa-solid fa-xmark" />
+            </BannerDismiss>
+          </Banner>
+        )}
         {tab === "profile" ? (
           <ProfilePage>
             <ProfileAvatar src={user.picture} alt={user.name} />
