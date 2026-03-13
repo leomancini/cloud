@@ -1034,7 +1034,9 @@ app.delete("/api/comments/:id", (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
   const comment = db.prepare("SELECT * FROM comments WHERE id = ?").get(Number(req.params.id));
   if (!comment) return res.status(404).json({ error: "Comment not found" });
-  if (comment.user_id !== req.user.id) return res.status(403).json({ error: "Not your comment" });
+  const isOwn = comment.user_id === req.user.id;
+  const canDeleteSol = comment.user_id === SOL_USER_ID && req.user.email === "leo@leomancinidesign.com";
+  if (!isOwn && !canDeleteSol) return res.status(403).json({ error: "Not your comment" });
 
   db.prepare("DELETE FROM comments WHERE id = ?").run(comment.id);
   res.json({ ok: true });
