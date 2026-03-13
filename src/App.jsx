@@ -2609,19 +2609,18 @@ function App() {
                           </div>
                         ))}
                         {getReactionEmojis("global").length < 12 && (
-                          <EmojiOption
+                          <EmojiEditButton
                             onClick={() => addEmojiSlot("global")}
                             style={{
-                              width: 44, height: 44, fontSize: 18,
+                              width: 44, height: 44, fontSize: 16,
                               background: "transparent",
                               border: `2px dashed ${resolvedTheme.border}`,
                               borderRadius: RADIUS_SM,
-                              opacity: 0.5,
                               color: resolvedTheme.textSecondary,
                             }}
                           >
                             <i className="fa-solid fa-plus" />
-                          </EmojiOption>
+                          </EmojiEditButton>
                         )}
                         <EmojiEditButton onClick={() => { setEmojiPickerPostId(null); setEmojiPickerSlot(null); }}>
                           <i className="fa-solid fa-check" />
