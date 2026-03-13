@@ -2568,64 +2568,76 @@ function App() {
                       ))}
                     </ReactionsRow>
                   )}
-                  <ReactionsRow style={{ marginLeft: -6 }}>
-                    {(() => {
-                      const hasAnyReaction = (post.reactions || []).some((r) => r.user_reacted);
-                      return getReactionEmojis("posts").map((emoji, i) => {
-                        const userReacted = (post.reactions || []).some((r) => r.emoji === emoji && r.user_reacted);
-                        return (
+                  {emojiPickerPostId === post.id ? (
+                    <>
+                      <ReactionsRow style={{ marginLeft: -6 }}>
+                        {getReactionEmojis("global").slice(0, 6).map((emoji, i) => (
                           <EmojiOption
-                            key={emoji}
-                            $dimmed={hasAnyReaction && !userReacted}
-                            onClick={() => handleReact(post.id, emoji)}
+                            key={emoji + i}
+                            onClick={() => setEmojiPickerSlot(emojiPickerSlot === i ? null : i)}
+                            style={{
+                              width: 44, height: 44, fontSize: 24,
+                              background: "transparent",
+                              border: emojiPickerSlot === i ? `2px solid ${resolvedTheme.btnPrimary}` : `2px dashed ${resolvedTheme.border}`,
+                              borderRadius: RADIUS_SM,
+                              opacity: 1,
+                            }}
                           >
                             {emoji}
                           </EmojiOption>
-                        );
-                      });
-                    })()}
-                    <EmojiEditButton onClick={() => {
-                      setEmojiPickerPostId(emojiPickerPostId === post.id ? null : post.id);
-                      setEmojiPickerSlot(null);
-                    }}>
-                      <i className="fa-solid fa-pen" />
-                    </EmojiEditButton>
-                  </ReactionsRow>
-                  {emojiPickerPostId === post.id && (
-                    <EmojiPickerWrap>
-                      <EmojiChipRow>
-                        {getReactionEmojis("global").slice(0, 6).map((emoji, i) => (
-                          <EmojiChip
-                            key={emoji + i}
-                            onClick={() => setEmojiPickerSlot(emojiPickerSlot === i ? null : i)}
-                            style={{ cursor: "pointer", outline: emojiPickerSlot === i ? `2px solid ${resolvedTheme.btnPrimary}` : "none" }}
-                          >
-                            {emoji}
-                          </EmojiChip>
                         ))}
                         {reactionPrefs?.global?.length > 0 && (
                           <ReactionResetButton onClick={() => { resetContextToInherited("global"); setEmojiPickerSlot(null); }}>
                             Reset
                           </ReactionResetButton>
                         )}
-                      </EmojiChipRow>
+                        <EmojiEditButton onClick={() => { setEmojiPickerPostId(null); setEmojiPickerSlot(null); }}>
+                          <i className="fa-solid fa-xmark" />
+                        </EmojiEditButton>
+                      </ReactionsRow>
                       {emojiPickerSlot != null && (
-                        <Picker
-                          data={data}
-                          dynamicWidth={true}
-                          theme={resolvedTheme === darkTheme ? "dark" : "light"}
-                          previewPosition="none"
-                          maxFrequentRows={0}
-                          emojiSize={32}
-                          emojiButtonSize={48}
-                          emojiButtonRadius="0.5rem"
-                          searchPosition="static"
-                          onEmojiSelect={(e) => {
-                            replaceEmojiInSlot("global", emojiPickerSlot, e.native);
-                          }}
-                        />
+                        <EmojiPickerWrap>
+                          <Picker
+                            data={data}
+                            dynamicWidth={true}
+                            theme={resolvedTheme === darkTheme ? "dark" : "light"}
+                            previewPosition="none"
+                            maxFrequentRows={0}
+                            emojiSize={32}
+                            emojiButtonSize={48}
+                            emojiButtonRadius="0.5rem"
+                            searchPosition="static"
+                            onEmojiSelect={(e) => {
+                              replaceEmojiInSlot("global", emojiPickerSlot, e.native);
+                            }}
+                          />
+                        </EmojiPickerWrap>
                       )}
-                    </EmojiPickerWrap>
+                    </>
+                  ) : (
+                    <ReactionsRow style={{ marginLeft: -6 }}>
+                      {(() => {
+                        const hasAnyReaction = (post.reactions || []).some((r) => r.user_reacted);
+                        return getReactionEmojis("posts").map((emoji) => {
+                          const userReacted = (post.reactions || []).some((r) => r.emoji === emoji && r.user_reacted);
+                          return (
+                            <EmojiOption
+                              key={emoji}
+                              $dimmed={hasAnyReaction && !userReacted}
+                              onClick={() => handleReact(post.id, emoji)}
+                            >
+                              {emoji}
+                            </EmojiOption>
+                          );
+                        });
+                      })()}
+                      <EmojiEditButton onClick={() => {
+                        setEmojiPickerPostId(post.id);
+                        setEmojiPickerSlot(null);
+                      }}>
+                        <i className="fa-solid fa-pen" />
+                      </EmojiEditButton>
+                    </ReactionsRow>
                   )}
                   <CommentsSection>
                     {post.comments && post.comments.length > 0 && (
