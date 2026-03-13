@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, createContext, useContext } from "react";
 import styled, { ThemeProvider, createGlobalStyle, keyframes, css } from "styled-components";
+import data from "@emoji-mart/data";
+import Picker from "@emoji-mart/react";
 
 const RADIUS = "10px";
 const RADIUS_SM = "6px";
@@ -736,6 +738,31 @@ const EmojiOption = styled.button`
   opacity: ${(p) => (p.$dimmed ? 0.35 : 1)};
   &:hover {
     background: none;
+  }
+`;
+
+const EmojiEditButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  color: ${(p) => p.theme.textSecondary};
+  cursor: pointer;
+  border-radius: ${RADIUS_SM};
+  padding: 0;
+  &:hover { color: ${(p) => p.theme.text}; }
+`;
+
+const EmojiPickerWrap = styled.div`
+  position: relative;
+  margin-top: 8px;
+  em-emoji-picker {
+    width: 100%;
+    --border-radius: ${RADIUS};
   }
 `;
 
@@ -1682,8 +1709,10 @@ function App() {
 
   // Reaction preferences state
   const [reactionPrefs, setReactionPrefs] = useState(null); // { global: [...], posts: null|[...], comments: null|[...] }
-  const [emojiInputs, setEmojiInputs] = useState({ global: "", posts: "", comments: "" });
   const [reactionSaving, setReactionSaving] = useState({});
+  const [editingEmojiSlot, setEditingEmojiSlot] = useState(null); // index in profile settings
+  const [emojiPickerPostId, setEmojiPickerPostId] = useState(null); // post id for inline picker
+  const [emojiPickerSlot, setEmojiPickerSlot] = useState(null); // slot index being replaced
 
   // Returns the resolved emoji set for a given context, falling back: context → global → default
   const getReactionEmojis = (context = "posts") => {
@@ -1850,6 +1879,16 @@ function App() {
 
   const resetContextToInherited = (context) => {
     saveReactionEmojis(context, null);
+  };
+
+  const replaceEmojiInSlot = (context, index, raw) => {
+    const segmenter = typeof Intl !== "undefined" && Intl.Segmenter ? new Intl.Segmenter() : null;
+    const emoji = segmenter ? [...segmenter.segment(raw)].map((s) => s.segment)[0] : [...raw][0];
+    if (!emoji) return;
+    const currentSet = [...getReactionEmojis(context)];
+    currentSet[index] = emoji;
+    saveReactionEmojis(context, currentSet);
+    setEditingEmojiSlot(null);
   };
 
   // ── Push notifications ──────────────────────────────────────────────────────
@@ -2279,48 +2318,41 @@ function App() {
             )}
             <ReactionSettingsSection>
               <ThemeToggleLabel>Reactions</ThemeToggleLabel>
-              {["global"].map((ctx) => {
-                const emojis = getReactionEmojis(ctx);
-                const isCustom = reactionPrefs && reactionPrefs[ctx] && reactionPrefs[ctx].length > 0;
-                return (
-                  <ReactionContextBlock key={ctx}>
-                    <EmojiChipRow>
-                      {emojis.map((emoji, i) => (
-                        <EmojiChip key={emoji + i}>
-                          <EmojiChipDragHandle
-                            onTouchStart={(e) => { e.currentTarget.dataset.startX = e.touches[0].clientX; e.currentTarget.dataset.idx = i; }}
-                            onTouchEnd={(e) => {
-                              const dx = e.changedTouches[0].clientX - parseFloat(e.currentTarget.dataset.startX);
-                              const slots = Math.round(dx / 50);
-                              if (slots !== 0) moveEmojiInContext(ctx, i, Math.max(0, Math.min(emojis.length - 1, i + slots)));
-                            }}
-                          >⠿</EmojiChipDragHandle>
-                          {emoji}
-                          <EmojiChipRemove onClick={() => removeEmojiFromContext(ctx, emoji)}>
-                            <i className="fa-solid fa-xmark" />
-                          </EmojiChipRemove>
-                        </EmojiChip>
-                      ))}
-                    </EmojiChipRow>
-                    <AddEmojiRow>
-                      <EmojiInput
-                        placeholder="😊"
-                        value={emojiInputs[ctx] || ""}
-                        onChange={(e) => setEmojiInputs((prev) => ({ ...prev, [ctx]: e.target.value }))}
-                        onKeyDown={(e) => { if (e.key === "Enter") addEmojiToContext(ctx); }}
-                      />
-                      <AddEmojiButton onClick={() => addEmojiToContext(ctx)} disabled={!(emojiInputs[ctx] || "").trim() || reactionSaving[ctx]}>
-                        Add
-                      </AddEmojiButton>
-                      {isCustom && (
-                        <ReactionResetButton onClick={() => resetContextToInherited(ctx)}>
-                          Reset to defaults
-                        </ReactionResetButton>
-                      )}
-                    </AddEmojiRow>
-                  </ReactionContextBlock>
-                );
-              })}
+              <EmojiChipRow>
+                {getReactionEmojis("global").slice(0, 6).map((emoji, i) => (
+                  <EmojiChip
+                    key={emoji + i}
+                    onClick={() => setEditingEmojiSlot(editingEmojiSlot === i ? null : i)}
+                    style={{ cursor: "pointer", outline: editingEmojiSlot === i ? `2px solid ${resolvedTheme.btnPrimary}` : "none" }}
+                  >
+                    {emoji}
+                  </EmojiChip>
+                ))}
+              </EmojiChipRow>
+              {editingEmojiSlot != null && (
+                <EmojiPickerWrap>
+                  <Picker
+                    data={data}
+                    dynamicWidth={true}
+                    theme={resolvedTheme === darkTheme ? "dark" : "light"}
+                    previewPosition="none"
+                    maxFrequentRows={0}
+                    emojiSize={32}
+                    emojiButtonSize={48}
+                    emojiButtonRadius="0.5rem"
+                    searchPosition="static"
+                    onEmojiSelect={(e) => {
+                      replaceEmojiInSlot("global", editingEmojiSlot, e.native);
+                    }}
+                    onClickOutside={() => setEditingEmojiSlot(null)}
+                  />
+                </EmojiPickerWrap>
+              )}
+              {reactionPrefs?.global?.length > 0 && (
+                <ReactionResetButton onClick={() => { resetContextToInherited("global"); setEditingEmojiSlot(null); }}>
+                  Reset to defaults
+                </ReactionResetButton>
+              )}
             </ReactionSettingsSection>
             <LogoutButton onClick={handleLogout} disabled={isBusy("logout")}>{isBusy("logout") ? <Spinner /> : "Log out"}</LogoutButton>
           </ProfilePage>
@@ -2577,16 +2609,64 @@ function App() {
                   <ReactionsRow style={{ marginLeft: -6 }}>
                     {(() => {
                       const hasAnyReaction = (post.reactions || []).some((r) => r.user_reacted);
-                      return getReactionEmojis("posts").map((emoji) => {
+                      return getReactionEmojis("posts").map((emoji, i) => {
                         const userReacted = (post.reactions || []).some((r) => r.emoji === emoji && r.user_reacted);
                         return (
-                          <EmojiOption key={emoji} $dimmed={hasAnyReaction && !userReacted} onClick={() => handleReact(post.id, emoji)}>
+                          <EmojiOption
+                            key={emoji}
+                            $dimmed={hasAnyReaction && !userReacted}
+                            onClick={() => handleReact(post.id, emoji)}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              setEmojiPickerPostId(post.id);
+                              setEmojiPickerSlot(i);
+                            }}
+                          >
                             {emoji}
                           </EmojiOption>
                         );
                       });
                     })()}
+                    <EmojiEditButton onClick={() => {
+                      setEmojiPickerPostId(emojiPickerPostId === post.id ? null : post.id);
+                      setEmojiPickerSlot(null);
+                    }}>
+                      <i className="fa-solid fa-pen" />
+                    </EmojiEditButton>
                   </ReactionsRow>
+                  {emojiPickerPostId === post.id && (
+                    <EmojiPickerWrap>
+                      {emojiPickerSlot != null && (
+                        <div style={{ fontSize: 13, color: resolvedTheme.textSecondary, marginBottom: 6 }}>
+                          Replacing {getReactionEmojis("posts")[emojiPickerSlot]}…
+                        </div>
+                      )}
+                      <Picker
+                        data={data}
+                        dynamicWidth={true}
+                        theme={resolvedTheme === darkTheme ? "dark" : "light"}
+                        previewPosition="none"
+                        maxFrequentRows={0}
+                        emojiSize={32}
+                        emojiButtonSize={48}
+                        emojiButtonRadius="0.5rem"
+                        searchPosition="static"
+                        onEmojiSelect={(e) => {
+                          if (emojiPickerSlot != null) {
+                            replaceEmojiInSlot("global", emojiPickerSlot, e.native);
+                          } else {
+                            handleReact(post.id, e.native);
+                          }
+                          setEmojiPickerPostId(null);
+                          setEmojiPickerSlot(null);
+                        }}
+                        onClickOutside={() => {
+                          setEmojiPickerPostId(null);
+                          setEmojiPickerSlot(null);
+                        }}
+                      />
+                    </EmojiPickerWrap>
+                  )}
                   <CommentsSection>
                     {post.comments && post.comments.length > 0 && (
                       <>
