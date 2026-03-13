@@ -2191,7 +2191,12 @@ function App() {
   };
 
   const handleCommentReact = async (postId, commentId) => {
-    const res = await fetch(`/api/comments/${commentId}/react`, { method: "POST" });
+    const emoji = getReactionEmojis("posts")[0];
+    const res = await fetch(`/api/comments/${commentId}/react`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emoji }),
+    });
     if (!res.ok) return;
     const data = await res.json();
     setPosts((prev) =>
@@ -2200,7 +2205,7 @@ function App() {
         return {
           ...p,
           comments: (p.comments || []).map((c) =>
-            c.id === commentId ? { ...c, thumbs_up_count: data.thumbs_up_count, user_thumbed_up: data.user_thumbed_up } : c
+            c.id === commentId ? { ...c, comment_reactions: data.comment_reactions } : c
           ),
         };
       })
@@ -2803,7 +2808,12 @@ function App() {
                                   <CommentText style={c.content === "thinking..." ? { color: "#999" } : undefined}>
                                     {c.content === "thinking..." ? c.content : renderText(c.content)}
                                   </CommentText>
-                                  {c.content !== "thinking..." && <CommentTime>{timeAgo(c.created_at)}{c.thumbs_up_count > 0 && <> · 👍 {c.thumbs_up_count}</>}</CommentTime>}
+                                  {c.content !== "thinking..." && <CommentTime>{timeAgo(c.created_at)}</CommentTime>}
+                                  {c.comment_reactions && c.comment_reactions.length > 0 && (
+                                    <CommentTime style={{ display: "block", marginTop: 4 }}>
+                                      {c.comment_reactions.map((r) => `${r.emoji} ${r.names.join(", ")}`).join("  ")}
+                                    </CommentTime>
+                                  )}
                                 </>
                               )}
                             </CommentBody>

@@ -945,8 +945,9 @@ app.get("/api/feed", (req, res) => {
   );
 
   const getCommentReactions = db.prepare(
-    `SELECT cr.emoji, cr.user_id
+    `SELECT cr.emoji, cr.user_id, u.name
     FROM comment_reactions cr
+    JOIN users u ON u.id = cr.user_id
     WHERE cr.comment_id = ?`
   );
 
@@ -958,11 +959,18 @@ app.get("/api/feed", (req, res) => {
     })),
     comments: getComments.all(post.id).map((c) => {
       const cReactions = getCommentReactions.all(c.id);
-      const thumbsUp = cReactions.filter((r) => r.emoji === "👍");
+      const grouped = {};
+      for (const r of cReactions) {
+        if (!grouped[r.emoji]) grouped[r.emoji] = [];
+        grouped[r.emoji].push(r.name);
+      }
       return {
         ...c,
-        thumbs_up_count: thumbsUp.length,
-        user_thumbed_up: thumbsUp.some((r) => r.user_id === req.user.id) ? 1 : 0,
+        comment_reactions: Object.entries(grouped).map(([emoji, names]) => ({
+          emoji,
+          names,
+          user_reacted: cReactions.some((r) => r.emoji === emoji && r.user_id === req.user.id),
+        })),
       };
     }),
     reactions: (() => {
@@ -1104,22 +1112,31 @@ app.post("/api/comments/:id/react", (req, res) => {
   const comment = db.prepare("SELECT * FROM comments WHERE id = ?").get(commentId);
   if (!comment) return res.status(404).json({ error: "Comment not found" });
 
-  const emoji = "👍";
+  const emoji = req.body?.emoji || "❤️";
   const existing = db
     .prepare("SELECT id FROM comment_reactions WHERE comment_id = ? AND user_id = ? AND emoji = ?")
     .get(commentId, req.user.id, emoji);
 
   if (existing) {
     db.prepare("DELETE FROM comment_reactions WHERE id = ?").run(existing.id);
-    const count = db.prepare("SELECT COUNT(*) as c FROM comment_reactions WHERE comment_id = ? AND emoji = ?").get(commentId, emoji).c;
-    return res.json({ action: "removed", thumbs_up_count: count, user_thumbed_up: 0 });
   } else {
     db.prepare("INSERT INTO comment_reactions (comment_id, user_id, emoji) VALUES (?, ?, ?)").run(commentId, req.user.id, emoji);
-    const count = db.prepare("SELECT COUNT(*) as c FROM comment_reactions WHERE comment_id = ? AND emoji = ?").get(commentId, emoji).c;
-    // Notify the post author and comment author of the reaction
     if (comment.user_id !== req.user.id) notifyUser(comment.user_id, "feed-update");
-    return res.json({ action: "added", thumbs_up_count: count, user_thumbed_up: 1 });
   }
+  const allReactions = db.prepare("SELECT cr.emoji, u.name, cr.user_id FROM comment_reactions cr JOIN users u ON u.id = cr.user_id WHERE cr.comment_id = ?").all(commentId);
+  const grouped = {};
+  for (const r of allReactions) {
+    if (!grouped[r.emoji]) grouped[r.emoji] = [];
+    grouped[r.emoji].push(r.name);
+  }
+  return res.json({
+    action: existing ? "removed" : "added",
+    comment_reactions: Object.entries(grouped).map(([em, names]) => ({
+      emoji: em,
+      names,
+      user_reacted: allReactions.some((r) => r.emoji === em && r.user_id === req.user.id),
+    })),
+  });
 });
 
 // Places search proxy
