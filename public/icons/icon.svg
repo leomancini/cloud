@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <!-- Rounded-square background: sky-blue gradient -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="192" y2="192" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4FC3F7"/>
+      <stop offset="100%" stop-color="#0288D1"/>
+    </linearGradient>
+    <linearGradient id="shadow" x1="0" y1="148" x2="0" y2="164" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="rgba(0,80,160,0.10)"/>
+      <stop offset="100%" stop-color="rgba(0,80,160,0)"/>
+    </linearGradient>
+    <clipPath id="roundedSquare">
+      <rect width="192" height="192" rx="42" ry="42"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="192" height="192" rx="42" ry="42" fill="url(#bg)"/>
+
+  <!-- Cloud body – built from rounded rect + three bumps -->
+  <!-- Base pill -->
+  <rect x="44" y="96" width="104" height="42" rx="21" ry="21" fill="rgba(255,255,255,0.95)"/>
+  <!-- Left bump -->
+  <circle cx="68" cy="84" r="26" fill="rgba(255,255,255,0.95)"/>
+  <!-- Centre bump (tallest) -->
+  <circle cx="98" cy="70" r="32" fill="rgba(255,255,255,0.95)"/>
+  <!-- Right bump -->
+  <circle cx="130" cy="82" r="24" fill="rgba(255,255,255,0.95)"/>
+  <!-- Subtle bottom shadow on cloud -->
+  <rect x="44" y="128" width="104" height="10" rx="5" fill="url(#shadow)"/>
+</svg>

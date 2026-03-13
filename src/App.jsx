@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback, createContext, useContext } from "react";
 import styled, { ThemeProvider, createGlobalStyle, keyframes, css } from "styled-components";
+
+// ─── Pull-to-refresh constants ────────────────────────────────────────────────
+const PTR_THRESHOLD    = 72;  // px of overscroll needed to trigger a refresh
+const PTR_MAX_PULL     = 110; // px — clamp so the indicator doesn't fly off
+const PTR_RESISTANCE   = 0.4; // friction: finger movement × resistance = visual pull
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 
@@ -1512,6 +1517,50 @@ const BannerDismiss = styled.button`
   flex-shrink: 0;
 `;
 
+// ─── Pull-to-refresh UI ───────────────────────────────────────────────────────
+const ptrSpin = keyframes`
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+`;
+
+const PTRWrapper = styled.div`
+  /* Sits above the feed content; height is driven by JS via inline style */
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  /* Smooth collapse back to zero when releasing / refreshing */
+  transition: ${(p) => (p.$dragging ? "none" : "height 0.25s ease")};
+  max-width: 500px;
+  margin: 0 auto;
+`;
+
+const PTRIndicator = styled.div`
+  margin-bottom: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: ${(p) => p.theme.bgElevated};
+  box-shadow: 0 2px 8px ${(p) => p.theme.shadowMd};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: ${(p) => p.theme.textSecondary};
+  /* Fade in as the user pulls */
+  opacity: ${(p) => Math.min(1, p.$progress * 1.4)};
+  /* Rotate the arrow to signal "release to refresh" once past threshold */
+  transform: rotate(${(p) => (p.$ready ? "180deg" : `${p.$progress * 160}deg`)});
+  transition: transform 0.15s ease, opacity 0.1s ease;
+
+  i {
+    animation: ${(p) =>
+      p.$refreshing
+        ? css`${ptrSpin} 0.8s linear infinite`
+        : "none"};
+  }
+`;
+
 function shortAddress(address) {
   if (!address) return null;
   const parts = address.split(",").map((s) => s.trim());
@@ -1742,6 +1791,103 @@ function App() {
   const [isMobile] = useState(() => /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
   const [installBannerDismissed, setInstallBannerDismissed] = useState(() => localStorage.getItem("install-banner-dismissed") === "true");
   const [notifBannerDismissed, setNotifBannerDismissed] = useState(() => localStorage.getItem("notif-banner-dismissed") === "true");
+
+  // ── Pull-to-refresh state ──────────────────────────────────────────────────
+  const [ptrPull, setPtrPull]           = useState(0);       // current pull distance (px, visual)
+  const [ptrDragging, setPtrDragging]   = useState(false);   // finger is actively pulling
+  const [ptrRefreshing, setPtrRefreshing] = useState(false); // network refresh in flight
+  const ptrStartY    = useRef(null);   // touchstart Y position
+  const ptrActive    = useRef(false);  // true while a valid PTR gesture is tracked
+  const ptrPageRef   = useRef(null);   // ref for the scrollable Page element
+
+  /**
+   * Only activate PTR when:
+   *  - We're in standalone PWA mode (isStandalone), or on a mobile browser.
+   *  - The page is scrolled to the very top (scrollY === 0).
+   *  - The user is viewing the feed tab.
+   *  - No refresh is already running.
+   */
+  const handlePtrTouchStart = useCallback((e) => {
+    if (ptrRefreshing) return;
+    if (tab !== "feed") return;
+    // Only engage when the document is at the top
+    if (window.scrollY > 2) return;
+    ptrStartY.current = e.touches[0].clientY;
+    ptrActive.current = false; // will be confirmed on first move
+  }, [ptrRefreshing, tab]);
+
+  const handlePtrTouchMove = useCallback((e) => {
+    if (ptrRefreshing) return;
+    if (ptrStartY.current === null) return;
+
+    const deltaY = e.touches[0].clientY - ptrStartY.current;
+
+    // Only track a downward swipe that started at the top of the page
+    if (deltaY <= 0) {
+      if (ptrActive.current) {
+        // User reversed direction — cancel
+        ptrActive.current = false;
+        setPtrDragging(false);
+        setPtrPull(0);
+      }
+      return;
+    }
+
+    // Confirm gesture on first positive delta
+    if (!ptrActive.current) {
+      // Bail out if the page has scrolled since touchstart (rubber-band catch)
+      if (window.scrollY > 2) return;
+      ptrActive.current = true;
+      setPtrDragging(true);
+    }
+
+    // Prevent the browser's native overscroll / bounce while we're in control
+    e.preventDefault();
+
+    const visual = Math.min(deltaY * PTR_RESISTANCE, PTR_MAX_PULL);
+    setPtrPull(visual);
+  }, [ptrRefreshing]);
+
+  const handlePtrTouchEnd = useCallback(async () => {
+    if (!ptrActive.current) return;
+    ptrActive.current  = false;
+    ptrStartY.current  = null;
+    setPtrDragging(false);
+
+    if (ptrPull >= PTR_THRESHOLD) {
+      // Snap to a comfortable "loading" height, then refresh
+      setPtrPull(PTR_THRESHOLD * 0.75);
+      setPtrRefreshing(true);
+      await new Promise((resolve) => {
+        // Run both data fetches and wait at least 600 ms so the spinner is visible
+        const dataFetch = Promise.all([
+          fetch("/api/feed").then((r) => r.ok ? r.json() : null).then((d) => { if (d) setPosts(d.posts); }),
+          fetch("/api/users").then((r) => r.ok ? r.json() : null).then((d) => { if (d) setUsers(d.users); }),
+        ]);
+        const minDelay = new Promise((r) => setTimeout(r, 600));
+        Promise.all([dataFetch, minDelay]).then(resolve);
+      });
+      setPtrRefreshing(false);
+    }
+
+    // Animate back to zero
+    setPtrPull(0);
+  }, [ptrPull]);
+
+  // Attach touch listeners to the Page element (passive: false for preventDefault support)
+  useEffect(() => {
+    const el = ptrPageRef.current;
+    if (!el) return;
+    el.addEventListener("touchstart", handlePtrTouchStart, { passive: true });
+    el.addEventListener("touchmove",  handlePtrTouchMove,  { passive: false });
+    el.addEventListener("touchend",   handlePtrTouchEnd,   { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", handlePtrTouchStart);
+      el.removeEventListener("touchmove",  handlePtrTouchMove);
+      el.removeEventListener("touchend",   handlePtrTouchEnd);
+    };
+  }, [handlePtrTouchStart, handlePtrTouchMove, handlePtrTouchEnd]);
+  // ── End pull-to-refresh ────────────────────────────────────────────────────
 
   const startBusy = (key) => setBusyActions((prev) => new Set(prev).add(key));
   const endBusy = (key) => setBusyActions((prev) => { const next = new Set(prev); next.delete(key); return next; });
