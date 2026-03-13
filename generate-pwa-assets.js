@@ -29,6 +29,20 @@ function renderSplash(w, h, emojiSize) {
   return canvas.toBuffer("image/png");
 }
 
+// Generate favicon (transparent background)
+{
+  const size = 128;
+  const emojiSize = Math.round(size * 0.85);
+  const canvas = createCanvas(size, size);
+  const ctx = canvas.getContext("2d");
+  ctx.font = `${emojiSize}px "Apple Color Emoji"`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("☁️", size / 2, size * 0.55);
+  writeFileSync("public/favicon.png", canvas.toBuffer("image/png"));
+  console.log("Generated favicon.png");
+}
+
 // Generate app icons
 const iconSizes = [180, 192, 512];
 for (const size of iconSizes) {
