@@ -186,7 +186,7 @@ const SmallAvatar = styled.img`
 `;
 
 const HeaderName = styled.span`
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: ${(p) => p.theme.text};
 `;
@@ -206,7 +206,7 @@ const Title = styled.h1`
 `;
 
 const Subtitle = styled.p`
-  font-size: 15px;
+  font-size: 16px;
   color: ${(p) => p.theme.textSecondary};
   margin: 0 0 24px;
 `;
@@ -215,7 +215,7 @@ const SignInButton = styled.a`
   display: inline-block;
   padding: 12px 24px;
   border-radius: ${RADIUS};
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
@@ -249,7 +249,7 @@ const Segment = styled.button`
 
 const BackButton = styled.button`
   padding: 8px 0;
-  font-size: 15px;
+  font-size: 16px;
   cursor: pointer;
   border: none;
   background: none;
@@ -635,7 +635,7 @@ const Avatar = styled.img`
 `;
 
 const PostAuthor = styled.span`
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: ${(p) => p.theme.text};
 `;
@@ -699,7 +699,7 @@ const PostMenuItem = styled.button`
 `;
 
 const PostContent = styled.p`
-  font-size: 15px;
+  font-size: 16px;
   color: ${(p) => p.theme.text};
   margin: 0;
   line-height: 1.4;
@@ -728,7 +728,7 @@ const ReactionChip = styled.button`
 `;
 
 const ReactionNames = styled.span`
-  font-size: 15px;
+  font-size: 16px;
   color: ${(p) => p.theme.text};
   font-weight: 600;
 `;
@@ -984,14 +984,14 @@ const CommentBody = styled.div`
 `;
 
 const CommentAuthor = styled.span`
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: ${(p) => p.theme.text};
   margin-right: 6px;
 `;
 
 const CommentText = styled.span`
-  font-size: 15px;
+  font-size: 16px;
   color: ${(p) => p.theme.text};
   line-height: 1.4;
 `;
@@ -1022,7 +1022,7 @@ const CommentInput = styled.textarea`
   border: 1px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
   padding: 8px 12px;
-  font-size: 15px;
+  font-size: 16px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   outline: none;
   min-width: 0;
@@ -1050,7 +1050,7 @@ const CommentHighlight = styled.div`
   right: 0;
   bottom: 0;
   padding: 8px 12px;
-  font-size: 15px;
+  font-size: 16px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 22px;
   white-space: pre-wrap;
@@ -1175,7 +1175,7 @@ const UserAvatar = styled.img`
 `;
 
 const UserName = styled.span`
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
   color: ${(p) => p.theme.text};
 `;
@@ -1348,7 +1348,7 @@ const RejectButton = styled.button`
 const EmptyState = styled.p`
   text-align: center;
   color: ${(p) => p.theme.textSecondary};
-  font-size: 15px;
+  font-size: 16px;
   margin-top: 40px;
 `;
 
