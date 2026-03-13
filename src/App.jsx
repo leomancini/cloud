@@ -726,13 +726,11 @@ const EmojiOption = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
   border: none;
   background: none;
   font-size: 20px;
-  line-height: 34px;
-  padding: 2px 0 0;
+  line-height: 1;
+  padding: 0;
   cursor: pointer;
   border-radius: ${RADIUS_SM};
   opacity: ${(p) => (p.$dimmed ? 0.35 : 1)};
