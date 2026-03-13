@@ -693,7 +693,7 @@ const PostContent = styled.p`
   white-space: pre-wrap;
 `;
 
-const REACTION_EMOJIS = ["\u2764\uFE0F", "\uD83D\uDE02", "\uD83D\uDE2E", "\uD83D\uDD25", "\uD83D\uDC4F", "\uD83D\uDE22"];
+const DEFAULT_REACTION_EMOJIS = ["❤️", "😂", "😮", "🔥", "👏", "😢"];
 
 const ReactionsRow = styled.div`
   display: flex;
@@ -738,6 +738,155 @@ const EmojiOption = styled.button`
     background: none;
   }
 `;
+
+// ─── Reaction settings styled components ─────────────────────────────────────
+
+const ReactionSettingsSection = styled.div`
+  text-align: left;
+  margin: 0 auto 24px;
+`;
+
+const ReactionContextBlock = styled.div`
+  margin-bottom: 20px;
+`;
+
+const ReactionContextHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+`;
+
+const ReactionContextLabel = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${(p) => p.theme.text};
+  display: flex;
+  align-items: center;
+  gap: 6px;
+`;
+
+const ReactionContextSubLabel = styled.div`
+  font-size: 11px;
+  font-weight: 400;
+  color: ${(p) => p.theme.textSecondary};
+`;
+
+const ReactionResetButton = styled.button`
+  font-size: 11px;
+  color: ${(p) => p.theme.textSecondary};
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: ${RADIUS_SM};
+  &:hover { background: ${(p) => p.theme.bgHover}; color: ${(p) => p.theme.text}; }
+`;
+
+const EmojiChipRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+`;
+
+const EmojiChip = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: ${(p) => p.theme.bgControl};
+  border-radius: 20px;
+  padding: 4px 8px 4px 10px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: default;
+  user-select: none;
+`;
+
+const EmojiChipRemove = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: ${(p) => p.theme.textSecondary};
+  color: ${(p) => p.theme.bgElevated};
+  font-size: 9px;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0.7;
+  &:hover { opacity: 1; }
+`;
+
+const EmojiChipDragHandle = styled.span`
+  font-size: 10px;
+  color: ${(p) => p.theme.textMuted};
+  cursor: grab;
+  margin-right: 2px;
+  &:active { cursor: grabbing; }
+`;
+
+const AddEmojiRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const EmojiInput = styled.input`
+  width: 56px;
+  text-align: center;
+  font-size: 20px;
+  border: 1px solid ${(p) => p.theme.border};
+  border-radius: ${RADIUS_SM};
+  padding: 6px 8px;
+  background: ${(p) => p.theme.bgInput};
+  color: ${(p) => p.theme.text};
+  outline: none;
+  &:focus { border-color: ${(p) => p.theme.borderStrong}; }
+`;
+
+const AddEmojiButton = styled.button`
+  padding: 6px 14px;
+  border-radius: ${RADIUS_SM};
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid ${(p) => p.theme.borderStrong};
+  background: ${(p) => p.theme.bgElevated};
+  color: ${(p) => p.theme.text};
+  &:hover { background: ${(p) => p.theme.bgHover}; }
+  &:disabled { opacity: 0.4; cursor: default; }
+`;
+
+const ReactionContextDivider = styled.div`
+  height: 1px;
+  background: ${(p) => p.theme.border};
+  margin: 16px 0;
+`;
+
+const ReactionPreviewRow = styled.div`
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-top: 6px;
+  flex-wrap: wrap;
+`;
+
+const ReactionPreviewEmoji = styled.span`
+  font-size: 20px;
+  opacity: 0.85;
+`;
+
+const ReactionInheritNote = styled.div`
+  font-size: 12px;
+  color: ${(p) => p.theme.textSecondary};
+  font-style: italic;
+  margin-top: 4px;
+`;
+
+// ─── End reaction settings styled components ──────────────────────────────────
 
 const CommentsSection = styled.div`
   margin-top: 14px;
@@ -1531,6 +1680,23 @@ function App() {
   const [editCommentText, setEditCommentText] = useState("");
   const [lightboxSrc, setLightboxSrc] = useState(null);
 
+  // Reaction preferences state
+  const [reactionPrefs, setReactionPrefs] = useState(null); // { global: [...], posts: null|[...], comments: null|[...] }
+  const [emojiInputs, setEmojiInputs] = useState({ global: "", posts: "", comments: "" });
+  const [reactionSaving, setReactionSaving] = useState({});
+
+  // Returns the resolved emoji set for a given context, falling back: context → global → default
+  const getReactionEmojis = (context = "posts") => {
+    if (!reactionPrefs) return DEFAULT_REACTION_EMOJIS;
+    if (context !== "global" && reactionPrefs[context] && reactionPrefs[context].length > 0) {
+      return reactionPrefs[context];
+    }
+    if (reactionPrefs.global && reactionPrefs.global.length > 0) {
+      return reactionPrefs.global;
+    }
+    return DEFAULT_REACTION_EMOJIS;
+  };
+
   // Push notification state
   const [pushPrefs, setPushPrefs] = useState(null);
   const [pushSupported] = useState(() => "serviceWorker" in navigator && "PushManager" in window);
@@ -1606,6 +1772,80 @@ function App() {
     fetch("/api/users/connections")
       .then((res) => res.json())
       .then((data) => setConnectionDegrees(data.degrees || {}));
+  };
+
+  // ── Reaction preferences ────────────────────────────────────────────────────
+  const loadReactionPrefs = () => {
+    fetch("/api/reaction-prefs")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.prefs) setReactionPrefs(data.prefs);
+      });
+  };
+
+  useEffect(() => {
+    if (user) loadReactionPrefs();
+  }, [user]);
+
+  const saveReactionEmojis = async (context, emojis) => {
+    setReactionSaving((prev) => ({ ...prev, [context]: true }));
+    const res = await fetch(`/api/reaction-prefs/${context}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emojis }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      setReactionPrefs((prev) => ({ ...prev, [context]: data.emojis }));
+    }
+    setReactionSaving((prev) => ({ ...prev, [context]: false }));
+  };
+
+  const addEmojiToContext = (context) => {
+    const raw = (emojiInputs[context] || "").trim();
+    if (!raw) return;
+    // Extract just the first grapheme cluster (emoji)
+    const segmenter = typeof Intl !== "undefined" && Intl.Segmenter
+      ? new Intl.Segmenter()
+      : null;
+    const emoji = segmenter
+      ? [...segmenter.segment(raw)].map((s) => s.segment)[0]
+      : [...raw][0];
+    if (!emoji) return;
+
+    const currentSet = reactionPrefs
+      ? (reactionPrefs[context] ?? (context === "global" ? DEFAULT_REACTION_EMOJIS : getReactionEmojis("global")))
+      : DEFAULT_REACTION_EMOJIS;
+
+    if (currentSet.includes(emoji)) {
+      setEmojiInputs((prev) => ({ ...prev, [context]: "" }));
+      return;
+    }
+    const newSet = [...currentSet, emoji].slice(0, 12);
+    setEmojiInputs((prev) => ({ ...prev, [context]: "" }));
+    saveReactionEmojis(context, newSet);
+  };
+
+  const removeEmojiFromContext = (context, emoji) => {
+    const currentSet = reactionPrefs
+      ? (reactionPrefs[context] ?? (context === "global" ? DEFAULT_REACTION_EMOJIS : getReactionEmojis("global")))
+      : DEFAULT_REACTION_EMOJIS;
+    const newSet = currentSet.filter((e) => e !== emoji);
+    saveReactionEmojis(context, newSet.length > 0 ? newSet : null);
+  };
+
+  const moveEmojiInContext = (context, fromIndex, toIndex) => {
+    const currentSet = reactionPrefs
+      ? (reactionPrefs[context] ?? (context === "global" ? DEFAULT_REACTION_EMOJIS : getReactionEmojis("global")))
+      : DEFAULT_REACTION_EMOJIS;
+    const newSet = [...currentSet];
+    const [item] = newSet.splice(fromIndex, 1);
+    newSet.splice(toIndex, 0, item);
+    saveReactionEmojis(context, newSet);
+  };
+
+  const resetContextToInherited = (context) => {
+    saveReactionEmojis(context, null);
   };
 
   // ── Push notifications ──────────────────────────────────────────────────────
