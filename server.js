@@ -1114,12 +1114,21 @@ app.post("/api/comments/:id/react", (req, res) => {
 
   const emoji = req.body?.emoji || "❤️";
   const existing = db
-    .prepare("SELECT id FROM comment_reactions WHERE comment_id = ? AND user_id = ? AND emoji = ?")
+    .prepare("SELECT id, emoji FROM comment_reactions WHERE comment_id = ? AND user_id = ? AND emoji = ?")
+    .get(commentId, req.user.id, emoji);
+  // Check if user has a reaction with a different emoji (for changing)
+  const otherReaction = db
+    .prepare("SELECT id FROM comment_reactions WHERE comment_id = ? AND user_id = ? AND emoji != ?")
     .get(commentId, req.user.id, emoji);
 
   if (existing) {
+    // Toggle off same emoji
     db.prepare("DELETE FROM comment_reactions WHERE id = ?").run(existing.id);
   } else {
+    // Remove any existing reaction by this user (swap to new emoji)
+    if (otherReaction) {
+      db.prepare("DELETE FROM comment_reactions WHERE id = ?").run(otherReaction.id);
+    }
     db.prepare("INSERT INTO comment_reactions (comment_id, user_id, emoji) VALUES (?, ?, ?)").run(commentId, req.user.id, emoji);
     if (comment.user_id !== req.user.id) notifyUser(comment.user_id, "feed-update");
   }

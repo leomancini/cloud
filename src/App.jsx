@@ -1782,6 +1782,7 @@ function App() {
   const [editingEmojiSlot, setEditingEmojiSlot] = useState(null); // index in profile settings
   const [emojiPickerPostId, setEmojiPickerPostId] = useState(null); // post id for inline picker
   const [emojiPickerSlot, setEmojiPickerSlot] = useState(null); // slot index being replaced
+  const [commentReactionPicker, setCommentReactionPicker] = useState(null); // { postId, commentId }
 
   // Returns the resolved emoji set for a given context, falling back: context → global → default
   const getReactionEmojis = (context = "posts") => {
@@ -2810,11 +2811,54 @@ function App() {
                                   </CommentText>
                                   {c.content !== "thinking..." && <CommentTime>{timeAgo(c.created_at)}</CommentTime>}
                                   {c.comment_reactions && c.comment_reactions.length > 0 && (
-                                    <CommentTime style={{ display: "flex", gap: 12, marginTop: 4, marginLeft: 0 }}>
+                                    <CommentTime style={{ display: "flex", gap: 12, marginTop: 4, marginLeft: 0, flexWrap: "wrap" }}>
                                       {c.comment_reactions.map((r) => (
-                                        <span key={r.emoji}>{r.emoji}&ensp;<span style={{ fontWeight: 600, color: resolvedTheme.text }}>{r.names.join(", ")}</span></span>
+                                        <span
+                                          key={r.emoji}
+                                          style={r.user_reacted ? { cursor: "pointer" } : undefined}
+                                          onClick={r.user_reacted ? () => setCommentReactionPicker(
+                                            commentReactionPicker?.commentId === c.id ? null : { postId: post.id, commentId: c.id }
+                                          ) : undefined}
+                                        >
+                                          {r.emoji}&ensp;<span style={{ fontWeight: 600, color: resolvedTheme.text }}>{r.names.join(", ")}</span>
+                                        </span>
                                       ))}
                                     </CommentTime>
+                                  )}
+                                  {commentReactionPicker?.commentId === c.id && (
+                                    <EmojiPickerWrap>
+                                      <Picker
+                                        data={data}
+                                        dynamicWidth={true}
+                                        theme={resolvedTheme === darkTheme ? "dark" : "light"}
+                                        previewPosition="none"
+                                        maxFrequentRows={0}
+                                        emojiSize={32}
+                                        emojiButtonSize={48}
+                                        emojiButtonRadius="0.5rem"
+                                        searchPosition="static"
+                                        onEmojiSelect={async (e) => {
+                                          const res = await fetch(`/api/comments/${c.id}/react`, {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ emoji: e.native }),
+                                          });
+                                          if (res.ok) {
+                                            const d = await res.json();
+                                            setPosts((prev) =>
+                                              prev.map((p) => p.id !== post.id ? p : {
+                                                ...p,
+                                                comments: (p.comments || []).map((cm) =>
+                                                  cm.id === c.id ? { ...cm, comment_reactions: d.comment_reactions } : cm
+                                                ),
+                                              })
+                                            );
+                                          }
+                                          setCommentReactionPicker(null);
+                                        }}
+                                        onClickOutside={() => setCommentReactionPicker(null)}
+                                      />
+                                    </EmojiPickerWrap>
                                   )}
                                 </>
                               )}
