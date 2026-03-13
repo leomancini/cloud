@@ -2614,7 +2614,8 @@ function App() {
                               const currentSet = [...getReactionEmojis("global")];
                               if (currentSet.length >= 12) return;
                               const newIndex = currentSet.length;
-                              currentSet.push("⭐");
+                              const pool = ["⭐","🎉","💪","🙌","💯","✨","🎶","🌈","☀️","🍕","🌊","🧡","💜","💚","🤩","😎","🥳","🫡","🤝","👀","💡","🌟","🍀","🦋","🐶","🎯","🚀","⚡","🪴","🧸"];
+                              currentSet.push(pool[Math.floor(Math.random() * pool.length)]);
                               saveReactionEmojis("global", currentSet);
                               setEmojiPickerSlot(newIndex);
                             }}
