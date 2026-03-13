@@ -2811,7 +2811,7 @@ function App() {
                                   {c.content !== "thinking..." && <CommentTime>{timeAgo(c.created_at)}</CommentTime>}
                                   {c.comment_reactions && c.comment_reactions.length > 0 && (
                                     <CommentTime style={{ display: "block", marginTop: 4, marginLeft: -2 }}>
-                                      {c.comment_reactions.map((r) => `${r.emoji} ${r.names.join(", ")}`).join("  ")}
+                                      {c.comment_reactions.map((r) => `${r.emoji} ${r.names.join(", ")}`).join("    ")}
                                     </CommentTime>
                                   )}
                                 </>
