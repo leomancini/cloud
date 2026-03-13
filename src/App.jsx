@@ -503,6 +503,17 @@ const PostMediaContainer = styled.div`
   display: grid;
   grid-template-columns: ${(p) => (p.$count === 1 ? "1fr" : "1fr 1fr")};
   gap: 4px;
+
+  ${(p) => p.$count === 3 && css`
+    & > *:first-child {
+      grid-column: 1 / -1;
+      max-height: 300px;
+    }
+    & > *:nth-child(2),
+    & > *:nth-child(3) {
+      aspect-ratio: 3 / 4;
+    }
+  `}
 `;
 
 const PostImage = styled.img`
