@@ -446,6 +446,20 @@ db.exec(`
   )
 `);
 
+// Reaction preferences table — stores custom emoji sets per user, per context
+// context: "global" | "posts" | "comments" (extendable)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS reaction_prefs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    context TEXT NOT NULL DEFAULT 'global',
+    emojis TEXT NOT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(user_id, context)
+  )
+`);
+
 // Ensure Sol AI user exists with avatar
 const existingClaude = db.prepare("SELECT id FROM users WHERE google_id = 'claude-ai'").get();
 const existingSol = db.prepare("SELECT id FROM users WHERE google_id = 'sol-ai'").get();
@@ -1155,6 +1169,69 @@ app.get("/api/staticmap", async (req, res) => {
     res.status(500).end();
   }
 });
+
+// ── Reaction preferences routes ─────────────────────────────────────────────
+
+const DEFAULT_REACTION_EMOJIS = ["❤️", "😂", "😮", "🔥", "👏", "😢"];
+const VALID_CONTEXTS = ["global", "posts", "comments"];
+const MAX_EMOJIS_PER_SET = 12;
+
+// Get current user's reaction prefs (all contexts)
+app.get("/api/reaction-prefs", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+
+  const rows = db.prepare("SELECT context, emojis FROM reaction_prefs WHERE user_id = ?").all(req.user.id);
+  const prefs = { global: DEFAULT_REACTION_EMOJIS, posts: null, comments: null };
+
+  for (const row of rows) {
+    try {
+      const parsed = JSON.parse(row.emojis);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        prefs[row.context] = parsed;
+      }
+    } catch {}
+  }
+
+  res.json({ prefs, defaults: DEFAULT_REACTION_EMOJIS });
+});
+
+// Update reaction prefs for a specific context
+app.put("/api/reaction-prefs/:context", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+
+  const { context } = req.params;
+  if (!VALID_CONTEXTS.includes(context)) {
+    return res.status(400).json({ error: `Invalid context. Must be one of: ${VALID_CONTEXTS.join(", ")}` });
+  }
+
+  const { emojis } = req.body;
+
+  // null/empty means "reset to global/default"
+  if (emojis === null || emojis === undefined || (Array.isArray(emojis) && emojis.length === 0)) {
+    db.prepare("DELETE FROM reaction_prefs WHERE user_id = ? AND context = ?").run(req.user.id, context);
+    return res.json({ ok: true, emojis: null });
+  }
+
+  if (!Array.isArray(emojis)) {
+    return res.status(400).json({ error: "emojis must be an array" });
+  }
+
+  const cleaned = [...new Set(emojis.filter((e) => typeof e === "string" && e.trim()))].slice(0, MAX_EMOJIS_PER_SET);
+  if (cleaned.length === 0) {
+    db.prepare("DELETE FROM reaction_prefs WHERE user_id = ? AND context = ?").run(req.user.id, context);
+    return res.json({ ok: true, emojis: null });
+  }
+
+  db.prepare(`
+    INSERT INTO reaction_prefs (user_id, context, emojis, updated_at)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(user_id, context) DO UPDATE SET emojis = excluded.emojis, updated_at = CURRENT_TIMESTAMP
+  `).run(req.user.id, context, JSON.stringify(cleaned));
+
+  res.json({ ok: true, emojis: cleaned });
+});
+
+// ── End reaction preferences routes ─────────────────────────────────────────
 
 // ── Push notification routes ────────────────────────────────────────────────
 
