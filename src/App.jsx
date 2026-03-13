@@ -1717,8 +1717,9 @@ function App() {
 
   useEffect(() => {
     fetch("/api/auth/me")
-      .then((res) => res.json())
+      .then((res) => { if (res.ok) return res.json(); })
       .then((data) => {
+        if (!data) { setLoading(false); return; }
         setUser(data.user);
         setLoading(false);
         if (data.user) {
@@ -1746,41 +1747,42 @@ function App() {
 
   const loadFeed = () => {
     fetch("/api/feed")
-      .then((res) => res.json())
-      .then((data) => setPosts(data.posts));
+      .then((res) => { if (res.ok) return res.json(); })
+      .then((data) => { if (data) setPosts(data.posts); });
   };
 
   const loadFollowRequests = () => {
     fetch("/api/follow-requests")
-      .then((res) => res.json())
-      .then((data) => setFollowRequests(data.requests));
+      .then((res) => { if (res.ok) return res.json(); })
+      .then((data) => { if (data) setFollowRequests(data.requests); });
   };
 
   const loadFollowers = () => {
     fetch("/api/followers")
-      .then((res) => res.json())
-      .then((data) => setFollowers(data.followers));
+      .then((res) => { if (res.ok) return res.json(); })
+      .then((data) => { if (data) setFollowers(data.followers); });
   };
 
   const loadUsers = () => {
     fetch("/api/users")
-      .then((res) => res.json())
-      .then((data) => setUsers(data.users));
+      .then((res) => { if (res.ok) return res.json(); })
+      .then((data) => { if (data) setUsers(data.users); });
   };
 
   const loadConnectionDegrees = () => {
     fetch("/api/users/connections")
-      .then((res) => res.json())
-      .then((data) => setConnectionDegrees(data.degrees || {}));
+      .then((res) => { if (res.ok) return res.json(); })
+      .then((data) => { if (data) setConnectionDegrees(data.degrees || {}); });
   };
 
   // ── Reaction preferences ────────────────────────────────────────────────────
   const loadReactionPrefs = () => {
     fetch("/api/reaction-prefs")
-      .then((res) => res.json())
+      .then((res) => { if (res.ok) return res.json(); })
       .then((data) => {
-        if (data.prefs) setReactionPrefs(data.prefs);
-      });
+        if (data?.prefs) setReactionPrefs(data.prefs);
+      })
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -1794,9 +1796,11 @@ function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ emojis }),
     });
-    const data = await res.json();
-    if (data.ok) {
-      setReactionPrefs((prev) => ({ ...prev, [context]: data.emojis }));
+    if (res.ok) {
+      const data = await res.json();
+      if (data.ok) {
+        setReactionPrefs((prev) => ({ ...prev, [context]: data.emojis }));
+      }
     }
     setReactionSaving((prev) => ({ ...prev, [context]: false }));
   };
@@ -1851,8 +1855,8 @@ function App() {
   // ── Push notifications ──────────────────────────────────────────────────────
   const loadPushPrefs = () => {
     fetch("/api/push/prefs")
-      .then((res) => res.json())
-      .then((data) => setPushPrefs(data));
+      .then((res) => { if (res.ok) return res.json(); })
+      .then((data) => { if (data) setPushPrefs(data); });
   };
 
   useEffect(() => {
@@ -1863,6 +1867,7 @@ function App() {
     try {
       const reg = await navigator.serviceWorker.register("/sw.js");
       const vapidRes = await fetch("/api/push/vapid-key");
+      if (!vapidRes.ok) return;
       const { publicKey } = await vapidRes.json();
       if (!publicKey) return;
 
@@ -1934,6 +1939,7 @@ function App() {
         params.set("lng", userLocation.lng);
       }
       const res = await fetch(`/api/places/search?${params}`);
+      if (!res.ok) return;
       const data = await res.json();
       setLocationResults(data.places || []);
     }, 300);
@@ -2023,6 +2029,7 @@ function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ emoji }),
     });
+    if (!res.ok) return;
     const { action, previous } = await res.json();
     setPosts((prev) =>
       prev.map((p) => {
@@ -2069,6 +2076,7 @@ function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content }),
     });
+    if (!res.ok) { endBusy(`comment-${postId}`); return; }
     const comment = await res.json();
     setPosts((prev) =>
       prev.map((p) =>
@@ -2269,6 +2277,51 @@ function App() {
                 )}
               </PushSection>
             )}
+            <ReactionSettingsSection>
+              <ThemeToggleLabel>Reactions</ThemeToggleLabel>
+              {["global"].map((ctx) => {
+                const emojis = getReactionEmojis(ctx);
+                const isCustom = reactionPrefs && reactionPrefs[ctx] && reactionPrefs[ctx].length > 0;
+                return (
+                  <ReactionContextBlock key={ctx}>
+                    <EmojiChipRow>
+                      {emojis.map((emoji, i) => (
+                        <EmojiChip key={emoji + i}>
+                          <EmojiChipDragHandle
+                            onTouchStart={(e) => { e.currentTarget.dataset.startX = e.touches[0].clientX; e.currentTarget.dataset.idx = i; }}
+                            onTouchEnd={(e) => {
+                              const dx = e.changedTouches[0].clientX - parseFloat(e.currentTarget.dataset.startX);
+                              const slots = Math.round(dx / 50);
+                              if (slots !== 0) moveEmojiInContext(ctx, i, Math.max(0, Math.min(emojis.length - 1, i + slots)));
+                            }}
+                          >⠿</EmojiChipDragHandle>
+                          {emoji}
+                          <EmojiChipRemove onClick={() => removeEmojiFromContext(ctx, emoji)}>
+                            <i className="fa-solid fa-xmark" />
+                          </EmojiChipRemove>
+                        </EmojiChip>
+                      ))}
+                    </EmojiChipRow>
+                    <AddEmojiRow>
+                      <EmojiInput
+                        placeholder="😊"
+                        value={emojiInputs[ctx] || ""}
+                        onChange={(e) => setEmojiInputs((prev) => ({ ...prev, [ctx]: e.target.value }))}
+                        onKeyDown={(e) => { if (e.key === "Enter") addEmojiToContext(ctx); }}
+                      />
+                      <AddEmojiButton onClick={() => addEmojiToContext(ctx)} disabled={!(emojiInputs[ctx] || "").trim() || reactionSaving[ctx]}>
+                        Add
+                      </AddEmojiButton>
+                      {isCustom && (
+                        <ReactionResetButton onClick={() => resetContextToInherited(ctx)}>
+                          Reset to defaults
+                        </ReactionResetButton>
+                      )}
+                    </AddEmojiRow>
+                  </ReactionContextBlock>
+                );
+              })}
+            </ReactionSettingsSection>
             <LogoutButton onClick={handleLogout} disabled={isBusy("logout")}>{isBusy("logout") ? <Spinner /> : "Log out"}</LogoutButton>
           </ProfilePage>
         ) : tab === "feed" ? (
@@ -2524,7 +2577,7 @@ function App() {
                   <ReactionsRow style={{ marginLeft: -6 }}>
                     {(() => {
                       const hasAnyReaction = (post.reactions || []).some((r) => r.user_reacted);
-                      return REACTION_EMOJIS.map((emoji) => {
+                      return getReactionEmojis("posts").map((emoji) => {
                         const userReacted = (post.reactions || []).some((r) => r.emoji === emoji && r.user_reacted);
                         return (
                           <EmojiOption key={emoji} $dimmed={hasAnyReaction && !userReacted} onClick={() => handleReact(post.id, emoji)}>
