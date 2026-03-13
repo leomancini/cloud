@@ -1891,6 +1891,21 @@ function App() {
     setEditingEmojiSlot(null);
   };
 
+  const addEmojiSlot = (context) => {
+    const currentSet = [...getReactionEmojis(context)];
+    if (currentSet.length >= 12) return;
+    currentSet.push("⭐");
+    saveReactionEmojis(context, currentSet);
+  };
+
+  const removeEmojiSlot = (context, index) => {
+    const currentSet = [...getReactionEmojis(context)];
+    if (currentSet.length <= 3) return;
+    currentSet.splice(index, 1);
+    if (emojiPickerSlot != null && emojiPickerSlot >= currentSet.length) setEmojiPickerSlot(null);
+    saveReactionEmojis(context, currentSet);
+  };
+
   // ── Push notifications ──────────────────────────────────────────────────────
   const loadPushPrefs = () => {
     fetch("/api/push/prefs")
@@ -2571,21 +2586,45 @@ function App() {
                   {emojiPickerPostId === post.id ? (
                     <>
                       <ReactionsRow style={{ marginLeft: -4 }}>
-                        {getReactionEmojis("global").slice(0, 6).map((emoji, i) => (
+                        {getReactionEmojis("global").map((emoji, i) => (
+                          <div key={emoji + i} style={{ position: "relative" }}>
+                            <EmojiOption
+                              onClick={() => setEmojiPickerSlot(emojiPickerSlot === i ? null : i)}
+                              style={{
+                                width: 44, height: 44, fontSize: 24, paddingBottom: 2,
+                                background: "transparent",
+                                border: emojiPickerSlot === i ? `2px solid ${resolvedTheme.btnPrimary}` : `2px dashed ${resolvedTheme.border}`,
+                                borderRadius: RADIUS_SM,
+                                opacity: 1,
+                              }}
+                            >
+                              {emoji}
+                            </EmojiOption>
+                            {getReactionEmojis("global").length > 3 && (
+                              <EmojiEditButton
+                                onClick={() => removeEmojiSlot("global", i)}
+                                style={{ position: "absolute", top: -8, right: -8, width: 20, height: 20, fontSize: 10, background: resolvedTheme.bgElevated, border: `1px solid ${resolvedTheme.border}`, borderRadius: "50%" }}
+                              >
+                                <i className="fa-solid fa-minus" />
+                              </EmojiEditButton>
+                            )}
+                          </div>
+                        ))}
+                        {getReactionEmojis("global").length < 12 && (
                           <EmojiOption
-                            key={emoji + i}
-                            onClick={() => setEmojiPickerSlot(emojiPickerSlot === i ? null : i)}
+                            onClick={() => addEmojiSlot("global")}
                             style={{
-                              width: 44, height: 44, fontSize: 24, paddingBottom: 2,
+                              width: 44, height: 44, fontSize: 18,
                               background: "transparent",
-                              border: emojiPickerSlot === i ? `2px solid ${resolvedTheme.btnPrimary}` : `2px dashed ${resolvedTheme.border}`,
+                              border: `2px dashed ${resolvedTheme.border}`,
                               borderRadius: RADIUS_SM,
-                              opacity: 1,
+                              opacity: 0.5,
+                              color: resolvedTheme.textSecondary,
                             }}
                           >
-                            {emoji}
+                            <i className="fa-solid fa-plus" />
                           </EmojiOption>
-                        ))}
+                        )}
                         <EmojiEditButton onClick={() => { setEmojiPickerPostId(null); setEmojiPickerSlot(null); }}>
                           <i className="fa-solid fa-check" />
                         </EmojiEditButton>
