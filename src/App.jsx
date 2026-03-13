@@ -1231,6 +1231,50 @@ const ThemeSegment = styled.button`
   transition: all 0.15s ease;
 `;
 
+const PushSection = styled.div`
+  text-align: left;
+  max-width: 320px;
+  margin: 0 auto 24px;
+`;
+
+const PushRow = styled.label`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  cursor: pointer;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid ${(p) => p.theme.border};
+  }
+`;
+
+const PushRowLabel = styled.span`
+  font-size: 14px;
+  color: ${(p) => p.theme.text};
+`;
+
+const ToggleTrack = styled.div`
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: ${(p) => (p.$on ? p.theme.btnPrimary : p.theme.bgControl)};
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+`;
+
+const ToggleThumb = styled.div`
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: ${(p) => (p.$on ? p.theme.btnPrimaryText : p.theme.textMuted)};
+  position: absolute;
+  top: 2px;
+  left: ${(p) => (p.$on ? "22px" : "2px")};
+  transition: left 0.2s ease, background 0.2s ease;
+`;
+
 function shortAddress(address) {
   if (!address) return null;
   const parts = address.split(",").map((s) => s.trim());
@@ -1253,6 +1297,15 @@ function timeAgo(dateStr) {
   return date.toLocaleString(undefined, {
     month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
   });
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
 }
 
 function PhotoLightbox({ src, onClose }) {
@@ -1426,6 +1479,10 @@ function App() {
   const [editCommentText, setEditCommentText] = useState("");
   const [lightboxSrc, setLightboxSrc] = useState(null);
 
+  // Push notification state
+  const [pushPrefs, setPushPrefs] = useState(null);
+  const [pushSupported] = useState(() => "serviceWorker" in navigator && "PushManager" in window);
+
   const startBusy = (key) => setBusyActions((prev) => new Set(prev).add(key));
   const endBusy = (key) => setBusyActions((prev) => { const next = new Set(prev); next.delete(key); return next; });
   const isBusy = (key) => busyActions.has(key);
@@ -1494,6 +1551,71 @@ function App() {
       .then((res) => res.json())
       .then((data) => setConnectionDegrees(data.degrees || {}));
   };
+
+  // ── Push notifications ──────────────────────────────────────────────────────
+  const loadPushPrefs = () => {
+    fetch("/api/push/prefs")
+      .then((res) => res.json())
+      .then((data) => setPushPrefs(data));
+  };
+
+  useEffect(() => {
+    if (user && pushSupported) loadPushPrefs();
+  }, [user]);
+
+  const subscribeToPush = async () => {
+    try {
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      const vapidRes = await fetch("/api/push/vapid-key");
+      const { publicKey } = await vapidRes.json();
+      if (!publicKey) return;
+
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") return;
+
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+      const json = sub.toJSON();
+      await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: json.endpoint, keys: json.keys }),
+      });
+      loadPushPrefs();
+    } catch (err) {
+      console.error("Push subscribe error:", err);
+    }
+  };
+
+  const unsubscribeFromPush = async () => {
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = reg && await reg.pushManager.getSubscription();
+      if (sub) {
+        await fetch("/api/push/unsubscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: sub.endpoint }),
+        });
+        await sub.unsubscribe();
+      }
+      loadPushPrefs();
+    } catch (err) {
+      console.error("Push unsubscribe error:", err);
+    }
+  };
+
+  const updatePushPref = async (key, value) => {
+    setPushPrefs((prev) => ({ ...prev, [key]: value }));
+    await fetch("/api/push/prefs", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [key]: value }),
+    });
+  };
+  // ── End push notifications ──────────────────────────────────────────────────
 
   const searchPlaces = (query) => {
     setLocationQuery(query);
@@ -1794,6 +1916,39 @@ function App() {
                 <ThemeSegment $active={themePref === "dark"} onClick={() => updateThemePref("dark")}>Dark</ThemeSegment>
               </ThemeToggle>
             </ThemeToggleWrap>
+            {pushSupported && pushPrefs && (
+              <PushSection>
+                <ThemeToggleLabel>Push Notifications</ThemeToggleLabel>
+                <PushRow onClick={(e) => { e.preventDefault(); pushPrefs.enabled ? unsubscribeFromPush() : subscribeToPush(); }}>
+                  <PushRowLabel>Enable notifications</PushRowLabel>
+                  <ToggleTrack $on={pushPrefs.enabled}><ToggleThumb $on={pushPrefs.enabled} /></ToggleTrack>
+                </PushRow>
+                {pushPrefs.enabled && (
+                  <>
+                    <PushRow onClick={(e) => { e.preventDefault(); updatePushPref("new_posts", !pushPrefs.new_posts); }}>
+                      <PushRowLabel>New posts from friends</PushRowLabel>
+                      <ToggleTrack $on={pushPrefs.new_posts}><ToggleThumb $on={pushPrefs.new_posts} /></ToggleTrack>
+                    </PushRow>
+                    <PushRow onClick={(e) => { e.preventDefault(); updatePushPref("mentions", !pushPrefs.mentions); }}>
+                      <PushRowLabel>Mentions</PushRowLabel>
+                      <ToggleTrack $on={pushPrefs.mentions}><ToggleThumb $on={pushPrefs.mentions} /></ToggleTrack>
+                    </PushRow>
+                    <PushRow onClick={(e) => { e.preventDefault(); updatePushPref("reactions", !pushPrefs.reactions); }}>
+                      <PushRowLabel>Reactions</PushRowLabel>
+                      <ToggleTrack $on={pushPrefs.reactions}><ToggleThumb $on={pushPrefs.reactions} /></ToggleTrack>
+                    </PushRow>
+                    <PushRow onClick={(e) => { e.preventDefault(); updatePushPref("comments", !pushPrefs.comments); }}>
+                      <PushRowLabel>Comments</PushRowLabel>
+                      <ToggleTrack $on={pushPrefs.comments}><ToggleThumb $on={pushPrefs.comments} /></ToggleTrack>
+                    </PushRow>
+                    <PushRow onClick={(e) => { e.preventDefault(); updatePushPref("replies", !pushPrefs.replies); }}>
+                      <PushRowLabel>Replies</PushRowLabel>
+                      <ToggleTrack $on={pushPrefs.replies}><ToggleThumb $on={pushPrefs.replies} /></ToggleTrack>
+                    </PushRow>
+                  </>
+                )}
+              </PushSection>
+            )}
             <LogoutButton onClick={handleLogout} disabled={isBusy("logout")}>{isBusy("logout") ? <Spinner /> : "Log out"}</LogoutButton>
           </ProfilePage>
         ) : tab === "feed" ? (
