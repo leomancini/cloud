@@ -1217,7 +1217,7 @@ app.patch("/api/push/prefs", (req, res) => {
 });
 
 // Register (or refresh) a push subscription
-app.post("/api/push/subscribe", (req, res) => {
+app.post("/api/push/subscribe", async (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
   const { endpoint, keys } = req.body;
   if (!endpoint || !keys?.p256dh || !keys?.auth)
@@ -1241,6 +1241,21 @@ app.post("/api/push/subscribe", (req, res) => {
   }
 
   res.json({ ok: true });
+
+  // Send a welcome notification
+  try {
+    await webpush.sendNotification(
+      { endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } },
+      JSON.stringify({
+        title: "Notifications are on",
+        body: "You'll be notified of activity in Cloud.",
+        tag: "welcome-push",
+        url: "/",
+      })
+    );
+  } catch (err) {
+    console.error("Welcome push error:", err.message);
+  }
 });
 
 // Unsubscribe (remove a specific subscription endpoint)
