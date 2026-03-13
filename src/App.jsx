@@ -2627,9 +2627,16 @@ function App() {
                         );
                       });
                     })()}
-                    <EmojiEditButton onClick={() => {
-                      setEmojiPickerPostId(emojiPickerPostId === post.id ? null : post.id);
-                      setEmojiPickerSlot(null);
+                    <EmojiEditButton onMouseDown={(e) => e.preventDefault()} onClick={() => {
+                      if (emojiPickerPostId === post.id) {
+                        setEmojiPickerPostId(null);
+                        setEmojiPickerSlot(null);
+                      } else {
+                        setTimeout(() => {
+                          setEmojiPickerPostId(post.id);
+                          setEmojiPickerSlot(null);
+                        }, 0);
+                      }
                     }}>
                       <i className="fa-solid fa-pen" />
                     </EmojiEditButton>
