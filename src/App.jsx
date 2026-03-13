@@ -2753,7 +2753,16 @@ function App() {
                     {post.comments && post.comments.length > 0 && (
                       <>
                         {post.comments.map((c) => (
-                          <CommentRow key={c.id}>
+                          <CommentRow key={c.id} onDoubleClick={() => handleReact(post.id, getReactionEmojis("posts")[0])} onTouchEnd={(e) => {
+                            const now = Date.now();
+                            const el = e.currentTarget;
+                            if (now - (el._lastTap || 0) < 300) {
+                              el._lastTap = 0;
+                              handleReact(post.id, getReactionEmojis("posts")[0]);
+                            } else {
+                              el._lastTap = now;
+                            }
+                          }}>
                             <CommentAvatar src={c.author_picture} alt={c.author_name} />
                             <CommentBody>
                               <CommentAuthor>{c.author_name}</CommentAuthor>
