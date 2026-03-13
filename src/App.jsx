@@ -2610,7 +2610,14 @@ function App() {
                         ))}
                         {getReactionEmojis("global").length < 12 && (
                           <EmojiEditButton
-                            onClick={() => addEmojiSlot("global")}
+                            onClick={() => {
+                              const currentSet = [...getReactionEmojis("global")];
+                              if (currentSet.length >= 12) return;
+                              const newIndex = currentSet.length;
+                              currentSet.push("⭐");
+                              saveReactionEmojis("global", currentSet);
+                              setEmojiPickerSlot(newIndex);
+                            }}
                             style={{
                               width: 44, height: 44, fontSize: 16,
                               background: "transparent",
