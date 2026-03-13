@@ -2586,13 +2586,8 @@ function App() {
                             {emoji}
                           </EmojiOption>
                         ))}
-                        {reactionPrefs?.global?.length > 0 && (
-                          <ReactionResetButton onClick={() => { resetContextToInherited("global"); setEmojiPickerSlot(null); }}>
-                            Reset
-                          </ReactionResetButton>
-                        )}
                         <EmojiEditButton onClick={() => { setEmojiPickerPostId(null); setEmojiPickerSlot(null); }}>
-                          <i className="fa-solid fa-xmark" />
+                          <i className="fa-solid fa-check" />
                         </EmojiEditButton>
                       </ReactionsRow>
                       {emojiPickerSlot != null && (
