@@ -2821,9 +2821,13 @@ function App() {
                                         <span
                                           key={r.emoji}
                                           style={r.user_reacted ? { cursor: "pointer" } : undefined}
-                                          onClick={r.user_reacted ? () => setCommentReactionPicker(
-                                            commentReactionPicker?.commentId === c.id ? null : { postId: post.id, commentId: c.id }
-                                          ) : undefined}
+                                          onClick={r.user_reacted ? () => {
+                                            if (commentReactionPicker?.commentId === c.id) {
+                                              setCommentReactionPicker(null);
+                                            } else {
+                                              setTimeout(() => setCommentReactionPicker({ postId: post.id, commentId: c.id }), 0);
+                                            }
+                                          } : undefined}
                                         >
                                           {r.emoji}&ensp;<span style={{ fontWeight: 600, color: resolvedTheme.text }}>{r.names.join(", ")}</span>
                                         </span>
