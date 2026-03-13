@@ -15,6 +15,7 @@ import { createServer } from "http";
 import { WebSocketServer } from "ws";
 import Anthropic from "@anthropic-ai/sdk";
 import { execSync, execFileSync } from "child_process";
+import webpush from "web-push";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -54,6 +55,35 @@ db.exec(`
 
 // Migration: add status column for existing DBs, default existing follows to approved
 try { db.exec("ALTER TABLE follows ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'"); } catch {}
+
+// Push notification preferences table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS push_prefs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL UNIQUE,
+    enabled INTEGER NOT NULL DEFAULT 0,
+    new_posts INTEGER NOT NULL DEFAULT 1,
+    mentions INTEGER NOT NULL DEFAULT 1,
+    reactions INTEGER NOT NULL DEFAULT 1,
+    comments INTEGER NOT NULL DEFAULT 1,
+    replies INTEGER NOT NULL DEFAULT 1,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+
+// Push subscriptions table (Web Push endpoint + keys)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
 
 // Uploads directory
 const uploadsDir = join(__dirname, "uploads");
@@ -452,6 +482,45 @@ writeFileSync(join(picturesDir, `${SOL_USER_ID}.jpg`), solAvatarBuf);
 
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
 
+// Web Push setup — generate VAPID keys once with: npx web-push generate-vapid-keys
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    `mailto:${process.env.VAPID_EMAIL || "admin@cloud.app"}`,
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+}
+
+// Send a Web Push notification to all subscriptions for a user, gated by their prefs.
+// prefKey: one of "new_posts" | "mentions" | "reactions" | "comments" | "replies"
+async function sendPushNotification(userId, prefKey, payload) {
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return;
+
+  const prefs = db.prepare("SELECT * FROM push_prefs WHERE user_id = ?").get(userId);
+  // If no prefs row yet, or master toggle off, skip
+  if (!prefs || !prefs.enabled) return;
+  if (prefKey && !prefs[prefKey]) return;
+
+  const subs = db.prepare("SELECT * FROM push_subscriptions WHERE user_id = ?").all(userId);
+  const message = JSON.stringify(payload);
+
+  for (const sub of subs) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        message
+      );
+    } catch (err) {
+      // 410 Gone / 404 = subscription expired, remove it
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        db.prepare("DELETE FROM push_subscriptions WHERE id = ?").run(sub.id);
+      } else {
+        console.error("Push send error:", err.message);
+      }
+    }
+  }
+}
+
 const GITHUB_OWNER = "leomancini";
 const GITHUB_REPO = "cloud";
 
@@ -776,7 +845,33 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
   }
 
   const followers = db.prepare("SELECT follower_id FROM follows WHERE following_id = ? AND status = 'approved'").all(req.user.id);
-  for (const f of followers) notifyUser(f.follower_id, "feed-update");
+  for (const f of followers) {
+    notifyUser(f.follower_id, "feed-update");
+    // Push: new post from someone they follow
+    sendPushNotification(f.follower_id, "new_posts", {
+      title: `${req.user.name} posted`,
+      body: (content || "").trim().slice(0, 100) || "Shared a photo",
+      tag: `new-post-${postId}`,
+      url: "/",
+    });
+  }
+
+  // Push: @mentions in the post body
+  const postText = (content || "").trim();
+  if (postText) {
+    const allUsers = db.prepare("SELECT id, name FROM users WHERE id != ?").all(req.user.id);
+    for (const u of allUsers) {
+      const mentionPattern = new RegExp(`@${u.name}(?:[^a-zA-Z0-9]|$)`, "i");
+      if (mentionPattern.test(postText) && u.id !== SOL_USER_ID) {
+        sendPushNotification(u.id, "mentions", {
+          title: `${req.user.name} mentioned you`,
+          body: postText.slice(0, 100),
+          tag: `mention-post-${postId}`,
+          url: "/",
+        });
+      }
+    }
+  }
 
   if ((content || "").toLowerCase().includes("@sol")) {
     handleSolMention(postId, (content || "").trim());
@@ -894,7 +989,16 @@ app.post("/api/posts/:id/react", (req, res) => {
     );
     res.json({ action: "added" });
   }
-  if (post && post.user_id !== req.user.id) notifyUser(post.user_id, "feed-update");
+  if (post && post.user_id !== req.user.id) {
+    notifyUser(post.user_id, "feed-update");
+    // Push: reaction on their post
+    sendPushNotification(post.user_id, "reactions", {
+      title: `${req.user.name} reacted ${emoji}`,
+      body: "on your post",
+      tag: `reaction-${postId}-${req.user.id}`,
+      url: "/",
+    });
+  }
 });
 
 // Comments
@@ -1049,6 +1153,113 @@ app.get("/api/staticmap", async (req, res) => {
     res.status(500).end();
   }
 });
+
+// ── Push notification routes ────────────────────────────────────────────────
+
+// Expose VAPID public key to the frontend
+app.get("/api/push/vapid-key", (req, res) => {
+  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || null });
+});
+
+// Get current user's push preferences
+app.get("/api/push/prefs", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+
+  let prefs = db.prepare("SELECT * FROM push_prefs WHERE user_id = ?").get(req.user.id);
+  if (!prefs) {
+    // Return defaults without creating a row yet
+    prefs = {
+      enabled: 0,
+      new_posts: 1,
+      mentions: 1,
+      reactions: 1,
+      comments: 1,
+      replies: 1,
+    };
+  }
+  res.json({
+    enabled:   !!prefs.enabled,
+    new_posts: !!prefs.new_posts,
+    mentions:  !!prefs.mentions,
+    reactions: !!prefs.reactions,
+    comments:  !!prefs.comments,
+    replies:   !!prefs.replies,
+  });
+});
+
+// Update push preferences (partial update supported)
+app.patch("/api/push/prefs", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+
+  const allowed = ["enabled", "new_posts", "mentions", "reactions", "comments", "replies"];
+  const updates = {};
+  for (const key of allowed) {
+    if (key in req.body) updates[key] = req.body[key] ? 1 : 0;
+  }
+  if (Object.keys(updates).length === 0) return res.status(400).json({ error: "Nothing to update" });
+
+  const existing = db.prepare("SELECT id FROM push_prefs WHERE user_id = ?").get(req.user.id);
+  if (!existing) {
+    // Insert with defaults then apply updates
+    db.prepare(`
+      INSERT INTO push_prefs (user_id, enabled, new_posts, mentions, reactions, comments, replies)
+      VALUES (?, 0, 1, 1, 1, 1, 1)
+    `).run(req.user.id);
+  }
+
+  const setClauses = Object.keys(updates).map((k) => `${k} = ?`).join(", ");
+  db.prepare(`UPDATE push_prefs SET ${setClauses}, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?`)
+    .run(...Object.values(updates), req.user.id);
+
+  res.json({ ok: true });
+});
+
+// Register (or refresh) a push subscription
+app.post("/api/push/subscribe", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const { endpoint, keys } = req.body;
+  if (!endpoint || !keys?.p256dh || !keys?.auth)
+    return res.status(400).json({ error: "Invalid subscription object" });
+
+  db.prepare(`
+    INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth
+  `).run(req.user.id, endpoint, keys.p256dh, keys.auth);
+
+  // Auto-enable push prefs row if it doesn't exist yet
+  const existing = db.prepare("SELECT id FROM push_prefs WHERE user_id = ?").get(req.user.id);
+  if (!existing) {
+    db.prepare(`
+      INSERT INTO push_prefs (user_id, enabled, new_posts, mentions, reactions, comments, replies)
+      VALUES (?, 1, 1, 1, 1, 1, 1)
+    `).run(req.user.id);
+  } else {
+    db.prepare("UPDATE push_prefs SET enabled = 1 WHERE user_id = ?").run(req.user.id);
+  }
+
+  res.json({ ok: true });
+});
+
+// Unsubscribe (remove a specific subscription endpoint)
+app.post("/api/push/unsubscribe", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const { endpoint } = req.body;
+  if (endpoint) {
+    db.prepare("DELETE FROM push_subscriptions WHERE user_id = ? AND endpoint = ?").run(req.user.id, endpoint);
+  } else {
+    // No endpoint supplied — remove all for this user
+    db.prepare("DELETE FROM push_subscriptions WHERE user_id = ?").run(req.user.id);
+  }
+  // Turn off master toggle if no subscriptions remain
+  const remaining = db.prepare("SELECT COUNT(*) as c FROM push_subscriptions WHERE user_id = ?").get(req.user.id);
+  if (remaining.c === 0) {
+    db.prepare("UPDATE push_prefs SET enabled = 0 WHERE user_id = ?").run(req.user.id);
+  }
+  res.json({ ok: true });
+});
+
+// ── End push notification routes ─────────────────────────────────────────────
 
 // Serve static files from dist (hashed assets get long cache, HTML does not)
 app.use(express.static(join(__dirname, "dist"), {
