@@ -2576,7 +2576,7 @@ function App() {
                             key={emoji + i}
                             onClick={() => setEmojiPickerSlot(emojiPickerSlot === i ? null : i)}
                             style={{
-                              width: 44, height: 44, fontSize: 24,
+                              width: 44, height: 44, fontSize: 24, paddingBottom: 2,
                               background: "transparent",
                               border: emojiPickerSlot === i ? `2px solid ${resolvedTheme.btnPrimary}` : `2px dashed ${resolvedTheme.border}`,
                               borderRadius: RADIUS_SM,
