@@ -928,11 +928,46 @@ const CommentsSection = styled.div`
   margin-top: 14px;
 `;
 
+const thumbsUpPop = keyframes`
+  0%   { transform: scale(0.5); opacity: 0; }
+  60%  { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
+`;
+
 const CommentRow = styled.div`
   display: flex;
   align-items: flex-start;
   gap: 8px;
   margin-top: 10px;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+`;
+
+const CommentThumbsBadge = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  align-self: center;
+  color: ${(p) => (p.$active ? "#2563EB" : p.theme.textSecondary)};
+  font-size: 13px;
+  line-height: 1;
+  opacity: ${(p) => (p.$visible ? 1 : 0)};
+  pointer-events: ${(p) => (p.$visible ? "auto" : "none")};
+  transition: color 0.15s ease, opacity 0.15s ease;
+
+  &:active { opacity: 0.6; }
+`;
+
+const ThumbsUpEmoji = styled.span`
+  font-size: 14px;
+  display: inline-block;
+  animation: ${(p) => (p.$animate ? css`${thumbsUpPop} 0.35s ease forwards` : "none")};
 `;
 
 const CommentAvatar = styled.img`
@@ -1604,6 +1639,30 @@ function PhotoLightbox({ src, onClose }) {
   );
 }
 
+// ─── useDoubleTap hook ────────────────────────────────────────────────────────
+// Returns touch/click event props that fire `onDoubleTap` on a double-tap/click.
+// `delay` is the max ms between two taps to count as a double-tap (default 300).
+function useDoubleTap(onDoubleTap, delay = 300) {
+  const lastTap = useRef(0);
+  const timer = useRef(null);
+
+  const handleTap = useCallback((e) => {
+    const now = Date.now();
+    if (now - lastTap.current < delay) {
+      // Double tap detected
+      clearTimeout(timer.current);
+      lastTap.current = 0;
+      onDoubleTap(e);
+    } else {
+      lastTap.current = now;
+      // Reset after delay so a slow third tap doesn't accidentally trigger
+      timer.current = setTimeout(() => { lastTap.current = 0; }, delay);
+    }
+  }, [onDoubleTap, delay]);
+
+  return { onTouchEnd: handleTap, onClick: handleTap };
+}
+
 function App() {
   const [themePref, setThemePref] = useState(() => localStorage.getItem("theme-pref") || "system");
   const systemDark = useSystemDark();
@@ -1715,6 +1774,7 @@ function App() {
   const [editingComment, setEditingComment] = useState(null);
   const [editCommentText, setEditCommentText] = useState("");
   const [lightboxSrc, setLightboxSrc] = useState(null);
+  const [commentThumbsAnimate, setCommentThumbsAnimate] = useState({}); // commentId -> bool
 
   // Reaction preferences state
   const [reactionPrefs, setReactionPrefs] = useState(null); // { global: [...], posts: null|[...], comments: null|[...] }
