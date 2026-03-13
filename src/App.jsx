@@ -2812,7 +2812,7 @@ function App() {
                                   {c.comment_reactions && c.comment_reactions.length > 0 && (
                                     <CommentTime style={{ display: "flex", gap: 12, marginTop: 4, marginLeft: 0 }}>
                                       {c.comment_reactions.map((r) => (
-                                        <span key={r.emoji}>{r.emoji}&ensp;{r.names.join(", ")}</span>
+                                        <span key={r.emoji}>{r.emoji}&ensp;<span style={{ fontWeight: 600, color: resolvedTheme.text }}>{r.names.join(", ")}</span></span>
                                       ))}
                                     </CommentTime>
                                   )}
