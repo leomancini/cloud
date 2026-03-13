@@ -2190,6 +2190,23 @@ function App() {
     );
   };
 
+  const handleCommentReact = async (postId, commentId) => {
+    const res = await fetch(`/api/comments/${commentId}/react`, { method: "POST" });
+    if (!res.ok) return;
+    const data = await res.json();
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p.id !== postId) return p;
+        return {
+          ...p,
+          comments: (p.comments || []).map((c) =>
+            c.id === commentId ? { ...c, thumbs_up_count: data.thumbs_up_count, user_thumbed_up: data.user_thumbed_up } : c
+          ),
+        };
+      })
+    );
+  };
+
   const handleComment = async (postId) => {
     const content = (commentInputs[postId] || "").trim();
     if (!content) return;
@@ -2753,12 +2770,12 @@ function App() {
                     {post.comments && post.comments.length > 0 && (
                       <>
                         {post.comments.map((c) => (
-                          <CommentRow key={c.id} onDoubleClick={() => handleReact(post.id, getReactionEmojis("posts")[0])} onTouchEnd={(e) => {
+                          <CommentRow key={c.id} onDoubleClick={() => handleCommentReact(post.id, c.id)} onTouchEnd={(e) => {
                             const now = Date.now();
                             const el = e.currentTarget;
                             if (now - (el._lastTap || 0) < 300) {
                               el._lastTap = 0;
-                              handleReact(post.id, getReactionEmojis("posts")[0]);
+                              handleCommentReact(post.id, c.id);
                             } else {
                               el._lastTap = now;
                             }
@@ -2786,7 +2803,7 @@ function App() {
                                   <CommentText style={c.content === "thinking..." ? { color: "#999" } : undefined}>
                                     {c.content === "thinking..." ? c.content : renderText(c.content)}
                                   </CommentText>
-                                  {c.content !== "thinking..." && <CommentTime>{timeAgo(c.created_at)}</CommentTime>}
+                                  {c.content !== "thinking..." && <CommentTime>{timeAgo(c.created_at)}{c.thumbs_up_count > 0 && <> · 👍 {c.thumbs_up_count}</>}</CommentTime>}
                                 </>
                               )}
                             </CommentBody>
