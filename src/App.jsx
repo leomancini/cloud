@@ -1233,7 +1233,6 @@ const ThemeSegment = styled.button`
 
 const PushSection = styled.div`
   text-align: left;
-  max-width: 320px;
   margin: 0 auto 24px;
 `;
 
@@ -1653,6 +1652,13 @@ function App() {
           body: JSON.stringify({ endpoint: sub.endpoint }),
         });
         await sub.unsubscribe();
+      } else {
+        // No local subscription — still tell server to disable
+        await fetch("/api/push/unsubscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
       }
       loadPushPrefs();
     } catch (err) {
@@ -1989,7 +1995,7 @@ function App() {
             {pushPrefs && (
               <PushSection>
                 <ThemeToggleLabel>Push Notifications</ThemeToggleLabel>
-                <PushRow onClick={(e) => { e.preventDefault(); if (pushSupported) { pushPrefs.enabled ? unsubscribeFromPush() : subscribeToPush(); } }}>
+                <PushRow onClick={(e) => { e.preventDefault(); pushPrefs.enabled ? unsubscribeFromPush() : subscribeToPush(); }}>
                   <PushRowLabel>Enable notifications</PushRowLabel>
                   <ToggleTrack $on={pushPrefs.enabled}><ToggleThumb $on={pushPrefs.enabled} /></ToggleTrack>
                 </PushRow>
