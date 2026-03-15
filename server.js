@@ -409,6 +409,7 @@ try { db.exec("ALTER TABLE posts ADD COLUMN place_name TEXT"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN place_lat REAL"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN place_lng REAL"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN place_address TEXT"); } catch {}
+try { db.exec("ALTER TABLE posts ADD COLUMN og_preview TEXT"); } catch {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS post_media (
@@ -831,13 +832,24 @@ Choose one action:
 
 app.post("/api/posts", upload.array("media", 10), async (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
-  const { content, place_name, place_lat, place_lng, place_address } = req.body;
+  const { content, place_name, place_lat, place_lng, place_address, og_preview } = req.body;
   if ((!content || !content.trim()) && (!req.files || req.files.length === 0))
     return res.status(400).json({ error: "Content or media required" });
 
+  // Validate og_preview JSON if provided
+  let ogPreviewJson = null;
+  if (og_preview) {
+    try {
+      const parsed = JSON.parse(og_preview);
+      if (parsed && typeof parsed === "object" && (parsed.title || parsed.description || parsed.image)) {
+        ogPreviewJson = JSON.stringify(parsed);
+      }
+    } catch {}
+  }
+
   const result = db
     .prepare(
-      "INSERT INTO posts (user_id, content, place_name, place_lat, place_lng, place_address) VALUES (?, ?, ?, ?, ?, ?)"
+      "INSERT INTO posts (user_id, content, place_name, place_lat, place_lng, place_address, og_preview) VALUES (?, ?, ?, ?, ?, ?, ?)"
     )
     .run(
       req.user.id,
@@ -845,7 +857,8 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
       place_name || null,
       place_lat || null,
       place_lng || null,
-      place_address || null
+      place_address || null,
+      ogPreviewJson
     );
 
   const postId = result.lastInsertRowid;
@@ -912,7 +925,7 @@ app.get("/api/feed", (req, res) => {
 
   const posts = db
     .prepare(
-      `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address,
+      `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.og_preview,
         u.name as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
       FROM posts p
       JOIN users u ON p.user_id = u.id
@@ -951,8 +964,14 @@ app.get("/api/feed", (req, res) => {
     WHERE cr.comment_id = ?`
   );
 
-  const postsWithMedia = posts.map((post) => ({
+  const postsWithMedia = posts.map((post) => {
+    let ogPreview = null;
+    if (post.og_preview) {
+      try { ogPreview = JSON.parse(post.og_preview); } catch {}
+    }
+    return {
     ...post,
+    og_preview: ogPreview,
     media: getMedia.all(post.id).map((m) => ({
       url: `/api/uploads/${m.filename}`,
       type: m.media_type,
@@ -983,7 +1002,8 @@ app.get("/api/feed", (req, res) => {
       }
       return Object.values(grouped);
     })(),
-  }));
+  };
+  });
 
   res.json({ posts: postsWithMedia });
 });
@@ -1146,6 +1166,108 @@ app.post("/api/comments/:id/react", (req, res) => {
       user_reacted: allReactions.some((r) => r.emoji === em && r.user_id === req.user.id),
     })),
   });
+});
+
+// Open Graph metadata fetch
+app.get("/api/og", async (req, res) => {
+  const { url } = req.query;
+  if (!url) return res.status(400).json({ error: "url required" });
+
+  let parsed;
+  try {
+    parsed = new URL(url);
+    if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("bad protocol");
+  } catch {
+    return res.status(400).json({ error: "Invalid URL" });
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const response = await fetch(parsed.href, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; CloudBot/1.0; +https://cloud.app)",
+        "Accept": "text/html,application/xhtml+xml",
+      },
+      redirect: "follow",
+    });
+    clearTimeout(timeout);
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("text/html") && !contentType.includes("application/xhtml")) {
+      return res.status(422).json({ error: "URL does not return HTML" });
+    }
+
+    // Read up to 200 KB — enough to find <head> tags
+    const reader = response.body.getReader();
+    let html = "";
+    let bytes = 0;
+    const limit = 200 * 1024;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      html += new TextDecoder().decode(value);
+      bytes += value.length;
+      if (bytes >= limit) { reader.cancel(); break; }
+    }
+
+    const getMeta = (property) => {
+      // og:xxx or name= variants
+      const ogMatch = html.match(
+        new RegExp(`<meta[^>]+property=["']${property}["'][^>]+content=["']([^"']+)["']`, "i")
+      ) || html.match(
+        new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']${property}["']`, "i")
+      );
+      if (ogMatch) return ogMatch[1].replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
+      return null;
+    };
+
+    const getMetaName = (name) => {
+      const m = html.match(
+        new RegExp(`<meta[^>]+name=["']${name}["'][^>]+content=["']([^"']+)["']`, "i")
+      ) || html.match(
+        new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+name=["']${name}["']`, "i")
+      );
+      if (m) return m[1].replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
+      return null;
+    };
+
+    const getTitleTag = () => {
+      const m = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      return m ? m[1].replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim() : null;
+    };
+
+    const title = getMeta("og:title") || getMetaName("twitter:title") || getTitleTag();
+    const description = getMeta("og:description") || getMetaName("description") || getMetaName("twitter:description");
+    const image = getMeta("og:image") || getMetaName("twitter:image") || getMetaName("twitter:image:src");
+    const siteName = getMeta("og:site_name");
+    const ogUrl = getMeta("og:url") || parsed.href;
+
+    // Resolve relative image URL
+    let resolvedImage = image;
+    if (image && !image.startsWith("http")) {
+      try {
+        resolvedImage = new URL(image, parsed.origin).href;
+      } catch { resolvedImage = null; }
+    }
+
+    if (!title && !description && !resolvedImage) {
+      return res.status(404).json({ error: "No Open Graph data found" });
+    }
+
+    res.json({
+      url: ogUrl,
+      title: title || null,
+      description: description || null,
+      image: resolvedImage || null,
+      siteName: siteName || parsed.hostname,
+    });
+  } catch (err) {
+    if (err.name === "AbortError") return res.status(504).json({ error: "Request timed out" });
+    console.error("OG fetch error:", err.message);
+    res.status(502).json({ error: "Failed to fetch URL" });
+  }
 });
 
 // Places search proxy
