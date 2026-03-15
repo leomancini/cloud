@@ -1772,10 +1772,18 @@ function App() {
     );
   };
 
+  const renderHighlightPart = (str, keyPrefix) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const pieces = str.split(urlRegex);
+    return pieces.map((piece, j) =>
+      urlRegex.test(piece) ? <span key={`${keyPrefix}-${j}`} style={{ color: "#2563EB", textDecoration: "underline" }}>{piece}</span> : <span key={`${keyPrefix}-${j}`}>{piece}</span>
+    );
+  };
+
   const renderHighlight = (text) => {
     const parts = parseText(text, users);
     return parts.map((p, i) =>
-      p.type === "mention" ? <MentionHighlight key={i}>@{p.content}</MentionHighlight> : <span key={i}>{p.content}</span>
+      p.type === "mention" ? <MentionHighlight key={i}>@{p.content}</MentionHighlight> : <span key={i}>{renderHighlightPart(p.content, i)}</span>
     );
   };
 
