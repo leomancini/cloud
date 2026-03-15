@@ -1212,14 +1212,33 @@ app.get("/api/og", async (req, res) => {
       if (bytes >= limit) { reader.cancel(); break; }
     }
 
+    const decodeEntities = (str) =>
+      str
+        .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+        .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+        .replace(/&amp;/g, "&")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&apos;/g, "'")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&mdash;/g, "—")
+        .replace(/&ndash;/g, "–")
+        .replace(/&hellip;/g, "…")
+        .replace(/&rsquo;/g, "\u2019")
+        .replace(/&lsquo;/g, "\u2018")
+        .replace(/&rdquo;/g, "\u201D")
+        .replace(/&ldquo;/g, "\u201C")
+        .trim();
+
     const getMeta = (property) => {
-      // og:xxx or name= variants
       const ogMatch = html.match(
         new RegExp(`<meta[^>]+property=["']${property}["'][^>]+content=["']([^"']+)["']`, "i")
       ) || html.match(
         new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']${property}["']`, "i")
       );
-      if (ogMatch) return ogMatch[1].replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
+      if (ogMatch) return decodeEntities(ogMatch[1]);
       return null;
     };
 
@@ -1229,13 +1248,13 @@ app.get("/api/og", async (req, res) => {
       ) || html.match(
         new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+name=["']${name}["']`, "i")
       );
-      if (m) return m[1].replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
+      if (m) return decodeEntities(m[1]);
       return null;
     };
 
     const getTitleTag = () => {
       const m = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-      return m ? m[1].replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim() : null;
+      return m ? decodeEntities(m[1]) : null;
     };
 
     const title = getMeta("og:title") || getMetaName("twitter:title") || getTitleTag();
@@ -1256,17 +1275,46 @@ app.get("/api/og", async (req, res) => {
       return res.status(404).json({ error: "No Open Graph data found" });
     }
 
+    // Proxy image through our server to avoid CORS
+    const proxiedImage = resolvedImage ? `/api/og/image?url=${encodeURIComponent(resolvedImage)}` : null;
+
     res.json({
       url: ogUrl,
       title: title || null,
       description: description || null,
-      image: resolvedImage || null,
+      image: proxiedImage,
       siteName: siteName || parsed.hostname,
     });
   } catch (err) {
     if (err.name === "AbortError") return res.status(504).json({ error: "Request timed out" });
     console.error("OG fetch error:", err.message);
     res.status(502).json({ error: "Failed to fetch URL" });
+  }
+});
+
+// OG image proxy
+app.get("/api/og/image", async (req, res) => {
+  const { url } = req.query;
+  if (!url) return res.status(400).end();
+  try {
+    const parsed = new URL(url);
+    if (!["http:", "https:"].includes(parsed.protocol)) return res.status(400).end();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const response = await fetch(parsed.href, {
+      signal: controller.signal,
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; CloudBot/1.0)" },
+      redirect: "follow",
+    });
+    clearTimeout(timeout);
+    const ct = response.headers.get("content-type") || "image/jpeg";
+    if (!ct.startsWith("image/")) return res.status(422).end();
+    res.setHeader("Content-Type", ct);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    const buffer = Buffer.from(await response.arrayBuffer());
+    res.send(buffer);
+  } catch {
+    res.status(502).end();
   }
 });
 
