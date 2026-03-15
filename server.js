@@ -1287,7 +1287,6 @@ app.get("/api/og", async (req, res) => {
     });
   } catch (err) {
     if (err.name === "AbortError") return res.status(504).json({ error: "Request timed out" });
-    console.warn("OG fetch error:", err.message);
     res.status(502).json({ error: "Failed to fetch URL" });
   }
 });
