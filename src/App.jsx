@@ -498,6 +498,54 @@ const RemoveMedia = styled.button`
   padding: 0;
 `;
 
+const LinkPreviewCard = styled.a`
+  display: block;
+  margin-top: 10px;
+  border: 1px solid ${(p) => p.theme.border};
+  border-radius: ${RADIUS};
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  &:hover { background: ${(p) => p.theme.bgHover}; }
+`;
+
+const LinkPreviewImage = styled.img`
+  width: 100%;
+  max-height: 250px;
+  object-fit: cover;
+  display: block;
+`;
+
+const LinkPreviewBody = styled.div`
+  padding: 10px 12px;
+`;
+
+const LinkPreviewSite = styled.div`
+  font-size: 12px;
+  color: ${(p) => p.theme.textSecondary};
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+`;
+
+const LinkPreviewTitle = styled.div`
+  font-size: 16px;
+  font-weight: 600;
+  color: ${(p) => p.theme.text};
+  margin-top: 2px;
+  line-height: 1.3;
+`;
+
+const LinkPreviewDesc = styled.div`
+  font-size: 14px;
+  color: ${(p) => p.theme.textSecondary};
+  margin-top: 4px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+`;
+
 const PostMediaContainer = styled.div`
   margin-top: 10px;
   display: grid;
@@ -1692,6 +1740,11 @@ function App() {
   const [userLocation, setUserLocation] = useState(null);
   const searchTimeout = useRef(null);
 
+  // Link preview state
+  const [ogPreview, setOgPreview] = useState(null);
+  const [ogLoading, setOgLoading] = useState(false);
+  const ogFetchedUrl = useRef(null);
+
   // Media state
   const [mediaFiles, setMediaFiles] = useState([]);
   const [mediaPreviews, setMediaPreviews] = useState([]);
@@ -2110,6 +2163,31 @@ function App() {
     setMediaPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const fetchOgPreview = async (text) => {
+    const urlMatch = text.match(/(https?:\/\/[^\s]+)/);
+    if (!urlMatch) {
+      setOgPreview(null);
+      ogFetchedUrl.current = null;
+      return;
+    }
+    const url = urlMatch[1];
+    if (url === ogFetchedUrl.current) return;
+    ogFetchedUrl.current = url;
+    setOgLoading(true);
+    try {
+      const res = await fetch(`/api/og?url=${encodeURIComponent(url)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setOgPreview(data);
+      } else {
+        setOgPreview(null);
+      }
+    } catch {
+      setOgPreview(null);
+    }
+    setOgLoading(false);
+  };
+
   const handlePost = async () => {
     if (posting) return;
     if (!compose.trim() && mediaFiles.length === 0) return;
@@ -2125,11 +2203,16 @@ function App() {
     for (const file of mediaFiles) {
       formData.append("media", file);
     }
+    if (ogPreview) {
+      formData.append("og_preview", JSON.stringify(ogPreview));
+    }
     await fetch("/api/posts", {
       method: "POST",
       body: formData,
     });
     setCompose("");
+    setOgPreview(null);
+    ogFetchedUrl.current = null;
     setMentionQuery(null);
     setSelectedLocation(null);
     mediaPreviews.forEach((p) => URL.revokeObjectURL(p.url));
@@ -2435,7 +2518,7 @@ function App() {
                   rows={3}
                   placeholder="What's on your mind?"
                   value={compose}
-                  onChange={(e) => { setCompose(e.target.value); handleMentionInput(e.target.value, "compose"); }}
+                  onChange={(e) => { setCompose(e.target.value); handleMentionInput(e.target.value, "compose"); fetchOgPreview(e.target.value); }}
                   onScroll={(e) => { if (composeHighlightRef.current) composeHighlightRef.current.scrollTop = e.target.scrollTop; }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && e.metaKey) handlePost();
@@ -2493,6 +2576,20 @@ function App() {
                   ))}
                 </MediaPreviews>
               )}
+              {ogPreview && (
+                <LinkPreviewCard as="div" style={{ cursor: "default", position: "relative" }}>
+                  {ogPreview.image && <LinkPreviewImage src={ogPreview.image} />}
+                  <LinkPreviewBody>
+                    {ogPreview.siteName && <LinkPreviewSite>{ogPreview.siteName}</LinkPreviewSite>}
+                    {ogPreview.title && <LinkPreviewTitle>{ogPreview.title}</LinkPreviewTitle>}
+                    {ogPreview.description && <LinkPreviewDesc>{ogPreview.description}</LinkPreviewDesc>}
+                  </LinkPreviewBody>
+                  <EmojiEditButton onClick={() => { setOgPreview(null); ogFetchedUrl.current = "dismissed"; }} style={{ position: "absolute", top: 8, right: 8, background: resolvedTheme.bgElevated, border: `1px solid ${resolvedTheme.border}`, borderRadius: "50%", width: 24, height: 24 }}>
+                    <i className="fa-solid fa-xmark" />
+                  </EmojiEditButton>
+                </LinkPreviewCard>
+              )}
+              {ogLoading && <CommentTime style={{ marginTop: 8 }}>Loading preview...</CommentTime>}
               <HiddenFileInput
                 ref={fileInputRef}
                 type="file"
@@ -2623,6 +2720,16 @@ function App() {
                     )}
                   </PostHeader>
                   {post.content && <PostContent>{renderText(post.content)}</PostContent>}
+                  {post.og_preview && (
+                    <LinkPreviewCard href={post.og_preview.url} target="_blank" rel="noopener noreferrer">
+                      {post.og_preview.image && <LinkPreviewImage src={post.og_preview.image} />}
+                      <LinkPreviewBody>
+                        {post.og_preview.siteName && <LinkPreviewSite>{post.og_preview.siteName}</LinkPreviewSite>}
+                        {post.og_preview.title && <LinkPreviewTitle>{post.og_preview.title}</LinkPreviewTitle>}
+                        {post.og_preview.description && <LinkPreviewDesc>{post.og_preview.description}</LinkPreviewDesc>}
+                      </LinkPreviewBody>
+                    </LinkPreviewCard>
+                  )}
                   {post.media && post.media.length > 0 && (
                     <PostMediaContainer $count={post.media.length}>
                       {post.media.map((m, i) =>
