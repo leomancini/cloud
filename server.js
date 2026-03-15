@@ -543,7 +543,7 @@ async function sendPushNotification(userId, prefKey, payload) {
       if (err.statusCode === 410 || err.statusCode === 404) {
         db.prepare("DELETE FROM push_subscriptions WHERE id = ?").run(sub.id);
       } else {
-        console.error("Push send error:", err.message);
+        console.warn("Push send error:", err.message);
       }
     }
   }
@@ -695,7 +695,7 @@ Steps: 1) Read the file(s) you need to change. 2) Use edit_file for targeted rep
 
     return pr.html_url || null;
   } catch (e) {
-    console.error("Sol PR error:", e);
+    console.warn("Sol PR error:", e);
     try { execFileSync("git", ["worktree", "remove", "--force", worktreePath], { cwd: __dirname }); } catch {}
     try { execFileSync("git", ["branch", "-D", branchName], { cwd: __dirname }); } catch {}
     return null;
@@ -741,7 +741,7 @@ async function handleSolMention(postId, triggerText = null) {
         }
       }
     } catch (e) {
-      console.error("Failed to process media for Sol:", e);
+      console.warn("Failed to process media for Sol:", e);
     }
   }
 
@@ -824,7 +824,7 @@ Choose one action:
       updatePlaceholder(textBlock?.text?.trim() || "hmm, not sure what to say");
     }
   } catch (e) {
-    console.error("Sol response error:", e);
+    console.warn("Sol response error:", e);
     db.prepare("UPDATE comments SET content = ? WHERE id = ?").run("sorry, i couldn't respond right now.", placeholderId);
     notifyUser(post.user_id, "feed-update");
   }
@@ -877,7 +877,7 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
             .toFile(file.path + ".tmp");
           renameSync(file.path + ".tmp", file.path);
         } catch (e) {
-          console.error("Image compression failed:", e);
+          console.warn("Image compression failed:", e);
         }
       }
       insertMedia.run(postId, file.filename, mediaType);
@@ -1287,7 +1287,7 @@ app.get("/api/og", async (req, res) => {
     });
   } catch (err) {
     if (err.name === "AbortError") return res.status(504).json({ error: "Request timed out" });
-    console.error("OG fetch error:", err.message);
+    console.warn("OG fetch error:", err.message);
     res.status(502).json({ error: "Failed to fetch URL" });
   }
 });
@@ -1580,7 +1580,7 @@ app.post("/api/push/subscribe", async (req, res) => {
       })
     );
   } catch (err) {
-    console.error("Welcome push error:", err.message);
+    console.warn("Welcome push error:", err.message);
   }
 });
 
