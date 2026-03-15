@@ -1881,7 +1881,8 @@ function App() {
           loadFollowRequests();
           loadConnectionDegrees();
         }
-      });
+      })
+      .catch(() => { setLoading(false); });
   }, []);
 
   useEffect(() => {
@@ -1900,31 +1901,36 @@ function App() {
   const loadFeed = () => {
     fetch("/api/feed")
       .then((res) => { if (res.ok) return res.json(); })
-      .then((data) => { if (data) setPosts(data.posts); });
+      .then((data) => { if (data) setPosts(data.posts); })
+      .catch(() => {});
   };
 
   const loadFollowRequests = () => {
     fetch("/api/follow-requests")
       .then((res) => { if (res.ok) return res.json(); })
-      .then((data) => { if (data) setFollowRequests(data.requests); });
+      .then((data) => { if (data) setFollowRequests(data.requests); })
+      .catch(() => {});
   };
 
   const loadFollowers = () => {
     fetch("/api/followers")
       .then((res) => { if (res.ok) return res.json(); })
-      .then((data) => { if (data) setFollowers(data.followers); });
+      .then((data) => { if (data) setFollowers(data.followers); })
+      .catch(() => {});
   };
 
   const loadUsers = () => {
     fetch("/api/users")
       .then((res) => { if (res.ok) return res.json(); })
-      .then((data) => { if (data) setUsers(data.users); });
+      .then((data) => { if (data) setUsers(data.users); })
+      .catch(() => {});
   };
 
   const loadConnectionDegrees = () => {
     fetch("/api/users/connections")
       .then((res) => { if (res.ok) return res.json(); })
-      .then((data) => { if (data) setConnectionDegrees(data.degrees || {}); });
+      .then((data) => { if (data) setConnectionDegrees(data.degrees || {}); })
+      .catch(() => {});
   };
 
   // ── Reaction preferences ────────────────────────────────────────────────────
@@ -2033,7 +2039,8 @@ function App() {
   const loadPushPrefs = () => {
     fetch("/api/push/prefs")
       .then((res) => { if (res.ok) return res.json(); })
-      .then((data) => { if (data) setPushPrefs(data); });
+      .then((data) => { if (data) setPushPrefs(data); })
+      .catch(() => {});
   };
 
   useEffect(() => {
