@@ -2799,8 +2799,9 @@ function App() {
               <EmptyState><BigSpinner /></EmptyState>
             ) : (
               posts.map((post) => (
-                <PostItem key={post.id} data-post onDoubleClick={(e) => {
+                <PostItem key={post.id} data-post-id={post.id} onDoubleClick={(e) => {
                   if (e.currentTarget._touchHandled) { e.currentTarget._touchHandled = false; return; }
+                  if (e.currentTarget._lightboxTimer) { clearTimeout(e.currentTarget._lightboxTimer); e.currentTarget._lightboxTimer = null; }
                   handleReact(post.id, getReactionEmojis("posts")[0]);
                 }} onTouchStart={(e) => {
                   const now = Date.now();
@@ -2808,6 +2809,7 @@ function App() {
                   if (now - (el._lastTap || 0) < 400) {
                     el._lastTap = 0;
                     el._touchHandled = true;
+                    if (el._lightboxTimer) { clearTimeout(el._lightboxTimer); el._lightboxTimer = null; }
                     handleReact(post.id, getReactionEmojis("posts")[0]);
                   } else {
                     el._lastTap = now;
@@ -2869,10 +2871,15 @@ function App() {
                             src={m.url}
                             $single={post.media.length === 1}
                             $tappable={post.media.length > 1}
-                            onClick={post.media.length > 1 ? (e) => {
-                              const el = e.currentTarget.closest("[data-post]");
-                              if (el && Date.now() - (el._lastTap || 0) < 400) return;
-                              setLightboxSrc(m.url);
+                            onClick={post.media.length > 1 ? () => {
+                              const el = document.querySelector(`[data-post-id="${post.id}"]`);
+                              const url = m.url;
+                              const timer = setTimeout(() => setLightboxSrc(url), 300);
+                              if (el) {
+                                const prev = el._lightboxTimer;
+                                if (prev) clearTimeout(prev);
+                                el._lightboxTimer = timer;
+                              }
                             } : undefined}
                           />
                         )
