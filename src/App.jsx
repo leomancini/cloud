@@ -919,7 +919,7 @@ const EmojiChipRemove = styled.button`
   justify-content: center;
   width: 16px;
   height: 16px;
-  border-radius: 4px;
+  border-radius: ${RADIUS_SM};
   border: none;
   background: ${(p) => p.theme.textSecondary};
   color: ${(p) => p.theme.bgElevated};
