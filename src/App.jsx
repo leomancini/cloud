@@ -451,7 +451,7 @@ const RemoveLocation = styled.button`
   background: rgba(0,0,0,0.5);
   color: #fff;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 18px;
   width: 30px;
   height: 30px;
   border-radius: ${RADIUS_SM};
@@ -507,7 +507,7 @@ const RemoveMedia = styled.button`
   background: rgba(0,0,0,0.5);
   color: #fff;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 18px;
   width: 30px;
   height: 30px;
   border-radius: ${RADIUS_SM};
