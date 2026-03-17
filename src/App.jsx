@@ -395,18 +395,19 @@ const LocationResults = styled.div`
   right: 0;
   background: ${(p) => p.theme.bgElevated};
   border: 1px solid ${(p) => p.theme.border};
-  border-radius: ${RADIUS};
-  margin-top: 4px;
+  border-radius: ${RADIUS_SM};
+  max-height: 150px;
+  overflow-y: auto;
   z-index: 10;
-  overflow: hidden;
+  box-shadow: 0 2px 8px ${(p) => p.theme.shadowMd};
 `;
 
 const LocationResult = styled.div`
-  padding: 10px 12px;
+  padding: 8px 12px;
   cursor: pointer;
 
   &:hover {
-    background: #f9f9f9;
+    background: ${(p) => p.theme.bgHover};
   }
 `;
 
