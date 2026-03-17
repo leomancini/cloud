@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback, createContext, useCont
 import styled, { ThemeProvider, createGlobalStyle, keyframes, css } from "styled-components";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
+import PullToRefresh from "pulltorefreshjs";
+import ReactDOMServer from "react-dom/server";
 
 const RADIUS = "10px";
 const RADIUS_SM = "6px";
@@ -79,6 +81,13 @@ const GlobalStyle = createGlobalStyle`
     background: ${(p) => p.theme.bg};
     color: ${(p) => p.theme.text};
     transition: background 0.2s ease, color 0.2s ease;
+  }
+  .ptr--ptr {
+    box-shadow: none !important;
+  }
+  .ptr--icon {
+    font-size: 1.5rem;
+    color: ${(p) => p.theme.textMuted};
   }
 `;
 
@@ -1868,6 +1877,26 @@ function App() {
   const startBusy = (key) => setBusyActions((prev) => new Set(prev).add(key));
   const endBusy = (key) => setBusyActions((prev) => { const next = new Set(prev); next.delete(key); return next; });
   const isBusy = (key) => busyActions.has(key);
+
+  // Pull-to-refresh in PWA mode
+  const ptrRef = useRef(null);
+  useEffect(() => {
+    if (!isStandalone) return;
+    ptrRef.current = PullToRefresh.init({
+      mainElement: "body",
+      onRefresh: () => { window.location.reload(); },
+      distThreshold: 60,
+      distMax: 500,
+      distReload: 50,
+      instructionsPullToRefresh: " ",
+      instructionsReleaseToRefresh: " ",
+      instructionsRefreshing: " ",
+      refreshTimeout: 500,
+      iconArrow: ReactDOMServer.renderToString(<i className="fa-solid fa-rotate" />),
+      iconRefreshing: ReactDOMServer.renderToString(<i className="fa-solid fa-rotate fa-spin" />),
+    });
+    return () => { if (ptrRef.current) { ptrRef.current.destroy(); ptrRef.current = null; } };
+  }, [isStandalone]);
 
   useEffect(() => {
     const handleClickOutside = () => { setOpenMenuId(null); setOpenCommentMenuId(null); };
