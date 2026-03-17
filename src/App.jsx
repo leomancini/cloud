@@ -2577,15 +2577,19 @@ function App() {
                     if (e.key === "Enter" && e.metaKey) handlePost();
                   }}
                 />
-                {mentionQuery && mentionQuery.field === "compose" && (
-                  <MentionDropdown>
-                    {mentionUsers.filter((u) => u.name.toLowerCase().includes(mentionQuery.query)).map((u) => (
-                      <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, "compose"); }} onTouchEnd={(e) => { e.preventDefault(); insertMention(u.name, "compose"); }}>
-                        <MentionAvatar src={u.picture} /> {u.name}
-                      </MentionOption>
-                    ))}
-                  </MentionDropdown>
-                )}
+                {mentionQuery && mentionQuery.field === "compose" && (() => {
+                  const filtered = mentionUsers.filter((u) => u.name.toLowerCase().includes(mentionQuery.query));
+                  if (!filtered.length) return null;
+                  return (
+                    <MentionDropdown>
+                      {filtered.map((u) => (
+                        <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, "compose"); }} onTouchEnd={(e) => { e.preventDefault(); insertMention(u.name, "compose"); }}>
+                          <MentionAvatar src={u.picture} /> {u.name}
+                        </MentionOption>
+                      ))}
+                    </MentionDropdown>
+                  );
+                })()}
               </ComposeWrapper>
               {selectedLocation && (
                 <PostLocation style={{ position: "relative" }}>
@@ -3102,6 +3106,7 @@ function App() {
                         const threadUserIds = new Set([post.user_id, ...(post.comments || []).map((c) => c.user_id)]);
                         threadUserIds.delete(user.id);
                         const filtered = mentionUsers.filter((u) => u.name.toLowerCase().includes(mentionQuery.query));
+                        if (!filtered.length) return null;
                         const sorted = [...filtered].sort((a, b) => {
                           const aIn = threadUserIds.has(a.id) ? 0 : 1;
                           const bIn = threadUserIds.has(b.id) ? 0 : 1;
