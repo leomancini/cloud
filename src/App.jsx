@@ -378,6 +378,8 @@ const LocationInput = styled.input`
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   outline: none;
   box-sizing: border-box;
+  background: ${(p) => p.theme.bgInput};
+  color: ${(p) => p.theme.text};
 
   &:focus {
     border-color: #ccc;
@@ -439,17 +441,21 @@ const SelectedLocation = styled.div`
 
 const RemoveLocation = styled.button`
   position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 8px;
+  top: 8px;
   border: none;
-  background: none;
-  color: ${(p) => p.theme.textSecondary};
+  background: rgba(0,0,0,0.5);
+  color: #fff;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
   padding: 0;
   display: flex;
   align-items: center;
+  justify-content: center;
+  z-index: 1;
 `;
 
 const ComposeActionsLeft = styled.div`
@@ -2579,12 +2585,21 @@ function App() {
                 )}
               </ComposeWrapper>
               {selectedLocation && (
-                <SelectedLocation>
-                  <span><i className="fa-solid fa-location-dot" /> <strong>{selectedLocation.name}</strong></span>
+                <PostLocation style={{ position: "relative" }}>
+                  <PostMapWrapper>
+                    <PostMap
+                      src={`/api/staticmap?lat=${selectedLocation.lat}&lng=${selectedLocation.lng}&v=2`}
+                      alt={selectedLocation.name}
+                    />
+                  </PostMapWrapper>
+                  <PostPlaceName>
+                    <span>{selectedLocation.name}</span>
+                    {selectedLocation.address && <PostPlaceAddress>{shortAddress(selectedLocation.address)}</PostPlaceAddress>}
+                  </PostPlaceName>
                   <RemoveLocation onClick={() => setSelectedLocation(null)}>
                     <i className="fa-solid fa-xmark" />
                   </RemoveLocation>
-                </SelectedLocation>
+                </PostLocation>
               )}
               {showLocationSearch && !selectedLocation && (
                 <LocationSearch>
