@@ -452,7 +452,7 @@ const RemoveLocation = styled.button`
   font-size: 12px;
   width: 24px;
   height: 24px;
-  border-radius: 50%;
+  border-radius: ${RADIUS_SM};
   padding: 0;
   display: flex;
   align-items: center;
