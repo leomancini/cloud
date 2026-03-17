@@ -2799,7 +2799,20 @@ function App() {
               <EmptyState><BigSpinner /></EmptyState>
             ) : (
               posts.map((post) => (
-                <PostItem key={post.id}>
+                <PostItem key={post.id} onDoubleClick={(e) => {
+                  if (e.currentTarget._touchHandled) { e.currentTarget._touchHandled = false; return; }
+                  handleReact(post.id, getReactionEmojis("posts")[0]);
+                }} onTouchStart={(e) => {
+                  const now = Date.now();
+                  const el = e.currentTarget;
+                  if (now - (el._lastTap || 0) < 400) {
+                    el._lastTap = 0;
+                    el._touchHandled = true;
+                    handleReact(post.id, getReactionEmojis("posts")[0]);
+                  } else {
+                    el._lastTap = now;
+                  }
+                }}>
                   <PostHeader>
                     <Avatar src={post.author_picture} alt={post.author_name} />
                     <PostHeaderText>
