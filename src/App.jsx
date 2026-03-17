@@ -371,11 +371,13 @@ const LocationSearch = styled.div`
 
 const LocationInput = styled.input`
   width: 100%;
+  min-height: 40px;
   border: 1px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
-  padding: 14px;
+  padding: 8px 12px;
   font-size: 16px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 22px;
   outline: none;
   box-sizing: border-box;
   background: ${(p) => p.theme.bgInput};
