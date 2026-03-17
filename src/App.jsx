@@ -373,7 +373,7 @@ const LocationInput = styled.input`
   width: 100%;
   border: 1px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
-  padding: 10px 12px;
+  padding: 14px;
   font-size: 16px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   outline: none;
