@@ -3080,15 +3080,25 @@ function App() {
                           </CommentPostButton>
                         )}
                       </CommentInputRow>
-                      {mentionQuery && mentionQuery.field === post.id && (
-                        <MentionDropdown>
-                          {mentionUsers.filter((u) => u.name.toLowerCase().includes(mentionQuery.query)).map((u) => (
-                            <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, post.id); }} onTouchEnd={(e) => { e.preventDefault(); insertMention(u.name, post.id); }}>
-                              <MentionAvatar src={u.picture} /> {u.name}
-                            </MentionOption>
-                          ))}
-                        </MentionDropdown>
-                      )}
+                      {mentionQuery && mentionQuery.field === post.id && (() => {
+                        const threadUserIds = new Set([post.user_id, ...(post.comments || []).map((c) => c.user_id)]);
+                        threadUserIds.delete(user.id);
+                        const filtered = mentionUsers.filter((u) => u.name.toLowerCase().includes(mentionQuery.query));
+                        const sorted = [...filtered].sort((a, b) => {
+                          const aIn = threadUserIds.has(a.id) ? 0 : 1;
+                          const bIn = threadUserIds.has(b.id) ? 0 : 1;
+                          return aIn - bIn;
+                        });
+                        return (
+                          <MentionDropdown>
+                            {sorted.map((u) => (
+                              <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, post.id); }} onTouchEnd={(e) => { e.preventDefault(); insertMention(u.name, post.id); }}>
+                                <MentionAvatar src={u.picture} /> {u.name}
+                              </MentionOption>
+                            ))}
+                          </MentionDropdown>
+                        );
+                      })()}
                     </div>
                   </CommentsSection>
                 </PostItem>
