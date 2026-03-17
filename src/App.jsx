@@ -2755,7 +2755,7 @@ function App() {
               </SuggestionsBox>
             )}
             {posts.length === 0 ? (
-              <EmptyState>No posts yet. Follow people to see their posts!</EmptyState>
+              <EmptyState><Spinner /></EmptyState>
             ) : (
               posts.map((post) => (
                 <PostItem key={post.id}>
