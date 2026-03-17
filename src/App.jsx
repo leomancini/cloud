@@ -91,7 +91,7 @@ const GlobalStyle = createGlobalStyle`
   }
 `;
 
-const Spinner = () => <i className="fa-solid fa-spinner fa-spin" />;
+const Spinner = () => <i className="fa-solid fa-circle-notch fa-spin" />;
 
 const parseText = (text, users = []) => {
   if (!text) return [];
@@ -2243,7 +2243,7 @@ function App() {
 
   const handlePost = async () => {
     if (posting) return;
-    if (!compose.trim() && mediaFiles.length === 0) return;
+    if (!compose.trim() && mediaFiles.length === 0 && !selectedLocation) return;
     setPosting(true);
     const formData = new FormData();
     formData.append("content", compose);
@@ -2694,9 +2694,9 @@ function App() {
                 </ComposeActionsLeft>
                 <PostButton
                   onClick={handlePost}
-                  disabled={posting || (!compose.trim() && mediaFiles.length === 0)}
+                  disabled={posting || (!compose.trim() && mediaFiles.length === 0 && !selectedLocation)}
                 >
-                  {posting ? <i className="fa-solid fa-spinner fa-spin" /> : "Post"}
+                  {posting ? <i className="fa-solid fa-circle-notch fa-spin" /> : "Post"}
                 </PostButton>
               </ComposeActions>
             </ComposeBox>
