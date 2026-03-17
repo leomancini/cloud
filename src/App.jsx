@@ -571,8 +571,10 @@ const PostMediaContainer = styled.div`
   gap: 4px;
 
   ${(p) => p.$count === 2 && css`
+    grid-template-rows: 1fr;
     & > * {
-      aspect-ratio: 3 / 4;
+      height: 100%;
+      max-height: 400px;
     }
   `}
 
