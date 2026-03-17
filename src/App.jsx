@@ -1915,18 +1915,7 @@ function App() {
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
-  const loadMoreRef = useRef(loadMoreFeed);
-  loadMoreRef.current = loadMoreFeed;
-  useEffect(() => {
-    if (tab !== "feed") return;
-    const handleScroll = () => {
-      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 300) {
-        loadMoreRef.current();
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [tab]);
+  const loadMoreRef = useRef(null);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -1980,6 +1969,17 @@ function App() {
       .catch(() => {})
       .finally(() => setFeedLoadingMore(false));
   };
+  loadMoreRef.current = loadMoreFeed;
+  useEffect(() => {
+    if (tab !== "feed") return;
+    const handleScroll = () => {
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 300) {
+        loadMoreRef.current();
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [tab]);
 
   const loadFollowRequests = () => {
     fetch("/api/follow-requests")
