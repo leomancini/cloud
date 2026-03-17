@@ -2632,6 +2632,20 @@ function App() {
                   );
                 })()}
               </ComposeWrapper>
+              {mediaPreviews.length > 0 && (
+                <PostMediaContainer $count={mediaPreviews.length} style={{ marginTop: 8 }}>
+                  {mediaPreviews.map((preview, i) => (
+                    <MediaPreview key={i}>
+                      {preview.type === "video" ? (
+                        <PostVideo src={preview.url} muted $single={mediaPreviews.length === 1} />
+                      ) : (
+                        <PostImage src={preview.url} $single={mediaPreviews.length === 1} />
+                      )}
+                      <RemoveMedia onClick={() => removeMedia(i)}><i className="fa-solid fa-xmark" /></RemoveMedia>
+                    </MediaPreview>
+                  ))}
+                </PostMediaContainer>
+              )}
               {selectedLocation && (
                 <PostLocation style={{ position: "relative" }}>
                   <PostMapWrapper>
@@ -2668,20 +2682,6 @@ function App() {
                     </LocationResults>
                   )}
                 </LocationSearch>
-              )}
-              {mediaPreviews.length > 0 && (
-                <PostMediaContainer $count={mediaPreviews.length} style={{ marginTop: 8 }}>
-                  {mediaPreviews.map((preview, i) => (
-                    <MediaPreview key={i}>
-                      {preview.type === "video" ? (
-                        <PostVideo src={preview.url} muted $single={mediaPreviews.length === 1} />
-                      ) : (
-                        <PostImage src={preview.url} $single={mediaPreviews.length === 1} />
-                      )}
-                      <RemoveMedia onClick={() => removeMedia(i)}><i className="fa-solid fa-xmark" /></RemoveMedia>
-                    </MediaPreview>
-                  ))}
-                </PostMediaContainer>
               )}
               {ogPreview && (
                 <LinkPreviewCard as="div" style={{ cursor: "default", position: "relative" }}>
