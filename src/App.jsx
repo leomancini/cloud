@@ -484,7 +484,6 @@ const MediaPreview = styled.div`
   position: relative;
   border-radius: ${RADIUS};
   overflow: hidden;
-  max-height: 200px;
 `;
 
 const PreviewImage = styled.img`
