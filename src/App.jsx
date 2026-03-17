@@ -2799,7 +2799,7 @@ function App() {
               <EmptyState><BigSpinner /></EmptyState>
             ) : (
               posts.map((post) => (
-                <PostItem key={post.id} onDoubleClick={(e) => {
+                <PostItem key={post.id} data-post onDoubleClick={(e) => {
                   if (e.currentTarget._touchHandled) { e.currentTarget._touchHandled = false; return; }
                   handleReact(post.id, getReactionEmojis("posts")[0]);
                 }} onTouchStart={(e) => {
@@ -2869,7 +2869,11 @@ function App() {
                             src={m.url}
                             $single={post.media.length === 1}
                             $tappable={post.media.length > 1}
-                            onClick={post.media.length > 1 ? () => setLightboxSrc(m.url) : undefined}
+                            onClick={post.media.length > 1 ? (e) => {
+                              const el = e.currentTarget.closest("[data-post]");
+                              if (el && Date.now() - (el._lastTap || 0) < 400) return;
+                              setLightboxSrc(m.url);
+                            } : undefined}
                           />
                         )
                       )}
