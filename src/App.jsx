@@ -451,7 +451,7 @@ const RemoveLocation = styled.button`
   background: rgba(0,0,0,0.5);
   color: #fff;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 10px;
   width: 24px;
   height: 24px;
   border-radius: ${RADIUS_SM};
@@ -459,6 +459,7 @@ const RemoveLocation = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
+  line-height: 1;
   z-index: 1;
 `;
 
@@ -506,7 +507,7 @@ const RemoveMedia = styled.button`
   background: rgba(0,0,0,0.5);
   color: #fff;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 10px;
   width: 24px;
   height: 24px;
   border-radius: ${RADIUS_SM};
@@ -514,6 +515,7 @@ const RemoveMedia = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
+  line-height: 1;
   z-index: 1;
 `;
 
