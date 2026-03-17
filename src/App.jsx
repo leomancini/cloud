@@ -2660,18 +2660,18 @@ function App() {
                 </LocationSearch>
               )}
               {mediaPreviews.length > 0 && (
-                <MediaPreviews>
+                <PostMediaContainer $count={mediaPreviews.length} style={{ marginTop: 8 }}>
                   {mediaPreviews.map((preview, i) => (
                     <MediaPreview key={i}>
                       {preview.type === "video" ? (
-                        <PreviewVideo src={preview.url} muted />
+                        <PostVideo src={preview.url} muted $single={mediaPreviews.length === 1} />
                       ) : (
-                        <PreviewImage src={preview.url} />
+                        <PostImage src={preview.url} $single={mediaPreviews.length === 1} />
                       )}
                       <RemoveMedia onClick={() => removeMedia(i)}><i className="fa-solid fa-xmark" /></RemoveMedia>
                     </MediaPreview>
                   ))}
-                </MediaPreviews>
+                </PostMediaContainer>
               )}
               {ogPreview && (
                 <LinkPreviewCard as="div" style={{ cursor: "default", position: "relative" }}>
