@@ -500,20 +500,21 @@ const PreviewVideo = styled.video`
 
 const RemoveMedia = styled.button`
   position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 20px;
-  height: 20px;
-  border-radius: ${RADIUS_SM};
+  right: 8px;
+  top: 8px;
   border: none;
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  font-size: 12px;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
   cursor: pointer;
+  font-size: 12px;
+  width: 24px;
+  height: 24px;
+  border-radius: ${RADIUS_SM};
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
+  z-index: 1;
 `;
 
 const LinkPreviewCard = styled.a`
