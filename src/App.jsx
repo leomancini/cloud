@@ -2811,6 +2811,7 @@ function App() {
                     el._touchHandled = true;
                     if (el._lightboxTimer) { clearTimeout(el._lightboxTimer); el._lightboxTimer = null; }
                     handleReact(post.id, getReactionEmojis("posts")[0]);
+                    setTimeout(() => { el._touchHandled = false; }, 500);
                   } else {
                     el._lastTap = now;
                   }
@@ -2873,11 +2874,11 @@ function App() {
                             $tappable={post.media.length > 1}
                             onClick={post.media.length > 1 ? () => {
                               const el = document.querySelector(`[data-post-id="${post.id}"]`);
+                              if (el && el._touchHandled) return;
                               const url = m.url;
                               const timer = setTimeout(() => setLightboxSrc(url), 300);
                               if (el) {
-                                const prev = el._lightboxTimer;
-                                if (prev) clearTimeout(prev);
+                                if (el._lightboxTimer) clearTimeout(el._lightboxTimer);
                                 el._lightboxTimer = timer;
                               }
                             } : undefined}
