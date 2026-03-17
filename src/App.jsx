@@ -646,15 +646,15 @@ const LightboxImg = styled.img`
 
 const LightboxClose = styled.button`
   position: fixed;
-  top: 16px;
-  right: 16px;
+  top: 20px;
+  right: 20px;
   width: 36px;
   height: 36px;
   border-radius: ${RADIUS_SM};
   border: none;
   background: rgba(255, 255, 255, 0.15);
   color: white;
-  font-size: 16px;
+  font-size: 20px;
   cursor: pointer;
   display: flex;
   align-items: center;
