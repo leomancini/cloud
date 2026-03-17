@@ -91,7 +91,8 @@ const GlobalStyle = createGlobalStyle`
   }
 `;
 
-const Spinner = () => <i className="fa-solid fa-circle-notch fa-spin" />;
+const Spinner = ({ size } = {}) => <i className="fa-solid fa-circle-notch fa-spin" style={size ? { fontSize: size } : undefined} />;
+const BigSpinner = () => <Spinner size="24px" />;
 
 const parseText = (text, users = []) => {
   if (!text) return [];
@@ -2785,7 +2786,7 @@ function App() {
               </SuggestionsBox>
             )}
             {posts.length === 0 ? (
-              <EmptyState><Spinner /></EmptyState>
+              <EmptyState><BigSpinner /></EmptyState>
             ) : (
               posts.map((post) => (
                 <PostItem key={post.id}>
@@ -3157,7 +3158,7 @@ function App() {
                 </PostItem>
               ))
             )}
-            {feedLoadingMore && <EmptyState><Spinner /></EmptyState>}
+            {feedLoadingMore && <EmptyState><BigSpinner /></EmptyState>}
           </>
         ) : (
           <>
