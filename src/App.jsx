@@ -135,12 +135,12 @@ const MentionHighlight = styled.span`
 
 const MentionDropdown = styled.div`
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
   background: ${(p) => p.theme.bgElevated};
   border: 1px solid ${(p) => p.theme.border};
-  border-radius: ${RADIUS_SM};
+  border-radius: ${RADIUS};
   max-height: 150px;
   overflow-y: auto;
   z-index: 10;
@@ -390,12 +390,12 @@ const LocationInput = styled.input`
 
 const LocationResults = styled.div`
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
   background: ${(p) => p.theme.bgElevated};
   border: 1px solid ${(p) => p.theme.border};
-  border-radius: ${RADIUS_SM};
+  border-radius: ${RADIUS};
   max-height: 150px;
   overflow-y: auto;
   z-index: 10;
