@@ -601,8 +601,6 @@ const PostImage = styled.img`
   background: ${(p) => p.theme.bgControl};
   min-height: ${(p) => (p.$single ? "200px" : "auto")};
   cursor: ${(p) => (p.$tappable ? "zoom-in" : "default")};
-  transition: opacity 0.15s ease;
-  &:active { opacity: ${(p) => (p.$tappable ? "0.85" : "1")}; }
 `;
 
 const PostVideo = styled.video`
