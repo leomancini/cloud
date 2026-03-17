@@ -424,10 +424,10 @@ const SelectedLocation = styled.div`
   align-items: center;
   gap: ${ICON_GAP};
   margin-top: 8px;
-  padding: 8px 36px 8px 12px;
+  padding: 14px 36px 14px 14px;
   background: ${(p) => p.theme.bgHover};
   border-radius: ${RADIUS};
-  font-size: 13px;
+  font-size: 16px;
   color: ${(p) => p.theme.text};
 
   span {
