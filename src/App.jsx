@@ -570,6 +570,12 @@ const PostMediaContainer = styled.div`
   grid-template-columns: ${(p) => (p.$count === 1 ? "1fr" : "1fr 1fr")};
   gap: 4px;
 
+  ${(p) => p.$count === 2 && css`
+    & > * {
+      aspect-ratio: 3 / 4;
+    }
+  `}
+
   ${(p) => p.$count === 3 && css`
     & > *:first-child {
       grid-column: 1 / -1;
