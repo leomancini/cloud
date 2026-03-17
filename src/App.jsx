@@ -504,7 +504,7 @@ const RemoveMedia = styled.button`
   right: 4px;
   width: 20px;
   height: 20px;
-  border-radius: 50%;
+  border-radius: ${RADIUS_SM};
   border: none;
   background: rgba(0, 0, 0, 0.6);
   color: white;
@@ -641,7 +641,7 @@ const LightboxClose = styled.button`
   right: 16px;
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: ${RADIUS_SM};
   border: none;
   background: rgba(255, 255, 255, 0.15);
   color: white;
@@ -911,7 +911,7 @@ const EmojiChipRemove = styled.button`
   justify-content: center;
   width: 16px;
   height: 16px;
-  border-radius: 50%;
+  border-radius: 4px;
   border: none;
   background: ${(p) => p.theme.textSecondary};
   color: ${(p) => p.theme.bgElevated};
