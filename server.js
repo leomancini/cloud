@@ -923,6 +923,9 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
 app.get("/api/feed", (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
 
+  const limit = 20;
+  const offset = parseInt(req.query.offset) || 0;
+
   const posts = db
     .prepare(
       `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.og_preview,
@@ -933,9 +936,9 @@ app.get("/api/feed", (req, res) => {
         SELECT following_id FROM follows WHERE follower_id = ? AND status = 'approved'
       ) OR p.user_id = ?
       ORDER BY p.created_at DESC
-      LIMIT 50`
+      LIMIT ? OFFSET ?`
     )
-    .all(req.user.id, req.user.id);
+    .all(req.user.id, req.user.id, limit + 1, offset);
 
   const getMedia = db.prepare(
     "SELECT filename, media_type FROM post_media WHERE post_id = ? ORDER BY id"
@@ -963,6 +966,9 @@ app.get("/api/feed", (req, res) => {
     JOIN users u ON u.id = cr.user_id
     WHERE cr.comment_id = ?`
   );
+
+  const hasMore = posts.length > limit;
+  if (hasMore) posts.pop();
 
   const postsWithMedia = posts.map((post) => {
     let ogPreview = null;
@@ -1005,7 +1011,7 @@ app.get("/api/feed", (req, res) => {
   };
   });
 
-  res.json({ posts: postsWithMedia });
+  res.json({ posts: postsWithMedia, hasMore });
 });
 
 // Serve uploaded media

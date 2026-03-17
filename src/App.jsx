@@ -1742,6 +1742,8 @@ function App() {
   const [user, setUser] = useState(null);
   const [users, setUsers] = useState([]);
   const [posts, setPosts] = useState([]);
+  const [feedHasMore, setFeedHasMore] = useState(false);
+  const [feedLoadingMore, setFeedLoadingMore] = useState(false);
   const [followers, setFollowers] = useState([]);
   const [followRequests, setFollowRequests] = useState([]);
   const [tab, setTab] = useState("feed");
@@ -1913,6 +1915,19 @@ function App() {
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
+  const loadMoreRef = useRef(loadMoreFeed);
+  loadMoreRef.current = loadMoreFeed;
+  useEffect(() => {
+    if (tab !== "feed") return;
+    const handleScroll = () => {
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 300) {
+        loadMoreRef.current();
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [tab]);
+
   useEffect(() => {
     fetch("/api/auth/me")
       .then((res) => { if (res.ok) return res.json(); })
@@ -1947,8 +1962,23 @@ function App() {
   const loadFeed = () => {
     fetch("/api/feed")
       .then((res) => { if (res.ok) return res.json(); })
-      .then((data) => { if (data) setPosts(data.posts); })
+      .then((data) => { if (data) { setPosts(data.posts); setFeedHasMore(data.hasMore); } })
       .catch(() => {});
+  };
+
+  const loadMoreFeed = () => {
+    if (feedLoadingMore || !feedHasMore) return;
+    setFeedLoadingMore(true);
+    fetch(`/api/feed?offset=${posts.length}`)
+      .then((res) => { if (res.ok) return res.json(); })
+      .then((data) => {
+        if (data) {
+          setPosts((prev) => [...prev, ...data.posts]);
+          setFeedHasMore(data.hasMore);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setFeedLoadingMore(false));
   };
 
   const loadFollowRequests = () => {
@@ -3127,6 +3157,7 @@ function App() {
                 </PostItem>
               ))
             )}
+            {feedLoadingMore && <EmptyState><Spinner /></EmptyState>}
           </>
         ) : (
           <>
