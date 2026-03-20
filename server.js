@@ -35,10 +35,14 @@ db.exec(`
     google_id TEXT UNIQUE NOT NULL,
     email TEXT NOT NULL,
     name TEXT,
+    display_name TEXT,
     picture TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
+
+// Migration: add display_name column for existing DBs
+try { db.exec("ALTER TABLE users ADD COLUMN display_name TEXT"); } catch {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS follows (
@@ -213,11 +217,15 @@ app.get(
 
 app.get("/api/auth/me", (req, res) => {
   if (!req.user) return res.json({ user: null });
+  const fresh = db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
+  const displayName = (fresh?.display_name || fresh?.name || req.user.name);
   res.json({
     user: {
       id: req.user.id,
       email: req.user.email,
-      name: req.user.name,
+      name: displayName,
+      google_name: fresh?.name || req.user.name,
+      display_name: fresh?.display_name || null,
       picture: `/api/pictures/${req.user.id}.jpg`,
     },
   });
@@ -246,7 +254,7 @@ app.get("/api/users", (req, res) => {
 
   const users = db
     .prepare(
-      `SELECT u.id, u.name, '/api/pictures/' || u.id || '.jpg' as picture,
+      `SELECT u.id, COALESCE(u.display_name, u.name) as name, '/api/pictures/' || u.id || '.jpg' as picture,
         (SELECT status FROM follows WHERE follower_id = ? AND following_id = u.id) as follow_status,
         (SELECT status FROM follows WHERE follower_id = u.id AND following_id = ?) as follows_you
       FROM users u
@@ -314,7 +322,7 @@ app.get("/api/followers", (req, res) => {
 
   const followers = db
     .prepare(
-      `SELECT u.id, u.name, '/api/pictures/' || u.id || '.jpg' as picture,
+      `SELECT u.id, COALESCE(u.display_name, u.name) as name, '/api/pictures/' || u.id || '.jpg' as picture,
         (SELECT status FROM follows WHERE follower_id = ? AND following_id = u.id) as follow_status,
         f.status as their_follow_status
       FROM users u
@@ -332,7 +340,7 @@ app.get("/api/follow-requests", (req, res) => {
 
   const requests = db
     .prepare(
-      `SELECT u.id, u.name, '/api/pictures/' || u.id || '.jpg' as picture, f.id as follow_id
+      `SELECT u.id, COALESCE(u.display_name, u.name) as name, '/api/pictures/' || u.id || '.jpg' as picture, f.id as follow_id
       FROM users u
       JOIN follows f ON f.follower_id = u.id
       WHERE f.following_id = ? AND f.status = 'pending'
@@ -929,7 +937,7 @@ app.get("/api/feed", (req, res) => {
   const posts = db
     .prepare(
       `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.og_preview,
-        u.name as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
+        COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
       FROM posts p
       JOIN users u ON p.user_id = u.id
       WHERE p.user_id IN (
