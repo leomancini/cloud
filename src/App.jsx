@@ -2567,7 +2567,7 @@ function App() {
                 })
                   .then((res) => { if (res.ok) return res.json(); })
                   .then((data) => {
-                    if (data) setUser((u) => ({ ...u, name: data.name, display_name: data.display_name }));
+                    if (data) { setUser((u) => ({ ...u, name: data.name, display_name: data.display_name })); loadFeed(); }
                   })
                   .catch(() => {});
                 setEditingName(null);
