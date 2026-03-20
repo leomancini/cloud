@@ -263,7 +263,7 @@ app.get("/api/users", (req, res) => {
 
   const users = db
     .prepare(
-      `SELECT u.id, COALESCE(u.display_name, u.name) as name, '/api/pictures/' || u.id || '.jpg' as picture,
+      `SELECT u.id, COALESCE(u.display_name, u.name) as name, u.name as google_name, '/api/pictures/' || u.id || '.jpg' as picture,
         (SELECT status FROM follows WHERE follower_id = ? AND following_id = u.id) as follow_status,
         (SELECT status FROM follows WHERE follower_id = u.id AND following_id = ?) as follows_you
       FROM users u

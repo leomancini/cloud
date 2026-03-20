@@ -96,7 +96,12 @@ const BigSpinner = () => <Spinner size="24px" />;
 
 const parseText = (text, users = []) => {
   if (!text) return [];
-  const allUsers = users.some((u) => u.name === "Sol") ? users : [...users, { id: "sol-ai", name: "Sol" }];
+  const base = users.some((u) => u.name === "Sol") ? users : [...users, { id: "sol-ai", name: "Sol" }];
+  const allUsers = [];
+  for (const u of base) {
+    allUsers.push(u);
+    if (u.google_name && u.google_name !== u.name) allUsers.push({ ...u, name: u.google_name });
+  }
   const sorted = [...allUsers].sort((a, b) => b.name.length - a.name.length);
   const mentions = [];
   const atRegex = /@/g;
