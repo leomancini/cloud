@@ -536,6 +536,11 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   );
 }
 
+function getUserDisplayName(userId) {
+  const u = db.prepare("SELECT COALESCE(display_name, name) as name FROM users WHERE id = ?").get(userId);
+  return u ? u.name : "Someone";
+}
+
 // Send a Web Push notification to all subscriptions for a user, gated by their prefs.
 // prefKey: one of "new_posts" | "mentions" | "reactions" | "comments" | "replies"
 async function sendPushNotification(userId, prefKey, payload) {
@@ -722,12 +727,12 @@ Steps: 1) Read the file(s) you need to change. 2) Use edit_file for targeted rep
 async function handleSolMention(postId, triggerText = null) {
   if (!anthropic) return;
 
-  const post = db.prepare("SELECT p.*, u.name as author_name FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?").get(postId);
+  const post = db.prepare("SELECT p.*, COALESCE(u.display_name, u.name) as author_name FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?").get(postId);
   if (!post) return;
 
   const media = db.prepare("SELECT filename, media_type FROM post_media WHERE post_id = ? ORDER BY id").all(postId);
   const comments = db.prepare(
-    "SELECT c.content, u.name as author_name FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ? ORDER BY c.created_at ASC"
+    "SELECT c.content, COALESCE(u.display_name, u.name) as author_name FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ? ORDER BY c.created_at ASC"
   ).all(postId);
 
   const content = [];
@@ -906,7 +911,7 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
     notifyUser(f.follower_id, "feed-update");
     // Push: new post from someone they follow
     sendPushNotification(f.follower_id, "new_posts", {
-      title: `${req.user.name} posted`,
+      title: `${getUserDisplayName(req.user.id)} posted`,
       body: (content || "").trim().slice(0, 100) || "Shared a photo",
       tag: `new-post-${postId}`,
       url: "/",
@@ -916,12 +921,13 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
   // Push: @mentions in the post body
   const postText = (content || "").trim();
   if (postText) {
-    const allUsers = db.prepare("SELECT id, name FROM users WHERE id != ?").all(req.user.id);
+    const allUsers = db.prepare("SELECT id, name, display_name FROM users WHERE id != ?").all(req.user.id);
     for (const u of allUsers) {
-      const mentionPattern = new RegExp(`@${u.name}(?:[^a-zA-Z0-9]|$)`, "i");
+      const displayName = u.display_name || u.name;
+      const mentionPattern = new RegExp(`@(${displayName}|${u.name})(?:[^a-zA-Z0-9]|$)`, "i");
       if (mentionPattern.test(postText) && u.id !== SOL_USER_ID) {
         sendPushNotification(u.id, "mentions", {
-          title: `${req.user.name} mentioned you`,
+          title: `${getUserDisplayName(req.user.id)} mentioned you`,
           body: postText.slice(0, 100),
           tag: `mention-post-${postId}`,
           url: "/",
@@ -962,7 +968,7 @@ app.get("/api/feed", (req, res) => {
   );
   const getComments = db.prepare(
     `SELECT c.id, c.content, c.created_at, c.user_id,
-      u.name as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
+      COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
     FROM comments c
     JOIN users u ON c.user_id = u.id
     WHERE c.post_id = ?
@@ -970,7 +976,7 @@ app.get("/api/feed", (req, res) => {
   );
 
   const getReactions = db.prepare(
-    `SELECT r.emoji, u.name as user_name, r.user_id
+    `SELECT r.emoji, COALESCE(u.display_name, u.name) as user_name, r.user_id
     FROM reactions r
     JOIN users u ON r.user_id = u.id
     WHERE r.post_id = ?
@@ -978,7 +984,7 @@ app.get("/api/feed", (req, res) => {
   );
 
   const getCommentReactions = db.prepare(
-    `SELECT cr.emoji, cr.user_id, u.name
+    `SELECT cr.emoji, cr.user_id, COALESCE(u.display_name, u.name) as name
     FROM comment_reactions cr
     JOIN users u ON u.id = cr.user_id
     WHERE cr.comment_id = ?`
@@ -1085,7 +1091,7 @@ app.post("/api/posts/:id/react", (req, res) => {
     notifyUser(post.user_id, "feed-update");
     // Push: reaction on their post
     sendPushNotification(post.user_id, "reactions", {
-      title: `${req.user.name} reacted ${emoji}`,
+      title: `${getUserDisplayName(req.user.id)} reacted ${emoji}`,
       body: "on your post",
       tag: `reaction-${postId}-${req.user.id}`,
       url: "/",
@@ -1116,7 +1122,7 @@ app.post("/api/posts/:id/comments", (req, res) => {
     id: result.lastInsertRowid,
     content: content.trim(),
     user_id: req.user.id,
-    author_name: req.user.name,
+    author_name: getUserDisplayName(req.user.id),
     author_picture: `/api/pictures/${req.user.id}.jpg`,
     created_at: new Date().toISOString().replace("T", " ").split(".")[0],
   });
@@ -1175,7 +1181,7 @@ app.post("/api/comments/:id/react", (req, res) => {
     db.prepare("INSERT INTO comment_reactions (comment_id, user_id, emoji) VALUES (?, ?, ?)").run(commentId, req.user.id, emoji);
     if (comment.user_id !== req.user.id) notifyUser(comment.user_id, "feed-update");
   }
-  const allReactions = db.prepare("SELECT cr.emoji, u.name, cr.user_id FROM comment_reactions cr JOIN users u ON u.id = cr.user_id WHERE cr.comment_id = ?").all(commentId);
+  const allReactions = db.prepare("SELECT cr.emoji, COALESCE(u.display_name, u.name) as name, cr.user_id FROM comment_reactions cr JOIN users u ON u.id = cr.user_id WHERE cr.comment_id = ?").all(commentId);
   const grouped = {};
   for (const r of allReactions) {
     if (!grouped[r.emoji]) grouped[r.emoji] = [];
