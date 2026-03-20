@@ -1862,6 +1862,7 @@ function App() {
   const [connectionDegrees, setConnectionDegrees] = useState({}); // userId -> 1 | 2
   const [selectedDegrees, setSelectedDegrees] = useState(new Set()); // empty = show all
   const [editingComment, setEditingComment] = useState(null);
+  const [editingName, setEditingName] = useState(null);
   const [editCommentText, setEditCommentText] = useState("");
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [commentThumbsAnimate, setCommentThumbsAnimate] = useState({}); // commentId -> bool
@@ -2555,7 +2556,42 @@ function App() {
         {tab === "profile" ? (
           <ProfilePage>
             <ProfileAvatar src={user.picture} alt={user.name} />
-            <ProfileName>{user.name}</ProfileName>
+            {editingName !== null ? (
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const trimmed = editingName.trim();
+                fetch("/api/profile/name", {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ display_name: trimmed || null }),
+                })
+                  .then((res) => { if (res.ok) return res.json(); })
+                  .then((data) => {
+                    if (data) setUser((u) => ({ ...u, name: data.name, display_name: data.display_name }));
+                  })
+                  .catch(() => {});
+                setEditingName(null);
+              }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4 }}>
+                <input
+                  autoFocus
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  placeholder={user.google_name || user.name}
+                  style={{
+                    fontSize: 22, fontWeight: 700, textAlign: "center", border: `1px solid ${resolvedTheme.border}`,
+                    borderRadius: RADIUS, padding: "6px 12px", outline: "none", background: resolvedTheme.bgInput,
+                    color: resolvedTheme.text, fontFamily: "inherit", width: 200,
+                  }}
+                />
+                <CommentPostButton type="submit" style={{ width: 36, height: 36 }}>
+                  <i className="fa-solid fa-check" />
+                </CommentPostButton>
+              </form>
+            ) : (
+              <ProfileName onClick={() => setEditingName(user.display_name || "")} style={{ cursor: "pointer" }}>
+                {user.name} <i className="fa-solid fa-pen" style={{ fontSize: 14, color: resolvedTheme.textSecondary, marginLeft: 4 }} />
+              </ProfileName>
+            )}
             <ProfileEmail>{user.email}</ProfileEmail>
             <ThemeToggleWrap>
               <ThemeToggleLabel>Appearance</ThemeToggleLabel>

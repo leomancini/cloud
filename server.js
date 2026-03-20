@@ -237,6 +237,15 @@ app.post("/api/auth/logout", (req, res) => {
   });
 });
 
+app.put("/api/profile/name", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const { display_name } = req.body || {};
+  const trimmed = (display_name || "").trim() || null;
+  db.prepare("UPDATE users SET display_name = ? WHERE id = ?").run(trimmed, req.user.id);
+  const fresh = db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
+  res.json({ name: fresh.display_name || fresh.name, display_name: fresh.display_name || null });
+});
+
 // Profile picture endpoint
 app.get("/api/pictures/:id.jpg", (req, res) => {
   const filePath = join(picturesDir, `${req.params.id}.jpg`);
