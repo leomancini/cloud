@@ -2810,7 +2810,7 @@ function App() {
               </SuggestionsBox>
             )}
             {users.filter((u) => u.is_following).length < 5 &&
-              users.filter((u) => !u.is_following).length > 0 && (
+              users.filter((u) => !u.is_following && u.follow_status !== "pending").length > 0 && (
               <SuggestionsBox>
                 <SectionHeader $open={suggestionsOpen}>
                   <SectionTitle style={{ marginBottom: 0 }}>People you might know</SectionTitle>
