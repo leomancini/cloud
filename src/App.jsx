@@ -488,7 +488,7 @@ const MediaPreviews = styled.div`
 
 const MediaPreview = styled.div`
   position: relative;
-  border-radius: ${RADIUS};
+  border-radius: inherit;
   overflow: hidden;
 `;
 
@@ -578,30 +578,48 @@ const PostMediaContainer = styled.div`
   grid-template-columns: ${(p) => (p.$count === 1 ? "1fr" : "1fr 1fr")};
   gap: 4px;
 
+  ${(p) => p.$count === 1 && css`
+    & > * { border-radius: ${RADIUS}; }
+  `}
+
   ${(p) => p.$count === 2 && css`
     grid-template-rows: 1fr;
     & > * {
       height: 100%;
       max-height: 400px;
     }
+    & > *:first-child { border-radius: ${RADIUS} 4px 4px ${RADIUS}; }
+    & > *:last-child { border-radius: 4px ${RADIUS} ${RADIUS} 4px; }
   `}
 
   ${(p) => p.$count === 3 && css`
     & > *:first-child {
       grid-column: 1 / -1;
       max-height: 300px;
+      border-radius: ${RADIUS} ${RADIUS} 4px 4px;
     }
-    & > *:nth-child(2),
+    & > *:nth-child(2) {
+      aspect-ratio: 3 / 4;
+      border-radius: 4px 4px 4px ${RADIUS};
+    }
     & > *:nth-child(3) {
       aspect-ratio: 3 / 4;
+      border-radius: 4px 4px ${RADIUS} 4px;
     }
+  `}
+
+  ${(p) => p.$count >= 4 && css`
+    & > *:nth-child(1) { border-radius: ${RADIUS} 4px 4px 4px; }
+    & > *:nth-child(2) { border-radius: 4px ${RADIUS} 4px 4px; }
+    & > *:nth-child(3) { border-radius: 4px 4px 4px ${RADIUS}; }
+    & > *:nth-child(4) { border-radius: 4px 4px ${RADIUS} 4px; }
   `}
 `;
 
 const PostImage = styled.img`
   width: 100%;
   display: block;
-  border-radius: ${RADIUS};
+  border-radius: inherit;
   object-fit: cover;
   background: ${(p) => p.theme.bgControl};
   min-height: ${(p) => (p.$single ? "200px" : "auto")};
@@ -611,7 +629,7 @@ const PostImage = styled.img`
 const PostVideo = styled.video`
   width: 100%;
   display: block;
-  border-radius: ${RADIUS};
+  border-radius: inherit;
   object-fit: cover;
   background: ${(p) => p.theme.bgControl};
   min-height: ${(p) => (p.$single ? "200px" : "auto")};
