@@ -1210,7 +1210,7 @@ const PostMapWrapper = styled.div`
     right: 0;
     bottom: 0;
     border-radius: ${RADIUS} ${RADIUS} 0 0;
-    box-shadow: inset 0 0 0 1px ${(p) => p.theme.shadow};
+    box-shadow: inset 0 0 0 2px ${(p) => p.theme.shadow};
     pointer-events: none;
   }
 `;
@@ -2704,7 +2704,7 @@ function App() {
                 <PostLocation style={{ position: "relative" }}>
                   <PostMapWrapper>
                     <PostMap
-                      src={`/api/staticmap?lat=${selectedLocation.lat}&lng=${selectedLocation.lng}&v=3`}
+                      src={`/api/staticmap?lat=${selectedLocation.lat}&lng=${selectedLocation.lng}&v=4`}
                       alt={selectedLocation.name}
                     />
                   </PostMapWrapper>
@@ -2945,7 +2945,7 @@ function App() {
                     <PostLocation>
                       <PostMapWrapper>
                         <PostMap
-                          src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=3`}
+                          src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`}
                           alt={post.place_name}
                         />
                       </PostMapWrapper>
