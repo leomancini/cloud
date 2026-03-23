@@ -356,10 +356,10 @@ const IconButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: ${RADIUS};
-  font-size: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 16px;
   cursor: pointer;
   border: none;
   background: ${(p) => (p.$active ? p.theme.bgControl : "transparent")};
@@ -670,7 +670,8 @@ const LightboxClose = styled.button`
 `;
 
 const PostButton = styled.button`
-  padding: 8px 20px;
+  height: 36px;
+  padding: 0 20px;
   border-radius: ${RADIUS};
   font-size: 14px;
   font-weight: 500;
