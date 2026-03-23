@@ -578,48 +578,44 @@ const PostMediaContainer = styled.div`
   grid-template-columns: ${(p) => (p.$count === 1 ? "1fr" : "1fr 1fr")};
   gap: 4px;
 
-  ${(p) => p.$count === 1 && css`
-    & > * { border-radius: ${RADIUS}; }
-  `}
-
   ${(p) => p.$count === 2 && css`
     grid-template-rows: 1fr;
     & > * {
       height: 100%;
       max-height: 400px;
     }
-    & > *:first-child { border-radius: ${RADIUS} 4px 4px ${RADIUS}; }
-    & > *:last-child { border-radius: 4px ${RADIUS} ${RADIUS} 4px; }
+    & > *:first-child, & > *:first-child img, & > *:first-child video { border-radius: ${RADIUS} 4px 4px ${RADIUS} !important; }
+    & > *:last-child, & > *:last-child img, & > *:last-child video { border-radius: 4px ${RADIUS} ${RADIUS} 4px !important; }
   `}
 
   ${(p) => p.$count === 3 && css`
     & > *:first-child {
       grid-column: 1 / -1;
       max-height: 300px;
-      border-radius: ${RADIUS} ${RADIUS} 4px 4px;
     }
-    & > *:nth-child(2) {
+    & > *:first-child, & > *:first-child img, & > *:first-child video { border-radius: ${RADIUS} ${RADIUS} 4px 4px !important; }
+    & > *:nth-child(2), & > *:nth-child(2) img, & > *:nth-child(2) video {
       aspect-ratio: 3 / 4;
-      border-radius: 4px 4px 4px ${RADIUS};
+      border-radius: 4px 4px 4px ${RADIUS} !important;
     }
-    & > *:nth-child(3) {
+    & > *:nth-child(3), & > *:nth-child(3) img, & > *:nth-child(3) video {
       aspect-ratio: 3 / 4;
-      border-radius: 4px 4px ${RADIUS} 4px;
+      border-radius: 4px 4px ${RADIUS} 4px !important;
     }
   `}
 
   ${(p) => p.$count >= 4 && css`
-    & > *:nth-child(1) { border-radius: ${RADIUS} 4px 4px 4px; }
-    & > *:nth-child(2) { border-radius: 4px ${RADIUS} 4px 4px; }
-    & > *:nth-child(3) { border-radius: 4px 4px 4px ${RADIUS}; }
-    & > *:nth-child(4) { border-radius: 4px 4px ${RADIUS} 4px; }
+    & > *:nth-child(1), & > *:nth-child(1) img, & > *:nth-child(1) video { border-radius: ${RADIUS} 4px 4px 4px !important; }
+    & > *:nth-child(2), & > *:nth-child(2) img, & > *:nth-child(2) video { border-radius: 4px ${RADIUS} 4px 4px !important; }
+    & > *:nth-child(3), & > *:nth-child(3) img, & > *:nth-child(3) video { border-radius: 4px 4px 4px ${RADIUS} !important; }
+    & > *:nth-child(4), & > *:nth-child(4) img, & > *:nth-child(4) video { border-radius: 4px 4px ${RADIUS} 4px !important; }
   `}
 `;
 
 const PostImage = styled.img`
   width: 100%;
   display: block;
-  border-radius: inherit;
+  border-radius: ${RADIUS};
   object-fit: cover;
   background: ${(p) => p.theme.bgControl};
   min-height: ${(p) => (p.$single ? "200px" : "auto")};
@@ -629,7 +625,7 @@ const PostImage = styled.img`
 const PostVideo = styled.video`
   width: 100%;
   display: block;
-  border-radius: inherit;
+  border-radius: ${RADIUS};
   object-fit: cover;
   background: ${(p) => p.theme.bgControl};
   min-height: ${(p) => (p.$single ? "200px" : "auto")};
