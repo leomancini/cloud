@@ -1070,12 +1070,12 @@ const CommentAvatar = styled.img`
   height: 24px;
   border-radius: 50%;
   flex-shrink: 0;
+  margin-top: -1px;
 `;
 
 const CommentBody = styled.div`
   flex: 1;
   min-width: 0;
-  padding-top: 2px;
 `;
 
 const CommentAuthor = styled.span`
