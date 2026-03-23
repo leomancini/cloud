@@ -822,7 +822,7 @@ const ReactionChip = styled.button`
   padding: 0;
   border: none;
   background: none;
-  font-size: 20px;
+  font-size: 24px;
   cursor: pointer;
 `;
 
@@ -838,7 +838,7 @@ const EmojiOption = styled.button`
   justify-content: center;
   border: none;
   background: none;
-  font-size: 20px;
+  font-size: 24px;
   line-height: 1;
   padding: 0;
   cursor: pointer;
@@ -932,7 +932,7 @@ const EmojiChip = styled.div`
   background: ${(p) => p.theme.bgControl};
   border-radius: 20px;
   padding: 4px 8px 4px 10px;
-  font-size: 18px;
+  font-size: 22px;
   line-height: 1;
   cursor: default;
   user-select: none;
