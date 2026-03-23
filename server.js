@@ -1410,7 +1410,7 @@ app.get("/api/staticmap", async (req, res) => {
   const { lat, lng, zoom = 15, width = 500, height = 150 } = req.query;
   if (!lat || !lng) return res.status(400).end();
 
-  const cacheKey = crypto.createHash("md5").update(`${lat},${lng},${zoom},${width},${height}`).digest("hex");
+  const cacheKey = crypto.createHash("md5").update(`v3-${lat},${lng},${zoom},${width},${height}`).digest("hex");
   const cachePath = join(mapsDir, `${cacheKey}.png`);
 
   if (existsSync(cachePath)) {
@@ -1431,13 +1431,21 @@ app.get("/api/staticmap", async (req, res) => {
       zoom,
       size: `${width}x${height}`,
       scale: 2,
-      markers: `color:red|${lat},${lng}`,
       key: process.env.GOOGLE_PLACES_API_KEY,
     });
     style.forEach((s) => params.append("style", s));
     const response = await fetch(`https://maps.googleapis.com/maps/api/staticmap?${params}`);
     if (!response.ok) return res.status(response.status).end();
-    const buffer = Buffer.from(await response.arrayBuffer());
+    const mapBuffer = Buffer.from(await response.arrayBuffer());
+    // Draw custom black dot with white inner dot at center
+    const w = parseInt(width) * 2;
+    const h = parseInt(height) * 2;
+    const dotR = 12;
+    const innerR = 5;
+    const dot = Buffer.from(
+      `<svg width="${w}" height="${h}"><circle cx="${w/2}" cy="${h/2}" r="${dotR}" fill="#000"/><circle cx="${w/2}" cy="${h/2}" r="${innerR}" fill="#fff"/></svg>`
+    );
+    const buffer = await sharp(mapBuffer).composite([{ input: dot, top: 0, left: 0 }]).png().toBuffer();
     writeFileSync(cachePath, buffer);
     res.setHeader("Content-Type", "image/png");
     res.setHeader("Cache-Control", "public, max-age=86400");
