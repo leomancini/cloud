@@ -2704,7 +2704,7 @@ function App() {
                 <PostLocation style={{ position: "relative" }}>
                   <PostMapWrapper>
                     <PostMap
-                      src={`/api/staticmap?lat=${selectedLocation.lat}&lng=${selectedLocation.lng}&v=2`}
+                      src={`/api/staticmap?lat=${selectedLocation.lat}&lng=${selectedLocation.lng}&v=3`}
                       alt={selectedLocation.name}
                     />
                   </PostMapWrapper>
@@ -2945,7 +2945,7 @@ function App() {
                     <PostLocation>
                       <PostMapWrapper>
                         <PostMap
-                          src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=2`}
+                          src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=3`}
                           alt={post.place_name}
                         />
                       </PostMapWrapper>
