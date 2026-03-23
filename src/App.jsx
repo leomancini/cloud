@@ -688,7 +688,7 @@ const PostButton = styled.button`
   padding: 0 20px;
   border-radius: ${RADIUS};
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 700;
   cursor: pointer;
   border: none;
   background: ${(p) => p.theme.btnPrimary};
@@ -814,11 +814,12 @@ const ReactionsRow = styled.div`
 const ReactionChip = styled.button`
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 0;
   border: none;
   background: none;
   font-size: 24px;
+  line-height: 1;
   cursor: pointer;
 `;
 
@@ -1116,7 +1117,7 @@ const CommentInput = styled.textarea`
   min-height: 40px;
   border: 2px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
-  padding: 8px 12px;
+  padding: 6px 12px;
   font-size: 16px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   outline: none;
@@ -1144,7 +1145,7 @@ const CommentHighlight = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 8px 12px;
+  padding: 6px 12px;
   font-size: 16px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 22px;
@@ -1162,7 +1163,7 @@ const CommentPostButton = styled.button`
   border: 2px solid transparent;
   background: ${(p) => p.theme.btnPrimary};
   color: ${(p) => p.theme.btnPrimaryText};
-  font-size: 14px;
+  font-size: 18px;
   cursor: pointer;
   padding: 0;
   width: 40px;
