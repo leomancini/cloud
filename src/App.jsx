@@ -145,7 +145,7 @@ const MentionDropdown = styled.div`
   left: 0;
   right: 0;
   background: ${(p) => p.theme.bgElevated};
-  border: 1px solid ${(p) => p.theme.border};
+  border: 2px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
   max-height: 150px;
   overflow-y: auto;
@@ -279,7 +279,7 @@ const LogoutButton = styled.button`
   border-radius: ${RADIUS};
   font-size: 13px;
   cursor: pointer;
-  border: 1px solid ${(p) => p.theme.borderStrong};
+  border: 2px solid ${(p) => p.theme.borderStrong};
   background: ${(p) => p.theme.bgElevated};
   color: #666;
 
@@ -305,7 +305,7 @@ const ComposeWrapper = styled.div`
 
 const ComposeInput = styled.textarea`
   width: 100%;
-  border: 1px solid ${(p) => p.theme.border};
+  border: 2px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
   padding: 14px;
   font-size: 16px;
@@ -340,7 +340,7 @@ const ComposeHighlight = styled.div`
   overflow: hidden;
   color: ${(p) => p.theme.text};
   pointer-events: none;
-  border: 1px solid transparent;
+  border: 2px solid transparent;
   border-radius: ${RADIUS};
   box-sizing: border-box;
 `;
@@ -378,7 +378,7 @@ const LocationSearch = styled.div`
 const LocationInput = styled.input`
   width: 100%;
   min-height: 40px;
-  border: 1px solid ${(p) => p.theme.border};
+  border: 2px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
   padding: 8px 12px;
   font-size: 16px;
@@ -400,7 +400,7 @@ const LocationResults = styled.div`
   left: 0;
   right: 0;
   background: ${(p) => p.theme.bgElevated};
-  border: 1px solid ${(p) => p.theme.border};
+  border: 2px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
   max-height: 150px;
   overflow-y: auto;
@@ -527,7 +527,7 @@ const RemoveMedia = styled.button`
 const LinkPreviewCard = styled.a`
   display: block;
   margin-top: 10px;
-  border: 1px solid ${(p) => p.theme.border};
+  border: 2px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
   overflow: hidden;
   text-decoration: none;
@@ -753,7 +753,7 @@ const PostMenu = styled.div`
   right: 0;
   top: 100%;
   background: ${(p) => p.theme.bgElevated};
-  border: 1px solid ${(p) => p.theme.border};
+  border: 2px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
   box-shadow: 0 2px 8px ${(p) => p.theme.shadow};
   z-index: 10;
@@ -954,7 +954,7 @@ const EmojiInput = styled.input`
   width: 56px;
   text-align: center;
   font-size: 20px;
-  border: 1px solid ${(p) => p.theme.border};
+  border: 2px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS_SM};
   padding: 6px 8px;
   background: ${(p) => p.theme.bgInput};
@@ -969,7 +969,7 @@ const AddEmojiButton = styled.button`
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  border: 1px solid ${(p) => p.theme.borderStrong};
+  border: 2px solid ${(p) => p.theme.borderStrong};
   background: ${(p) => p.theme.bgElevated};
   color: ${(p) => p.theme.text};
   &:hover { background: ${(p) => p.theme.bgHover}; }
@@ -1099,7 +1099,7 @@ const CommentInputWrapper = styled.div`
 const CommentInput = styled.textarea`
   width: 100%;
   min-height: 40px;
-  border: 1px solid ${(p) => p.theme.border};
+  border: 2px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
   padding: 8px 12px;
   font-size: 16px;
@@ -1138,13 +1138,13 @@ const CommentHighlight = styled.div`
   overflow: hidden;
   color: ${(p) => p.theme.text};
   pointer-events: none;
-  border: 1px solid transparent;
+  border: 2px solid transparent;
   border-radius: ${RADIUS};
   box-sizing: border-box;
 `;
 
 const CommentPostButton = styled.button`
-  border: 1px solid transparent;
+  border: 2px solid transparent;
   background: ${(p) => p.theme.btnPrimary};
   color: ${(p) => p.theme.btnPrimaryText};
   font-size: 14px;
@@ -1212,7 +1212,7 @@ const PostPlaceName = styled.div`
   font-size: 13px;
   font-weight: 500;
   color: ${(p) => p.theme.text};
-  border: 1px solid ${(p) => p.theme.border};
+  border: 2px solid ${(p) => p.theme.border};
   border-top: none;
   border-radius: 0 0 ${RADIUS} ${RADIUS};
   display: flex;
@@ -1364,7 +1364,7 @@ const FollowButton = styled.button`
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  border: 1px solid ${(p) => (p.$status === "pending" ? p.theme.borderStrong : p.$following ? p.theme.borderStrong : p.theme.btnPrimary)};
+  border: 2px solid ${(p) => (p.$status === "pending" ? p.theme.borderStrong : p.$following ? p.theme.borderStrong : p.theme.btnPrimary)};
   background: ${(p) => (p.$status === "pending" ? p.theme.bgElevated : p.$following ? p.theme.bgElevated : p.theme.btnPrimary)};
   color: ${(p) => (p.$status === "pending" ? p.theme.textSecondary : p.$following ? p.theme.textMuted : p.theme.btnPrimaryText)};
 
@@ -1416,7 +1416,7 @@ const RejectButton = styled.button`
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  border: 1px solid ${(p) => p.theme.borderStrong};
+  border: 2px solid ${(p) => p.theme.borderStrong};
   background: ${(p) => p.theme.bgElevated};
   color: #666;
 
@@ -1547,7 +1547,7 @@ const PushRow = styled.label`
   cursor: pointer;
 
   &:not(:last-child) {
-    border-bottom: 1px solid ${(p) => p.theme.border};
+    border-bottom: 2px solid ${(p) => p.theme.border};
   }
 `;
 
@@ -1582,7 +1582,7 @@ const Banner = styled.div`
   margin: 0 auto 20px;
   padding: 14px 16px;
   background: ${(p) => p.theme.bgSecondary};
-  border: 1px solid ${(p) => p.theme.border};
+  border: 2px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
   display: flex;
   align-items: center;
@@ -2583,7 +2583,7 @@ function App() {
                   onChange={(e) => setEditingName(e.target.value)}
                   placeholder={user.google_name || user.name}
                   style={{
-                    fontSize: 22, fontWeight: 700, textAlign: "center", border: `1px solid ${resolvedTheme.border}`,
+                    fontSize: 22, fontWeight: 700, textAlign: "center", border: `2px solid ${resolvedTheme.border}`,
                     borderRadius: RADIUS, padding: "6px 12px", outline: "none", background: resolvedTheme.bgInput,
                     color: resolvedTheme.text, fontFamily: "inherit", width: 200,
                   }}
@@ -2730,7 +2730,7 @@ function App() {
                     {ogPreview.title && <LinkPreviewTitle>{ogPreview.title}</LinkPreviewTitle>}
                     {ogPreview.description && <LinkPreviewDesc>{ogPreview.description}</LinkPreviewDesc>}
                   </LinkPreviewBody>
-                  <EmojiEditButton onClick={() => { setOgPreview(null); ogFetchedUrl.current = "dismissed"; }} style={{ position: "absolute", top: 8, right: 8, background: resolvedTheme.bgElevated, border: `1px solid ${resolvedTheme.border}`, borderRadius: "50%", width: 24, height: 24 }}>
+                  <EmojiEditButton onClick={() => { setOgPreview(null); ogFetchedUrl.current = "dismissed"; }} style={{ position: "absolute", top: 8, right: 8, background: resolvedTheme.bgElevated, border: `2px solid ${resolvedTheme.border}`, borderRadius: "50%", width: 24, height: 24 }}>
                     <i className="fa-solid fa-xmark" />
                   </EmojiEditButton>
                 </LinkPreviewCard>
@@ -2973,7 +2973,7 @@ function App() {
                             {getReactionEmojis("global").length > 3 && (
                               <EmojiEditButton
                                 onClick={() => removeEmojiSlot("global", i)}
-                                style={{ position: "absolute", top: -8, right: -8, width: 20, height: 20, fontSize: 10, background: resolvedTheme.bgElevated, border: `1px solid ${resolvedTheme.border}`, borderRadius: "50%" }}
+                                style={{ position: "absolute", top: -8, right: -8, width: 20, height: 20, fontSize: 10, background: resolvedTheme.bgElevated, border: `2px solid ${resolvedTheme.border}`, borderRadius: "50%" }}
                               >
                                 <i className="fa-solid fa-minus" />
                               </EmojiEditButton>
