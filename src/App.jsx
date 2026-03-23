@@ -161,7 +161,7 @@ const MentionOption = styled.div`
   cursor: pointer;
   font-size: 14px;
   color: ${(p) => p.theme.text};
-  &:hover { background: ${(p) => p.theme.bgHover}; }
+  @media (hover: hover) { &:hover { background: ${(p) => p.theme.bgHover}; } }
 `;
 
 const MentionAvatar = styled.img`
@@ -237,8 +237,10 @@ const SignInButton = styled.a`
   background: ${(p) => p.theme.btnPrimary};
   color: ${(p) => p.theme.btnPrimaryText};
 
-  &:hover {
-    background: ${(p) => p.theme.btnPrimaryHover};
+  @media (hover: hover) {
+    &:hover {
+      background: ${(p) => p.theme.btnPrimaryHover};
+    }
   }
 `;
 
@@ -283,8 +285,10 @@ const LogoutButton = styled.button`
   background: ${(p) => p.theme.bgElevated};
   color: #666;
 
-  &:hover {
-    background: ${(p) => p.theme.bgHover};
+  @media (hover: hover) {
+    &:hover {
+      background: ${(p) => p.theme.bgHover};
+    }
   }
 `;
 
@@ -365,8 +369,10 @@ const IconButton = styled.button`
   background: ${(p) => (p.$active ? p.theme.bgControl : "transparent")};
   color: ${(p) => (p.$active ? p.theme.text : p.theme.textSecondary)};
 
-  &:hover {
-    background: ${(p) => p.theme.bgControl};
+  @media (hover: hover) {
+    &:hover {
+      background: ${(p) => p.theme.bgControl};
+    }
   }
 `;
 
@@ -412,8 +418,10 @@ const LocationResult = styled.div`
   padding: 8px 12px;
   cursor: pointer;
 
-  &:hover {
-    background: ${(p) => p.theme.bgHover};
+  @media (hover: hover) {
+    &:hover {
+      background: ${(p) => p.theme.bgHover};
+    }
   }
 `;
 
@@ -532,7 +540,7 @@ const LinkPreviewCard = styled.a`
   overflow: hidden;
   text-decoration: none;
   color: inherit;
-  &:hover { background: ${(p) => p.theme.bgHover}; }
+  @media (hover: hover) { &:hover { background: ${(p) => p.theme.bgHover} }; }
 `;
 
 const LinkPreviewImage = styled.img`
@@ -680,7 +688,7 @@ const LightboxClose = styled.button`
   justify-content: center;
   z-index: 1001;
   transition: background 0.15s ease;
-  &:hover { background: rgba(255, 255, 255, 0.25); }
+  @media (hover: hover) { &:hover { background: rgba(255, 255, 255, 0.25); } }
 `;
 
 const PostButton = styled.button`
@@ -694,8 +702,10 @@ const PostButton = styled.button`
   background: ${(p) => p.theme.btnPrimary};
   color: ${(p) => p.theme.btnPrimaryText};
 
-  &:hover {
-    background: ${(p) => p.theme.btnPrimaryHover};
+  @media (hover: hover) {
+    &:hover {
+      background: ${(p) => p.theme.btnPrimaryHover};
+    }
   }
 
   &:disabled {
@@ -758,8 +768,10 @@ const PostMenuButton = styled.button`
   display: flex;
   align-items: center;
 
-  &:hover {
-    color: ${(p) => p.theme.textSecondary};
+  @media (hover: hover) {
+    &:hover {
+      color: ${(p) => p.theme.textSecondary};
+    }
   }
 `;
 
@@ -788,8 +800,10 @@ const PostMenuItem = styled.button`
   cursor: pointer;
   color: ${(p) => (p.$danger ? "#e53e3e" : p.theme.text)};
 
-  &:hover {
-    background: ${(p) => p.theme.bgHover};
+  @media (hover: hover) {
+    &:hover {
+      background: ${(p) => p.theme.bgHover};
+    }
   }
 `;
 
@@ -841,8 +855,10 @@ const EmojiOption = styled.button`
   cursor: pointer;
   border-radius: ${RADIUS_SM};
   opacity: ${(p) => (p.$dimmed ? 0.35 : 1)};
-  &:hover {
-    background: none;
+  @media (hover: hover) {
+    &:hover {
+      background: none;
+    }
   }
 `;
 
@@ -859,7 +875,7 @@ const EmojiEditButton = styled.button`
   cursor: pointer;
   border-radius: ${RADIUS_SM};
   padding: 0;
-  &:hover { color: ${(p) => p.theme.text}; }
+  @media (hover: hover) { &:hover { color: ${(p) => p.theme.text} }; }
 `;
 
 const EmojiPickerWrap = styled.div`
@@ -912,7 +928,7 @@ const ReactionResetButton = styled.button`
   cursor: pointer;
   padding: 2px 6px;
   border-radius: ${RADIUS_SM};
-  &:hover { background: ${(p) => p.theme.bgHover}; color: ${(p) => p.theme.text}; }
+  @media (hover: hover) { &:hover { background: ${(p) => p.theme.bgHover}; color: ${(p) => p.theme.text}; } }
 `;
 
 const EmojiChipRow = styled.div`
@@ -949,7 +965,7 @@ const EmojiChipRemove = styled.button`
   cursor: pointer;
   flex-shrink: 0;
   opacity: 0.7;
-  &:hover { opacity: 1; }
+  @media (hover: hover) { &:hover { opacity: 1; } }
 `;
 
 const EmojiChipDragHandle = styled.span`
@@ -988,7 +1004,7 @@ const AddEmojiButton = styled.button`
   border: 2px solid ${(p) => p.theme.borderStrong};
   background: ${(p) => p.theme.bgElevated};
   color: ${(p) => p.theme.text};
-  &:hover { background: ${(p) => p.theme.bgHover}; }
+  @media (hover: hover) { &:hover { background: ${(p) => p.theme.bgHover} }; }
   &:disabled { opacity: 0.4; cursor: default; }
 `;
 
@@ -1117,7 +1133,7 @@ const CommentInput = styled.textarea`
   min-height: 40px;
   border: 2px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
-  padding: 6px 12px;
+  padding: 7px 12px;
   font-size: 16px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   outline: none;
@@ -1145,7 +1161,7 @@ const CommentHighlight = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 6px 12px;
+  padding: 7px 12px;
   font-size: 16px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 22px;
@@ -1175,8 +1191,10 @@ const CommentPostButton = styled.button`
   flex-shrink: 0;
   box-sizing: border-box;
 
-  &:hover {
-    background: ${(p) => p.theme.btnPrimaryHover};
+  @media (hover: hover) {
+    &:hover {
+      background: ${(p) => p.theme.btnPrimaryHover};
+    }
   }
 `;
 
@@ -1189,8 +1207,10 @@ const CommentCount = styled.button`
   padding: 0;
   margin-top: 8px;
 
-  &:hover {
-    color: ${(p) => p.theme.text};
+  @media (hover: hover) {
+    &:hover {
+      color: ${(p) => p.theme.text};
+    }
   }
 `;
 
@@ -1358,19 +1378,21 @@ const DegreeFilterChip = styled.button`
       : p.theme.textMuted};
   transition: all 0.15s ease;
 
-  &:hover {
-    border-color: ${(p) =>
-      p.$degree === 1
-        ? "#2563EB"
-        : p.$degree === 2
-        ? "#7C3AED"
-        : p.theme.borderStrong};
-    background: ${(p) =>
-      p.$degree === 1
-        ? "rgba(37,99,235,0.08)"
-        : p.$degree === 2
-        ? "rgba(124,58,237,0.08)"
-        : p.theme.bgHover};
+  @media (hover: hover) {
+    &:hover {
+      border-color: ${(p) =>
+        p.$degree === 1
+          ? "#2563EB"
+          : p.$degree === 2
+          ? "#7C3AED"
+          : p.theme.borderStrong};
+      background: ${(p) =>
+        p.$degree === 1
+          ? "rgba(37,99,235,0.08)"
+          : p.$degree === 2
+          ? "rgba(124,58,237,0.08)"
+          : p.theme.bgHover};
+    }
   }
 `;
 
@@ -1384,8 +1406,10 @@ const FollowButton = styled.button`
   background: ${(p) => (p.$status === "pending" ? p.theme.bgElevated : p.$following ? p.theme.bgElevated : p.theme.btnPrimary)};
   color: ${(p) => (p.$status === "pending" ? p.theme.textSecondary : p.$following ? p.theme.textMuted : p.theme.btnPrimaryText)};
 
-  &:hover {
-    background: ${(p) => (p.$status === "pending" ? p.theme.bgHover : p.$following ? p.theme.bgHover : p.theme.btnPrimaryHover)};
+  @media (hover: hover) {
+    &:hover {
+      background: ${(p) => (p.$status === "pending" ? p.theme.bgHover : p.$following ? p.theme.bgHover : p.theme.btnPrimaryHover)};
+    }
   }
 `;
 
@@ -1421,8 +1445,10 @@ const ApproveButton = styled.button`
   background: ${(p) => p.theme.btnPrimary};
   color: ${(p) => p.theme.btnPrimaryText};
 
-  &:hover {
-    background: ${(p) => p.theme.btnPrimaryHover};
+  @media (hover: hover) {
+    &:hover {
+      background: ${(p) => p.theme.btnPrimaryHover};
+    }
   }
 `;
 
@@ -1436,8 +1462,10 @@ const RejectButton = styled.button`
   background: ${(p) => p.theme.bgElevated};
   color: #666;
 
-  &:hover {
-    background: ${(p) => p.theme.bgHover};
+  @media (hover: hover) {
+    &:hover {
+      background: ${(p) => p.theme.bgHover};
+    }
   }
 `;
 
@@ -1484,9 +1512,11 @@ const CollapseButton = styled.button`
   border-radius: ${RADIUS_SM};
   transition: color 0.15s ease, background 0.15s ease;
 
-  &:hover {
-    color: ${(p) => p.theme.text};
-    background: ${(p) => p.theme.bgHover};
+  @media (hover: hover) {
+    &:hover {
+      color: ${(p) => p.theme.text};
+      background: ${(p) => p.theme.bgHover};
+    }
   }
 `;
 
@@ -1628,8 +1658,10 @@ const BannerButton = styled.button`
   white-space: nowrap;
   flex-shrink: 0;
 
-  &:hover {
-    background: ${(p) => p.theme.btnPrimaryHover};
+  @media (hover: hover) {
+    &:hover {
+      background: ${(p) => p.theme.btnPrimaryHover};
+    }
   }
 `;
 
