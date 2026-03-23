@@ -855,8 +855,8 @@ Choose one action:
 app.post("/api/posts", upload.array("media", 10), async (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
   const { content, place_name, place_lat, place_lng, place_address, og_preview } = req.body;
-  if ((!content || !content.trim()) && (!req.files || req.files.length === 0))
-    return res.status(400).json({ error: "Content or media required" });
+  if ((!content || !content.trim()) && (!req.files || req.files.length === 0) && !place_name)
+    return res.status(400).json({ error: "Content, media, or location required" });
 
   // Validate og_preview JSON if provided
   let ogPreviewJson = null;
@@ -1410,7 +1410,7 @@ app.get("/api/staticmap", async (req, res) => {
   const { lat, lng, zoom = 15, width = 500, height = 150 } = req.query;
   if (!lat || !lng) return res.status(400).end();
 
-  const cacheKey = crypto.createHash("md5").update(`v3-${lat},${lng},${zoom},${width},${height}`).digest("hex");
+  const cacheKey = crypto.createHash("md5").update(`v4-${lat},${lng},${zoom},${width},${height}`).digest("hex");
   const cachePath = join(mapsDir, `${cacheKey}.png`);
 
   if (existsSync(cachePath)) {
@@ -1440,8 +1440,8 @@ app.get("/api/staticmap", async (req, res) => {
     // Draw custom black dot with white inner dot at center
     const w = parseInt(width) * 2;
     const h = parseInt(height) * 2;
-    const dotR = 12;
-    const innerR = 5;
+    const dotR = 18;
+    const innerR = 7;
     const dot = Buffer.from(
       `<svg width="${w}" height="${h}"><circle cx="${w/2}" cy="${h/2}" r="${dotR}" fill="#000"/><circle cx="${w/2}" cy="${h/2}" r="${innerR}" fill="#fff"/></svg>`
     );
