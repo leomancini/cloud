@@ -2996,7 +2996,7 @@ function App() {
                           $active={r.user_reacted}
                           onClick={() => handleReact(post.id, r.emoji)}
                         >
-                          {r.emoji} <ReactionNames>{(r.names || []).join(", ")}</ReactionNames>
+                          <span style={{ width: 24, textAlign: "center", flexShrink: 0 }}>{r.emoji}</span> <ReactionNames>{(r.names || []).join(", ")}</ReactionNames>
                         </ReactionChip>
                       ))}
                     </ReactionsRow>
