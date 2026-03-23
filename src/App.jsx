@@ -5,8 +5,8 @@ import Picker from "@emoji-mart/react";
 import PullToRefresh from "pulltorefreshjs";
 import ReactDOMServer from "react-dom/server";
 
-const RADIUS = "10px";
-const RADIUS_SM = "6px";
+const RADIUS = "16px";
+const RADIUS_SM = "12px";
 const ICON_GAP = "8px";
 
 // ─── Themes ──────────────────────────────────────────────────────────────────
