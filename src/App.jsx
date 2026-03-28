@@ -878,6 +878,22 @@ const EmojiEditButton = styled.button`
   @media (hover: hover) { &:hover { color: ${(p) => p.theme.text} }; }
 `;
 
+const QuickReactButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: none;
+  font-size: 16px;
+  color: ${(p) => p.theme.textSecondary};
+  cursor: pointer;
+  border-radius: ${RADIUS_SM};
+  padding: 0;
+  @media (hover: hover) { &:hover { color: ${(p) => p.theme.text} }; }
+`;
+
 const EmojiPickerWrap = styled.div`
   position: relative;
   margin-top: 8px;
@@ -1927,6 +1943,7 @@ function App() {
   const [emojiPickerPostId, setEmojiPickerPostId] = useState(null); // post id for inline picker
   const [emojiPickerSlot, setEmojiPickerSlot] = useState(null); // slot index being replaced
   const [commentReactionPicker, setCommentReactionPicker] = useState(null); // { postId, commentId }
+  const [quickReactPickerPostId, setQuickReactPickerPostId] = useState(null); // post id for quick one-off reaction
 
   // Returns the resolved emoji set for a given context, falling back: context → global → default
   const getReactionEmojis = (context = "posts") => {
@@ -3074,29 +3091,61 @@ function App() {
                       )}
                     </>
                   ) : (
-                    <ReactionsRow>
-                      {(() => {
-                        const hasAnyReaction = (post.reactions || []).some((r) => r.user_reacted);
-                        return getReactionEmojis("posts").map((emoji) => {
-                          const userReacted = (post.reactions || []).some((r) => r.emoji === emoji && r.user_reacted);
-                          return (
-                            <EmojiOption
-                              key={emoji}
-                              $dimmed={hasAnyReaction && !userReacted}
-                              onClick={() => handleReact(post.id, emoji)}
-                            >
-                              {emoji}
-                            </EmojiOption>
-                          );
-                        });
-                      })()}
-                      <EmojiEditButton onClick={() => {
-                        setEmojiPickerPostId(post.id);
-                        setEmojiPickerSlot(null);
-                      }}>
-                        <i className="fa-solid fa-pen" />
-                      </EmojiEditButton>
-                    </ReactionsRow>
+                    <>
+                      <ReactionsRow>
+                        {(() => {
+                          const hasAnyReaction = (post.reactions || []).some((r) => r.user_reacted);
+                          return getReactionEmojis("posts").map((emoji) => {
+                            const userReacted = (post.reactions || []).some((r) => r.emoji === emoji && r.user_reacted);
+                            return (
+                              <EmojiOption
+                                key={emoji}
+                                $dimmed={hasAnyReaction && !userReacted}
+                                onClick={() => handleReact(post.id, emoji)}
+                              >
+                                {emoji}
+                              </EmojiOption>
+                            );
+                          });
+                        })()}
+                        <QuickReactButton
+                          title="React with any emoji"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setQuickReactPickerPostId(quickReactPickerPostId === post.id ? null : post.id);
+                          }}
+                        >
+                          <i className="fa-regular fa-face-smile" />
+                        </QuickReactButton>
+                        <EmojiEditButton onClick={() => {
+                          setEmojiPickerPostId(post.id);
+                          setEmojiPickerSlot(null);
+                          setQuickReactPickerPostId(null);
+                        }}>
+                          <i className="fa-solid fa-pen" />
+                        </EmojiEditButton>
+                      </ReactionsRow>
+                      {quickReactPickerPostId === post.id && (
+                        <EmojiPickerWrap>
+                          <Picker
+                            data={data}
+                            dynamicWidth={true}
+                            theme={resolvedTheme === darkTheme ? "dark" : "light"}
+                            previewPosition="none"
+                            maxFrequentRows={1}
+                            emojiSize={32}
+                            emojiButtonSize={48}
+                            emojiButtonRadius="0.5rem"
+                            searchPosition="static"
+                            onEmojiSelect={(e) => {
+                              handleReact(post.id, e.native);
+                              setQuickReactPickerPostId(null);
+                            }}
+                            onClickOutside={() => setQuickReactPickerPostId(null)}
+                          />
+                        </EmojiPickerWrap>
+                      )}
+                    </>
                   )}
                   <CommentsSection>
                     {post.comments && post.comments.length > 0 && (
