@@ -2815,6 +2815,7 @@ function App() {
     startBusy(`approve-${id}`);
     await fetch(`/api/follow-requests/${id}/approve`, { method: "POST" });
     setFollowRequests((prev) => prev.map((r) => (r.id === id ? { ...r, approved: true } : r)));
+    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, follows_you: true } : u)));
     endBusy(`approve-${id}`);
     loadFollowers();
     loadUsers();
