@@ -91,7 +91,23 @@ const GlobalStyle = createGlobalStyle`
   }
 `;
 
-const Spinner = ({ size } = {}) => <i className="fa-solid fa-circle-notch fa-spin" style={size ? { fontSize: size } : undefined} />;
+const spinAnim = keyframes`
+  to { transform: rotate(360deg); }
+`;
+
+const SpinnerRing = styled.div`
+  width: ${(p) => p.$size || "16px"};
+  height: ${(p) => p.$size || "16px"};
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-right-color: currentColor;
+  opacity: 0.6;
+  animation: ${spinAnim} 0.6s linear infinite;
+  display: inline-block;
+`;
+
+const Spinner = ({ size } = {}) => <SpinnerRing $size={size} />;
 const BigSpinner = () => <Spinner size="24px" />;
 
 const parseText = (text, users = []) => {
@@ -686,7 +702,7 @@ const LightboxClose = styled.button`
   right: 20px;
   width: 36px;
   height: 36px;
-  border-radius: ${RADIUS_SM};
+  border-radius: 50%;
   border: none;
   background: rgba(255, 255, 255, 0.15);
   color: white;
@@ -701,6 +717,10 @@ const LightboxClose = styled.button`
 `;
 
 const PostButton = styled.button`
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 36px;
   padding: 0 20px;
   border-radius: ${RADIUS};
@@ -3387,7 +3407,8 @@ function App() {
                   onClick={handlePost}
                   disabled={posting || (!compose.trim() && mediaFiles.length === 0 && !selectedLocation)}
                 >
-                  {posting ? <i className="fa-solid fa-circle-notch fa-spin" /> : "Post"}
+                  <span style={{ visibility: posting ? "hidden" : "visible" }}>Post</span>
+                  {posting && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Spinner /></div>}
                 </PostButton>
               </ComposeActions>
             </ComposeBox>
