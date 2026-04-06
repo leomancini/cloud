@@ -1542,7 +1542,7 @@ const FollowBtn = ({ user, onFollow, busy }) => {
   const status = user.follow_status;
   const following = user.is_following;
   const followsYou = user.follows_you;
-  const label = status === "pending" ? "Cancel request" : following ? "Unfollow" : followsYou ? "Follow back" : "Follow";
+  const label = status === "pending" ? "Cancel request to follow" : following ? "Unfollow" : followsYou ? "Follow back" : "Follow";
   return (
     <FollowButton
       $following={!!following}
@@ -1561,7 +1561,7 @@ const PeopleFollowBtn = ({ user, onFollow, busy }) => {
   const status = user.follow_status;
   const following = user.is_following;
   const followsYou = user.follows_you;
-  const label = status === "pending" ? "Cancel request" : following ? "Unfollow" : followsYou ? "Follow back" : "Follow";
+  const label = status === "pending" ? "Cancel request to follow" : following ? "Unfollow" : followsYou ? "Follow back" : "Follow";
   return (
     <PeopleFollowButton
       $following={!!following}
@@ -3447,6 +3447,11 @@ function App() {
               <UserProfileHeader>
                 <UserProfileAvatar src={viewingProfile.profile.picture} alt={viewingProfile.profile.name} />
                 <UserProfileName>{viewingProfile.profile.name}</UserProfileName>
+                {(viewingProfile.profile.follows_you || viewingProfile.profile.is_following) && (
+                  <PeopleCardStatus>
+                    {viewingProfile.profile.follows_you && viewingProfile.profile.is_following ? "Friends" : viewingProfile.profile.follows_you ? "Follows you" : "Following"}
+                  </PeopleCardStatus>
+                )}
                 <div style={{ marginTop: 24 }} />
                 <FollowBtn
                   user={{
