@@ -265,10 +265,11 @@ app.get("/api/users", (req, res) => {
     .prepare(
       `SELECT u.id, COALESCE(u.display_name, u.name) as name, u.name as google_name, '/api/pictures/' || u.id || '.jpg' as picture,
         (SELECT status FROM follows WHERE follower_id = ? AND following_id = u.id) as follow_status,
-        (SELECT status FROM follows WHERE follower_id = u.id AND following_id = ?) as follows_you
+        (SELECT status FROM follows WHERE follower_id = u.id AND following_id = ?) as follows_you,
+        (SELECT COUNT(*) FROM posts WHERE user_id = u.id) as post_count
       FROM users u
       WHERE u.id != ? AND u.id != ?
-      ORDER BY u.created_at DESC`
+      ORDER BY post_count DESC, u.created_at DESC`
     )
     .all(req.user.id, req.user.id, req.user.id, SOL_USER_ID);
 
