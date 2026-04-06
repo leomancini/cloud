@@ -835,16 +835,13 @@ const ReactionsRow = styled.div`
   flex-wrap: wrap;
 `;
 
-const ReactionChip = styled.button`
+const ReactionChip = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 0;
-  border: none;
-  background: none;
   font-size: 24px;
   line-height: 1;
-  cursor: pointer;
 `;
 
 const ReactionNames = styled.span`
@@ -2669,6 +2666,9 @@ function App() {
   };
 
   const handleReact = async (postId, emoji) => {
+    // Cancel any pending lightbox from first tap of double-tap
+    const el = document.querySelector(`[data-post-id="${postId}"]`);
+    if (el && el._lightboxTimer) { clearTimeout(el._lightboxTimer); el._lightboxTimer = null; }
     const res = await fetch(`/api/posts/${postId}/react`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -2832,8 +2832,8 @@ function App() {
       getReactionEmojis={getReactionEmojis}
       onReact={handleReact}
       renderContent={(postReactProps) => (
-        <PostItem data-post-id={post.id} {...postReactProps}>
-          <PostHeader onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
+        <PostItem data-post-id={post.id}>
+          <PostHeader>
             <Avatar src={post.author_picture} alt={post.author_name} onClick={disableProfileLink ? undefined : () => post.user_id === user.id ? setTab("profile") : loadUserProfile(post.user_id)} style={disableProfileLink ? undefined : { cursor: "pointer" }} />
             <PostHeaderText onClick={disableProfileLink ? undefined : () => post.user_id === user.id ? setTab("profile") : loadUserProfile(post.user_id)} style={disableProfileLink ? undefined : { cursor: "pointer" }}>
               <PostAuthor>{post.author_name}</PostAuthor>
@@ -2842,10 +2842,7 @@ function App() {
             {post.user_id === user.id && (
               <PostHeaderRight>
                 <PostMenuWrapper>
-                  <PostMenuButton onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenMenuId(openMenuId === post.id ? null : post.id);
-                  }}>
+                  <PostMenuButton onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === post.id ? null : post.id); }}>
                     <i className="fa-solid fa-ellipsis-vertical" />
                   </PostMenuButton>
                   {openMenuId === post.id && (
@@ -2859,55 +2856,57 @@ function App() {
               </PostHeaderRight>
             )}
           </PostHeader>
-          {post.content && <PostContent>{renderText(post.content)}</PostContent>}
-          {post.og_preview && (
-            <LinkPreviewCard href={post.og_preview.url} target="_blank" rel="noopener noreferrer">
-              {post.og_preview.image && <LinkPreviewImage src={post.og_preview.image} />}
-              <LinkPreviewBody>
-                {post.og_preview.siteName && <LinkPreviewSite>{post.og_preview.siteName}</LinkPreviewSite>}
-                {post.og_preview.title && <LinkPreviewTitle>{post.og_preview.title}</LinkPreviewTitle>}
-                {post.og_preview.description && <LinkPreviewDesc>{post.og_preview.description}</LinkPreviewDesc>}
-              </LinkPreviewBody>
-            </LinkPreviewCard>
-          )}
-          {post.media && post.media.length > 0 && (
-            <PostMediaContainer $count={post.media.length}>
-              {post.media.map((m, i) =>
-                m.type === "video" ? (
-                  <PostVideo key={i} src={m.url} autoPlay loop muted playsInline $single={post.media.length === 1} />
-                ) : (
-                  <PostImage
-                    key={i}
-                    src={m.url}
-                    $single={post.media.length === 1}
-                    $tappable={post.media.length > 1}
-                    onClick={post.media.length > 1 ? () => {
-                      const el = document.querySelector(`[data-post-id="${post.id}"]`);
-                      if (el && el._touchHandled) return;
-                      const url = m.url;
-                      const timer = setTimeout(() => setLightboxSrc(url), 300);
-                      if (el) { if (el._lightboxTimer) clearTimeout(el._lightboxTimer); el._lightboxTimer = timer; }
-                    } : undefined}
-                  />
-                )
-              )}
-            </PostMediaContainer>
-          )}
-          {post.place_name && post.place_lat && (
-            <PostLocation>
-              <PostMapWrapper>
-                <PostMap src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`} alt={post.place_name} />
-              </PostMapWrapper>
-              <PostPlaceName>
-                <span>{post.place_name}</span>
-                {post.place_address && <PostPlaceAddress>{shortAddress(post.place_address)}</PostPlaceAddress>}
-              </PostPlaceName>
-            </PostLocation>
-          )}
+          <div {...postReactProps}>
+            {post.content && <PostContent>{renderText(post.content)}</PostContent>}
+            {post.og_preview && (
+              <LinkPreviewCard href={post.og_preview.url} target="_blank" rel="noopener noreferrer">
+                {post.og_preview.image && <LinkPreviewImage src={post.og_preview.image} />}
+                <LinkPreviewBody>
+                  {post.og_preview.siteName && <LinkPreviewSite>{post.og_preview.siteName}</LinkPreviewSite>}
+                  {post.og_preview.title && <LinkPreviewTitle>{post.og_preview.title}</LinkPreviewTitle>}
+                  {post.og_preview.description && <LinkPreviewDesc>{post.og_preview.description}</LinkPreviewDesc>}
+                </LinkPreviewBody>
+              </LinkPreviewCard>
+            )}
+            {post.media && post.media.length > 0 && (
+              <PostMediaContainer $count={post.media.length}>
+                {post.media.map((m, i) =>
+                  m.type === "video" ? (
+                    <PostVideo key={i} src={m.url} autoPlay loop muted playsInline $single={post.media.length === 1} />
+                  ) : (
+                    <PostImage
+                      key={i}
+                      src={m.url}
+                      $single={post.media.length === 1}
+                      $tappable={post.media.length > 1}
+                      onClick={post.media.length > 1 ? () => {
+                        const el = document.querySelector(`[data-post-id="${post.id}"]`);
+                        if (el && el._touchHandled) return;
+                        const url = m.url;
+                        const timer = setTimeout(() => setLightboxSrc(url), 300);
+                        if (el) { if (el._lightboxTimer) clearTimeout(el._lightboxTimer); el._lightboxTimer = timer; }
+                      } : undefined}
+                    />
+                  )
+                )}
+              </PostMediaContainer>
+            )}
+            {post.place_name && post.place_lat && (
+              <PostLocation>
+                <PostMapWrapper>
+                  <PostMap src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`} alt={post.place_name} />
+                </PostMapWrapper>
+                <PostPlaceName>
+                  <span>{post.place_name}</span>
+                  {post.place_address && <PostPlaceAddress>{shortAddress(post.place_address)}</PostPlaceAddress>}
+                </PostPlaceName>
+              </PostLocation>
+            )}
+          </div>
           {(post.reactions || []).length > 0 && (
-            <ReactionsRow onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
+            <ReactionsRow>
               {(post.reactions || []).map((r) => (
-                <ReactionChip key={r.emoji} $active={r.user_reacted} onClick={() => handleReact(post.id, r.emoji)}>
+                <ReactionChip key={r.emoji} $active={r.user_reacted}>
                   <span style={{ width: 24, textAlign: "center", flexShrink: 0 }}>{r.emoji}</span> <ReactionNames>{(r.names || []).join(", ")}</ReactionNames>
                 </ReactionChip>
               ))}
@@ -2915,7 +2914,7 @@ function App() {
           )}
           {emojiPickerPostId === post.id ? (
             <>
-              <ReactionsRow onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
+              <ReactionsRow>
                 {getReactionEmojis("global").map((emoji, i) => (
                   <div key={emoji + i} style={{ position: "relative" }}>
                     <EmojiOption
@@ -2945,15 +2944,15 @@ function App() {
             </>
           ) : (
             <>
-              <ReactionsRow onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
+              <ReactionsRow>
                 {(() => {
                   const hasAnyReaction = (post.reactions || []).some((r) => r.user_reacted);
                   return getReactionEmojis("posts").map((emoji) => {
                     const userReacted = (post.reactions || []).some((r) => r.emoji === emoji && r.user_reacted);
-                    return <EmojiOption key={emoji} $dimmed={hasAnyReaction && !userReacted} onClick={() => handleReact(post.id, emoji)}>{emoji}</EmojiOption>;
+                    return <EmojiOption key={emoji} $dimmed={hasAnyReaction && !userReacted} onClick={(e) => { if (e.detail > 1) return; handleReact(post.id, emoji); }}>{emoji}</EmojiOption>;
                   });
                 })()}
-                <QuickReactButton title="React with any emoji" onClick={(e) => { e.stopPropagation(); setQuickReactPickerPostId(quickReactPickerPostId === post.id ? null : post.id); }}>
+                <QuickReactButton title="React with any emoji" onClick={() => setQuickReactPickerPostId(quickReactPickerPostId === post.id ? null : post.id)}>
                   <i className="fa-regular fa-face-smile" />
                 </QuickReactButton>
                 <EmojiEditButton onClick={() => { setEmojiPickerPostId(post.id); setEmojiPickerSlot(null); setQuickReactPickerPostId(null); }}>
@@ -2974,9 +2973,9 @@ function App() {
                   <CommentRowWithReaction key={c.id} postId={post.id} commentId={c.id} onReact={handleCommentReact}
                     renderContent={(commentReactProps) => (
                       <CommentRow {...commentReactProps}>
-                        <CommentAvatar src={c.author_picture} alt={c.author_name} onClick={(e) => { e.stopPropagation(); loadUserProfile(c.user_id); }} style={{ cursor: "pointer" }} />
+                        <CommentAvatar src={c.author_picture} alt={c.author_name} />
                         <CommentBody>
-                          <CommentAuthor onClick={(e) => { e.stopPropagation(); loadUserProfile(c.user_id); }} style={{ cursor: "pointer" }}>{c.author_name}</CommentAuthor>
+                          <CommentAuthor>{c.author_name}</CommentAuthor>
                           {editingComment === c.id ? (
                             <CommentInputRow>
                               <CommentInput value={editCommentText} onChange={(e) => setEditCommentText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleEditComment(c.id, post.id); if (e.key === "Escape") { setEditingComment(null); setEditCommentText(""); } }} autoFocus style={{ color: resolvedTheme.text }} />
@@ -2991,7 +2990,7 @@ function App() {
                               </CommentText>
                               {c.content !== "thinking..." && <CommentTime>{timeAgo(c.created_at)}</CommentTime>}
                               {c.comment_reactions && c.comment_reactions.length > 0 && (
-                                <CommentTime onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()} style={{ display: "flex", gap: 12, marginTop: 4, marginLeft: 0, flexWrap: "wrap" }}>
+                                <CommentTime style={{ display: "flex", gap: 12, marginTop: 4, marginLeft: 0, flexWrap: "wrap" }}>
                                   {c.comment_reactions.map((r) => (
                                     <span key={r.emoji} style={r.user_reacted ? { cursor: "pointer" } : undefined}
                                       onClick={r.user_reacted ? () => { if (commentReactionPicker?.commentId === c.id) { setCommentReactionPicker(null); } else { setTimeout(() => setCommentReactionPicker({ postId: post.id, commentId: c.id }), 0); } } : undefined}
@@ -3000,7 +2999,7 @@ function App() {
                                 </CommentTime>
                               )}
                               {commentReactionPicker?.commentId === c.id && (
-                                <EmojiPickerWrap>
+                                <EmojiPickerWrap onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
                                   <Picker data={data} dynamicWidth={true} theme={resolvedTheme === darkTheme ? "dark" : "light"} previewPosition="none" maxFrequentRows={0} emojiSize={32} emojiButtonSize={48} emojiButtonRadius="0.5rem" searchPosition="static"
                                     onEmojiSelect={async (e) => {
                                       const res = await fetch(`/api/comments/${c.id}/react`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ emoji: e.native }) });
@@ -3015,7 +3014,7 @@ function App() {
                           )}
                         </CommentBody>
                         {(c.user_id === user.id || (c.author_name === "Sol" && user.email === "leo@leomancinidesign.com")) && editingComment !== c.id && (
-                          <PostMenuWrapper>
+                          <PostMenuWrapper onTouchStart={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
                             <PostMenuButton onClick={(e) => { e.stopPropagation(); setOpenCommentMenuId(openCommentMenuId === c.id ? null : c.id); }}>
                               <i className="fa-solid fa-ellipsis-vertical" />
                             </PostMenuButton>
