@@ -1808,101 +1808,55 @@ function useDoubleTap(onDoubleTap, delay = 300) {
 }
 
 // ─── useReactionDoubleTap hook ────────────────────────────────────────────────
-// Robust double-tap / double-click handler for reaction triggers.
-//
-// Guards against accidental reactions during scrolling by:
-//   • Measuring finger travel between touchstart and touchend — any movement
-//     beyond `SCROLL_THRESHOLD` pixels (in either axis) is treated as a scroll
-//     and completely ignored, even if two touches arrive close together in time.
-//   • Requiring both taps to be within `TAP_WINDOW` ms of each other.
-//   • Enforcing a `COOLDOWN` ms lockout after a reaction fires, so rapidly
-//     repeated accidental touches can't queue up multiple reactions.
-//
-// Returns { onTouchStart, onTouchEnd, onClick } to spread onto the element.
-const SCROLL_THRESHOLD = 8;   // px — finger movement beyond this = scroll, not tap
-const TAP_WINDOW      = 350;  // ms — max gap between two taps for a double-tap
-const REACT_COOLDOWN  = 700;  // ms — minimum time between two reaction fires
+// Double-tap / double-click handler for reaction triggers.
+// Scroll discrimination: records Y on touchstart, nullifies on touchmove if
+// finger travels > SCROLL_THRESHOLD px. touchend only fires if Y is still set.
+// Pinch gestures are also ignored. Desktop uses native onDoubleClick.
+const SCROLL_THRESHOLD = 10;  // px — vertical movement beyond this = scroll, not tap
+const TAP_WINDOW       = 300; // ms — max gap between two taps for a double-tap
 
 function useReactionDoubleTap(onReact) {
-  // Touch tracking
-  const touchStartX   = useRef(null);
-  const touchStartY   = useRef(null);
-  const touchMoved    = useRef(false);   // true once finger drifts past threshold
-
-  // Double-tap state
-  const lastTapTime   = useRef(0);       // timestamp of previous qualifying tap
-  const resetTimer    = useRef(null);    // clears lastTapTime after TAP_WINDOW
-
-  // Cooldown state
-  const lastReactTime = useRef(0);       // timestamp of last fired reaction
-  const isCoolingDown = useRef(false);   // true while cooldown is in effect
-
-  const firereaction = useCallback((e) => {
-    const now = Date.now();
-    if (now - lastReactTime.current < REACT_COOLDOWN) return; // still cooling down
-    lastReactTime.current = now;
-    isCoolingDown.current = true;
-    setTimeout(() => { isCoolingDown.current = false; }, REACT_COOLDOWN);
-    onReact(e);
-  }, [onReact]);
+  const touchStartY  = useRef(null);    // Y position at touchstart; null = scrolling
+  const lastTapTime  = useRef(0);       // timestamp of previous qualifying tap
+  const wasPinch     = useRef(false);   // true if multi-touch detected during gesture
 
   const handleTouchStart = useCallback((e) => {
-    // Record finger position; assume no movement yet
-    const touch = e.touches[0];
-    touchStartX.current = touch.clientX;
-    touchStartY.current = touch.clientY;
-    touchMoved.current  = false;
+    if (e.touches.length > 1) { wasPinch.current = true; return; }
+    touchStartY.current = e.touches[0].clientY;
+    wasPinch.current = false;
+  }, []);
+
+  const handleTouchMove = useCallback((e) => {
+    if (e.touches.length >= 2) { wasPinch.current = true; return; }
+    if (touchStartY.current === null) return;
+    if (Math.abs(e.touches[0].clientY - touchStartY.current) > SCROLL_THRESHOLD) {
+      touchStartY.current = null; // nullify — this gesture is a scroll
+    }
   }, []);
 
   const handleTouchEnd = useCallback((e) => {
-    // If there are still fingers on screen it's a multi-touch gesture — ignore
-    if (e.touches.length > 0) {
-      touchStartX.current = null;
-      touchStartY.current = null;
-      touchMoved.current  = true; // treat as moved so click path also ignores this
-      return;
-    }
-
-    // Measure travel distance
-    if (touchStartX.current !== null && touchStartY.current !== null) {
-      const dx = Math.abs(e.changedTouches[0].clientX - touchStartX.current);
-      const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
-      if (dx > SCROLL_THRESHOLD || dy > SCROLL_THRESHOLD) {
-        // Finger moved — this is part of a scroll/pan gesture; abort entirely
-        touchMoved.current = true;
-        touchStartX.current = null;
-        touchStartY.current = null;
-        lastTapTime.current = 0; // also reset first-tap memory so scroll never
-        clearTimeout(resetTimer.current); // accidentally contributes to a double-tap
-        return;
-      }
-    }
-
-    touchStartX.current = null;
+    if (wasPinch.current) { wasPinch.current = false; touchStartY.current = null; return; }
+    if (touchStartY.current === null) return; // was scrolling — ignore
     touchStartY.current = null;
 
-    // --- Double-tap detection ---
     const now = Date.now();
-    if (now - lastTapTime.current < TAP_WINDOW) {
-      // Second tap within the window → double-tap confirmed
-      clearTimeout(resetTimer.current);
+    if (lastTapTime.current && now - lastTapTime.current < TAP_WINDOW) {
       lastTapTime.current = 0;
-      firereaction(e);
+      e.preventDefault();
+      onReact(e);
     } else {
-      // First tap — record it and set a window expiry timer
       lastTapTime.current = now;
-      clearTimeout(resetTimer.current);
-      resetTimer.current = setTimeout(() => { lastTapTime.current = 0; }, TAP_WINDOW);
     }
-  }, [firereaction]);
+  }, [onReact]);
 
-  // Desktop double-click path (no movement risk, just needs the cooldown guard)
+  // Desktop: native double-click is reliable, no scroll disambiguation needed
   const handleDoubleClick = useCallback((e) => {
-    firereaction(e);
-  }, [firereaction]);
+    if (!("ontouchstart" in window)) onReact(e);
+  }, [onReact]);
 
   return {
     onTouchStart:  handleTouchStart,
+    onTouchMove:   handleTouchMove,
     onTouchEnd:    handleTouchEnd,
     onDoubleClick: handleDoubleClick,
   };
@@ -3121,7 +3075,7 @@ function App() {
                     </PostLocation>
                   )}
                   {(post.reactions || []).length > 0 && (
-                    <ReactionsRow>
+                    <ReactionsRow onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
                       {(post.reactions || []).map((r) => (
                         <ReactionChip
                           key={r.emoji}
@@ -3135,7 +3089,7 @@ function App() {
                   )}
                   {emojiPickerPostId === post.id ? (
                     <>
-                      <ReactionsRow>
+                      <ReactionsRow onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
                         {getReactionEmojis("global").map((emoji, i) => (
                           <div key={emoji + i} style={{ position: "relative" }}>
                             <EmojiOption
@@ -3207,7 +3161,7 @@ function App() {
                     </>
                   ) : (
                     <>
-                      <ReactionsRow>
+                      <ReactionsRow onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
                         {(() => {
                           const hasAnyReaction = (post.reactions || []).some((r) => r.user_reacted);
                           return getReactionEmojis("posts").map((emoji) => {
@@ -3299,7 +3253,7 @@ function App() {
                                   </CommentText>
                                   {c.content !== "thinking..." && <CommentTime>{timeAgo(c.created_at)}</CommentTime>}
                                   {c.comment_reactions && c.comment_reactions.length > 0 && (
-                                    <CommentTime style={{ display: "flex", gap: 12, marginTop: 4, marginLeft: 0, flexWrap: "wrap" }}>
+                                    <CommentTime onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()} style={{ display: "flex", gap: 12, marginTop: 4, marginLeft: 0, flexWrap: "wrap" }}>
                                       {c.comment_reactions.map((r) => (
                                         <span
                                           key={r.emoji}
