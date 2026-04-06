@@ -259,7 +259,7 @@ const Segment = styled.button`
   flex: 1 1 0;
   padding: 6px 16px;
   border-radius: ${RADIUS_SM};
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   border: none;
@@ -285,7 +285,7 @@ const BackButton = styled.button`
 const LogoutButton = styled.button`
   padding: 8px 16px;
   border-radius: ${RADIUS};
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
   border: 2px solid ${(p) => p.theme.borderStrong};
   background: ${(p) => p.theme.bgElevated};
@@ -931,7 +931,7 @@ const ReactionContextHeader = styled.div`
 `;
 
 const ReactionContextLabel = styled.div`
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: ${(p) => p.theme.text};
   display: flex;
@@ -940,13 +940,13 @@ const ReactionContextLabel = styled.div`
 `;
 
 const ReactionContextSubLabel = styled.div`
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
   color: ${(p) => p.theme.textSecondary};
 `;
 
 const ReactionResetButton = styled.button`
-  font-size: 11px;
+  font-size: 12px;
   color: ${(p) => p.theme.textSecondary};
   border: none;
   background: none;
@@ -986,7 +986,7 @@ const EmojiChipRemove = styled.button`
   border: none;
   background: ${(p) => p.theme.textSecondary};
   color: ${(p) => p.theme.bgElevated};
-  font-size: 9px;
+  font-size: 12px;
   cursor: pointer;
   flex-shrink: 0;
   opacity: 0.7;
@@ -994,7 +994,7 @@ const EmojiChipRemove = styled.button`
 `;
 
 const EmojiChipDragHandle = styled.span`
-  font-size: 10px;
+  font-size: 12px;
   color: ${(p) => p.theme.textMuted};
   cursor: grab;
   margin-right: 2px;
@@ -1023,7 +1023,7 @@ const EmojiInput = styled.input`
 const AddEmojiButton = styled.button`
   padding: 6px 14px;
   border-radius: ${RADIUS_SM};
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   border: 2px solid ${(p) => p.theme.borderStrong};
@@ -1092,7 +1092,7 @@ const CommentThumbsBadge = styled.button`
   flex-shrink: 0;
   align-self: center;
   color: ${(p) => (p.$active ? "#2563EB" : p.theme.textSecondary)};
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1;
   opacity: ${(p) => (p.$visible ? 1 : 0)};
   pointer-events: ${(p) => (p.$visible ? "auto" : "none")};
@@ -1205,7 +1205,7 @@ const CommentPostButton = styled.button`
   border: 2px solid transparent;
   background: ${(p) => p.theme.btnPrimary};
   color: ${(p) => p.theme.btnPrimaryText};
-  font-size: 18px;
+  font-size: 16px;
   cursor: pointer;
   padding: 0;
   width: 40px;
@@ -1228,7 +1228,7 @@ const CommentCount = styled.button`
   border: none;
   background: none;
   color: ${(p) => p.theme.textSecondary};
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
   padding: 0;
   margin-top: 8px;
@@ -1271,7 +1271,7 @@ const PostMap = styled.img`
 
 const PostPlaceName = styled.div`
   padding: 10px 12px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: ${(p) => p.theme.text};
   border: 2px solid ${(p) => p.theme.border};
@@ -1415,14 +1415,14 @@ const UserProfilePrivate = styled.div`
   text-align: center;
   padding: 48px 24px;
   color: ${(p) => p.theme.textSecondary};
-  font-size: 15px;
+  font-size: 14px;
 `;
 
 const DegreeBadge = styled.span`
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   padding: 2px 7px;
   border-radius: 20px;
@@ -1515,7 +1515,7 @@ const DegreeFilterChip = styled.button`
 const FollowButton = styled.button`
   padding: 8px 18px;
   border-radius: ${RADIUS};
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   border: 2px solid ${(p) => (p.$status === "pending" ? p.theme.borderStrong : p.$following ? p.theme.borderStrong : p.theme.btnPrimary)};
@@ -1573,7 +1573,7 @@ const RequestActions = styled.div`
 const ApproveButton = styled.button`
   padding: 8px 18px;
   border-radius: ${RADIUS};
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   border: none;
@@ -1590,7 +1590,7 @@ const ApproveButton = styled.button`
 const RejectButton = styled.button`
   padding: 8px 18px;
   border-radius: ${RADIUS};
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   border: 2px solid ${(p) => p.theme.borderStrong};
@@ -1681,7 +1681,7 @@ const ProfileEmail = styled.p`
 `;
 
 const ThemeToggleLabel = styled.div`
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: ${(p) => p.theme.textSecondary};
   margin-bottom: 8px;
@@ -1706,7 +1706,7 @@ const ThemeSegment = styled.button`
   flex: 1;
   padding: 6px 20px;
   border-radius: ${RADIUS_SM};
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   border: none;
@@ -1785,7 +1785,7 @@ const BannerText = styled.span`
 const BannerButton = styled.button`
   padding: 8px 14px;
   border-radius: ${RADIUS};
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   border: none;
