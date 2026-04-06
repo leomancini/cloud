@@ -1542,7 +1542,7 @@ const FollowBtn = ({ user, onFollow, busy }) => {
   const status = user.follow_status;
   const following = user.is_following;
   const followsYou = user.follows_you;
-  const label = status === "pending" ? "Requested" : following ? "Following" : followsYou ? "Follow back" : "Follow";
+  const label = status === "pending" ? "Cancel request" : following ? "Unfollow" : followsYou ? "Follow back" : "Follow";
   return (
     <FollowButton
       $following={!!following}
@@ -1561,7 +1561,7 @@ const PeopleFollowBtn = ({ user, onFollow, busy }) => {
   const status = user.follow_status;
   const following = user.is_following;
   const followsYou = user.follows_you;
-  const label = status === "pending" ? "Requested" : following ? "Following" : followsYou ? "Follow back" : "Follow";
+  const label = status === "pending" ? "Cancel request" : following ? "Unfollow" : followsYou ? "Follow back" : "Follow";
   return (
     <PeopleFollowButton
       $following={!!following}
