@@ -275,6 +275,89 @@ app.get("/api/users", (req, res) => {
   res.json({ users: users.map((u) => ({ ...u, is_following: u.follow_status === "approved" ? 1 : 0, follow_status: u.follow_status || null, follows_you: u.follows_you === "approved" })) });
 });
 
+// User profile endpoint — returns user info + their posts (if viewer has permission)
+app.get("/api/users/:id/profile", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+
+  const targetId = parseInt(req.params.id);
+  const viewerId = req.user.id;
+
+  const profile = db.prepare(
+    `SELECT u.id, COALESCE(u.display_name, u.name) as name, u.name as google_name, '/api/pictures/' || u.id || '.jpg' as picture,
+      (SELECT status FROM follows WHERE follower_id = ? AND following_id = u.id) as follow_status,
+      (SELECT status FROM follows WHERE follower_id = u.id AND following_id = ?) as follows_you,
+      (SELECT COUNT(*) FROM follows WHERE follower_id = u.id AND status = 'approved') as following_count,
+      (SELECT COUNT(*) FROM follows WHERE following_id = u.id AND status = 'approved') as followers_count,
+      (SELECT COUNT(*) FROM posts WHERE user_id = u.id) as post_count
+    FROM users u WHERE u.id = ?`
+  ).get(viewerId, viewerId, targetId);
+
+  if (!profile) return res.status(404).json({ error: "User not found" });
+
+  profile.is_following = profile.follow_status === "approved" ? 1 : 0;
+  profile.follow_status = profile.follow_status || null;
+  profile.follows_you = profile.follows_you === "approved";
+
+  // Only show posts if viewer follows this user (approved) or it's the viewer's own profile
+  const canViewPosts = targetId === viewerId || profile.follow_status === "approved";
+  if (!canViewPosts) return res.json({ profile, posts: [], canViewPosts: false });
+
+  const limit = 20;
+  const offset = parseInt(req.query.offset) || 0;
+
+  const posts = db.prepare(
+    `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.og_preview,
+      COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
+    FROM posts p
+    JOIN users u ON p.user_id = u.id
+    WHERE p.user_id = ?
+    ORDER BY p.created_at DESC
+    LIMIT ? OFFSET ?`
+  ).all(targetId, limit + 1, offset);
+
+  const getMedia = db.prepare("SELECT filename, media_type FROM post_media WHERE post_id = ? ORDER BY id");
+  const getComments = db.prepare(
+    `SELECT c.id, c.content, c.created_at, c.user_id,
+      COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
+    FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ? ORDER BY c.created_at ASC`
+  );
+  const getReactions = db.prepare(
+    `SELECT r.emoji, COALESCE(u.display_name, u.name) as user_name, r.user_id
+    FROM reactions r JOIN users u ON r.user_id = u.id WHERE r.post_id = ? ORDER BY r.created_at`
+  );
+  const getCommentReactions = db.prepare(
+    `SELECT cr.emoji, cr.user_id, COALESCE(u.display_name, u.name) as name
+    FROM comment_reactions cr JOIN users u ON u.id = cr.user_id WHERE cr.comment_id = ?`
+  );
+
+  const hasMore = posts.length > limit;
+  if (hasMore) posts.pop();
+
+  const postsWithMedia = posts.map((post) => {
+    let ogPreview = null;
+    if (post.og_preview) { try { ogPreview = JSON.parse(post.og_preview); } catch {} }
+    return {
+      ...post,
+      og_preview: ogPreview,
+      media: getMedia.all(post.id).map((m) => ({ url: `/api/uploads/${m.filename}`, type: m.media_type })),
+      comments: getComments.all(post.id).map((c) => {
+        const cReactions = getCommentReactions.all(c.id);
+        const grouped = {};
+        for (const r of cReactions) { if (!grouped[r.emoji]) grouped[r.emoji] = []; grouped[r.emoji].push(r.name); }
+        return { ...c, comment_reactions: Object.entries(grouped).map(([emoji, names]) => ({ emoji, names, user_reacted: cReactions.some((r) => r.emoji === emoji && r.user_id === viewerId) })) };
+      }),
+      reactions: (() => {
+        const raw = getReactions.all(post.id);
+        const grouped = {};
+        for (const r of raw) { if (!grouped[r.emoji]) grouped[r.emoji] = { emoji: r.emoji, names: [], user_reacted: 0 }; grouped[r.emoji].names.push(r.user_name); if (r.user_id === viewerId) grouped[r.emoji].user_reacted = 1; }
+        return Object.values(grouped);
+      })(),
+    };
+  });
+
+  res.json({ profile, posts: postsWithMedia, hasMore, canViewPosts: true });
+});
+
 // Connection degree endpoint
 app.get("/api/users/connections", (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });

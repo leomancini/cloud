@@ -1330,12 +1330,13 @@ const PeopleCard = styled.div`
   align-items: center;
   text-align: center;
   gap: 12px;
-  padding: 12px 4px;
+  padding: 12px 0;
+  min-width: 0;
 `;
 
 const PeopleCardAvatar = styled.img`
-  width: 64px;
-  height: 64px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
 `;
 
@@ -1352,6 +1353,50 @@ const PeopleCardStatus = styled.div`
   font-size: 11px;
   color: ${(p) => p.theme.textSecondary};
   margin-top: 0px;
+`;
+
+const UserProfileHeader = styled.div`
+  text-align: center;
+  padding-top: 40px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid ${(p) => p.theme.border};
+  margin-bottom: 16px;
+`;
+
+const UserProfileAvatar = styled.img`
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  margin-bottom: 12px;
+`;
+
+const UserProfileName = styled.h2`
+  font-size: 22px;
+  color: ${(p) => p.theme.text};
+  margin: 0 0 4px;
+`;
+
+const UserProfileStats = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin: 16px 0;
+`;
+
+const UserProfileStat = styled.div`
+  font-size: 14px;
+  color: ${(p) => p.theme.textSecondary};
+  span {
+    font-weight: 600;
+    color: ${(p) => p.theme.text};
+  }
+`;
+
+const UserProfilePrivate = styled.div`
+  text-align: center;
+  padding: 48px 24px;
+  color: ${(p) => p.theme.textSecondary};
+  font-size: 15px;
 `;
 
 const DegreeBadge = styled.span`
@@ -2079,6 +2124,10 @@ function App() {
   const [commentReactionPicker, setCommentReactionPicker] = useState(null); // { postId, commentId }
   const [quickReactPickerPostId, setQuickReactPickerPostId] = useState(null); // post id for quick one-off reaction
 
+  // User profile page state
+  const [viewingProfile, setViewingProfile] = useState(null); // { profile, posts, canViewPosts, hasMore }
+  const [viewingProfileLoading, setViewingProfileLoading] = useState(false);
+
   // Returns the resolved emoji set for a given context, falling back: context → global → default
   const getReactionEmojis = (context = "posts") => {
     if (!reactionPrefs) return DEFAULT_REACTION_EMOJIS;
@@ -2214,6 +2263,17 @@ function App() {
       .then((res) => { if (res.ok) return res.json(); })
       .then((data) => { if (data) setUsers(data.users); })
       .catch(() => {});
+  };
+
+  const loadUserProfile = (userId) => {
+    setViewingProfileLoading(true);
+    setViewingProfile(null);
+    setTab("user-profile");
+    fetch(`/api/users/${userId}/profile`)
+      .then((res) => { if (res.ok) return res.json(); })
+      .then((data) => { if (data) setViewingProfile(data); })
+      .catch(() => {})
+      .finally(() => setViewingProfileLoading(false));
   };
 
   const loadConnectionDegrees = () => {
@@ -2720,8 +2780,8 @@ function App() {
         <Page>
       {lightboxSrc && <PhotoLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
       <Header>
-        {tab === "profile" ? (
-          <BackButton onClick={() => setTab("feed")}><i className="fa-solid fa-arrow-left" /> Back</BackButton>
+        {tab === "profile" || tab === "user-profile" ? (
+          <BackButton onClick={() => setTab(tab === "user-profile" ? "people" : "feed")}><i className="fa-solid fa-arrow-left" /> Back</BackButton>
         ) : (
           <>
             <HeaderProfile onClick={() => setTab("profile")}>
@@ -3452,6 +3512,141 @@ function App() {
             )}
             {feedLoadingMore && <EmptyState><BigSpinner /></EmptyState>}
           </>
+        ) : tab === "user-profile" ? (
+          viewingProfileLoading ? (
+            <EmptyState><BigSpinner /></EmptyState>
+          ) : viewingProfile ? (
+            <>
+              <UserProfileHeader>
+                <UserProfileAvatar src={viewingProfile.profile.picture} alt={viewingProfile.profile.name} />
+                <UserProfileName>{viewingProfile.profile.name}</UserProfileName>
+                <UserProfileStats>
+                  <UserProfileStat><span>{viewingProfile.profile.post_count}</span> posts</UserProfileStat>
+                  <UserProfileStat><span>{viewingProfile.profile.followers_count}</span> followers</UserProfileStat>
+                  <UserProfileStat><span>{viewingProfile.profile.following_count}</span> following</UserProfileStat>
+                </UserProfileStats>
+                <FollowBtn
+                  user={{
+                    id: viewingProfile.profile.id,
+                    follow_status: viewingProfile.profile.follow_status,
+                    is_following: viewingProfile.profile.is_following,
+                    follows_you: viewingProfile.profile.follows_you,
+                  }}
+                  onFollow={(id, status) => {
+                    handleFollow(id, status);
+                    // Refresh profile after follow action
+                    setTimeout(() => loadUserProfile(viewingProfile.profile.id), 500);
+                  }}
+                  busy={isBusy(`follow-${viewingProfile.profile.id}`)}
+                />
+              </UserProfileHeader>
+              {!viewingProfile.canViewPosts ? (
+                <UserProfilePrivate>
+                  <i className="fa-solid fa-lock" style={{ fontSize: 24, marginBottom: 12, display: "block" }} />
+                  Follow {viewingProfile.profile.name} to see their posts
+                </UserProfilePrivate>
+              ) : viewingProfile.posts.length === 0 ? (
+                <EmptyState>No posts yet</EmptyState>
+              ) : (
+                viewingProfile.posts.map((post) => (
+                  <PostItemWithReaction
+                    key={post.id}
+                    post={post}
+                    getReactionEmojis={getReactionEmojis}
+                    onReact={handleReact}
+                    renderContent={(postReactProps) => (
+                  <PostItem data-post-id={post.id} {...postReactProps}>
+                    <PostHeader>
+                      <Avatar src={post.author_picture} alt={post.author_name} />
+                      <PostHeaderText>
+                        <PostAuthor>{post.author_name}</PostAuthor>
+                        <PostTime>{timeAgo(post.created_at)}</PostTime>
+                      </PostHeaderText>
+                    </PostHeader>
+                    {post.content && <PostContent>{renderText(post.content)}</PostContent>}
+                    {post.og_preview && (
+                      <LinkPreviewCard href={post.og_preview.url} target="_blank" rel="noopener noreferrer">
+                        {post.og_preview.image && <LinkPreviewImage src={post.og_preview.image} />}
+                        <LinkPreviewBody>
+                          {post.og_preview.siteName && <LinkPreviewSite>{post.og_preview.siteName}</LinkPreviewSite>}
+                          {post.og_preview.title && <LinkPreviewTitle>{post.og_preview.title}</LinkPreviewTitle>}
+                          {post.og_preview.description && <LinkPreviewDesc>{post.og_preview.description}</LinkPreviewDesc>}
+                        </LinkPreviewBody>
+                      </LinkPreviewCard>
+                    )}
+                    {post.media && post.media.length > 0 && (
+                      <PostMediaContainer $count={post.media.length}>
+                        {post.media.map((m, i) =>
+                          m.type === "video" ? (
+                            <PostVideo
+                              key={i}
+                              src={m.url}
+                              autoPlay
+                              loop
+                              muted
+                              playsInline
+                              $single={post.media.length === 1}
+                            />
+                          ) : (
+                            <PostImage
+                              key={i}
+                              src={m.url}
+                              $single={post.media.length === 1}
+                            />
+                          )
+                        )}
+                      </PostMediaContainer>
+                    )}
+                    {post.place_name && post.place_lat && (
+                      <PostLocation>
+                        <PostMapWrapper>
+                          <PostMap
+                            src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`}
+                            alt={post.place_name}
+                          />
+                        </PostMapWrapper>
+                        <PostPlaceName>
+                          <span>{post.place_name}</span>
+                          {post.place_address && <PostPlaceAddress>{shortAddress(post.place_address)}</PostPlaceAddress>}
+                        </PostPlaceName>
+                      </PostLocation>
+                    )}
+                    {(post.reactions || []).length > 0 && (
+                      <ReactionsRow onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
+                        {(post.reactions || []).map((r) => (
+                          <ReactionChip
+                            key={r.emoji}
+                            $active={r.user_reacted}
+                            onClick={() => handleReact(post.id, r.emoji)}
+                          >
+                            <span style={{ width: 24, textAlign: "center", flexShrink: 0 }}>{r.emoji}</span> <ReactionNames>{(r.names || []).join(", ")}</ReactionNames>
+                          </ReactionChip>
+                        ))}
+                      </ReactionsRow>
+                    )}
+                    <CommentsSection>
+                      {post.comments && post.comments.length > 0 && (
+                        <>
+                          {post.comments.map((c) => (
+                            <CommentRow key={c.id}>
+                              <CommentAvatar src={c.author_picture} alt={c.author_name} />
+                              <CommentBody>
+                                <CommentAuthor>{c.author_name}</CommentAuthor>
+                                <CommentText>{renderText(c.content)}</CommentText>
+                                <CommentTime>{timeAgo(c.created_at)}</CommentTime>
+                              </CommentBody>
+                            </CommentRow>
+                          ))}
+                        </>
+                      )}
+                    </CommentsSection>
+                  </PostItem>
+                    )}
+                  />
+                ))
+              )}
+            </>
+          ) : null
         ) : (
           <>
             <DegreeFilterBar>
@@ -3486,7 +3681,7 @@ function App() {
                 users
                   .filter((u) => selectedDegrees.size === 0 || selectedDegrees.has(connectionDegrees[u.id]))
                   .map((u) => (
-                  <PeopleCard key={u.id}>
+                  <PeopleCard key={u.id} onClick={() => loadUserProfile(u.id)} style={{ cursor: "pointer" }}>
                     <PeopleCardAvatar src={u.picture} alt={u.name} />
                     <div>
                       <PeopleCardName>{u.name}</PeopleCardName>
@@ -3498,7 +3693,6 @@ function App() {
                         </PeopleCardStatus>
                       )}
                     </div>
-                    <PeopleFollowBtn user={u} onFollow={handleFollow} busy={isBusy(`follow-${u.id}`)} />
                   </PeopleCard>
                 ))
               )}
