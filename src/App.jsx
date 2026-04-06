@@ -2833,8 +2833,8 @@ function App() {
       renderContent={(postReactProps) => (
         <PostItem data-post-id={post.id} {...postReactProps}>
           <PostHeader onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
-            <Avatar src={post.author_picture} alt={post.author_name} onClick={disableProfileLink ? undefined : () => loadUserProfile(post.user_id)} style={disableProfileLink ? undefined : { cursor: "pointer" }} />
-            <PostHeaderText onClick={disableProfileLink ? undefined : () => loadUserProfile(post.user_id)} style={disableProfileLink ? undefined : { cursor: "pointer" }}>
+            <Avatar src={post.author_picture} alt={post.author_name} onClick={disableProfileLink ? undefined : () => post.user_id === user.id ? setTab("profile") : loadUserProfile(post.user_id)} style={disableProfileLink ? undefined : { cursor: "pointer" }} />
+            <PostHeaderText onClick={disableProfileLink ? undefined : () => post.user_id === user.id ? setTab("profile") : loadUserProfile(post.user_id)} style={disableProfileLink ? undefined : { cursor: "pointer" }}>
               <PostAuthor>{post.author_name}</PostAuthor>
               <PostTime>{timeAgo(post.created_at)}</PostTime>
             </PostHeaderText>
