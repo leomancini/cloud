@@ -3128,10 +3128,10 @@ function App() {
               <HeaderName>{user.name}</HeaderName>
             </HeaderProfile>
             <SegmentedControl>
-              <Segment $active={tab === "feed"} onClick={() => setTab("feed")} style={{ padding: "6px 24px" }}>
+              <Segment $active={tab === "feed"} onClick={() => setTab("feed")} style={{ minWidth: 90 }}>
                 Feed
               </Segment>
-              <Segment $active={tab === "people"} onClick={() => { setTab("people"); loadUsers(); loadFollowRequests(); loadFollowers(); loadConnectionDegrees(); }} style={{ padding: "6px 24px" }}>
+              <Segment $active={tab === "people"} onClick={() => { setTab("people"); loadUsers(); loadFollowRequests(); loadFollowers(); loadConnectionDegrees(); }} style={{ minWidth: 90 }}>
                 People
               </Segment>
             </SegmentedControl>
