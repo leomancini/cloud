@@ -859,6 +859,8 @@ const EmojiOption = styled.button`
   font-size: 24px;
   line-height: 1;
   padding: 0;
+  width: 24px;
+  height: 24px;
   cursor: pointer;
   border-radius: ${RADIUS_SM};
   opacity: ${(p) => (p.$dimmed ? 0.35 : 1)};
@@ -873,8 +875,8 @@ const EmojiEditButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 24px;
+  height: 24px;
   border: none;
   background: none;
   font-size: 14px;
@@ -889,8 +891,8 @@ const QuickReactButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 24px;
+  height: 24px;
   border: none;
   background: none;
   font-size: 16px;
