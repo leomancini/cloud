@@ -164,10 +164,13 @@ const MentionOption = styled.div`
   @media (hover: hover) { &:hover { background: ${(p) => p.theme.bgHover}; } }
 `;
 
+const innerBorder = "outline: 2px solid rgba(0, 0, 0, 0.1); outline-offset: -2px;";
+
 const MentionAvatar = styled.img`
   width: 24px;
   height: 24px;
   border-radius: 50%;
+  ${innerBorder}
 `;
 
 const Page = styled.div`
@@ -198,6 +201,7 @@ const SmallAvatar = styled.img`
   width: 36px;
   height: 36px;
   border-radius: 50%;
+  ${innerBorder}
 `;
 
 const HeaderName = styled.span`
@@ -252,7 +256,7 @@ const SegmentedControl = styled.div`
 `;
 
 const Segment = styled.button`
-  flex: 1;
+  flex: 1 1 0;
   padding: 6px 16px;
   border-radius: ${RADIUS_SM};
   font-size: 13px;
@@ -630,6 +634,7 @@ const PostImage = styled.img`
   background: ${(p) => p.theme.bgControl};
   min-height: ${(p) => (p.$single ? "200px" : "auto")};
   cursor: ${(p) => (p.$tappable ? "zoom-in" : "default")};
+  ${innerBorder}
 `;
 
 const PostVideo = styled.video`
@@ -639,6 +644,7 @@ const PostVideo = styled.video`
   object-fit: cover;
   background: ${(p) => p.theme.bgControl};
   min-height: ${(p) => (p.$single ? "200px" : "auto")};
+  ${innerBorder}
 `;
 
 /* ── Lightbox ── */
@@ -739,6 +745,7 @@ const Avatar = styled.img`
   width: 36px;
   height: 36px;
   border-radius: 50%;
+  ${innerBorder}
 `;
 
 const PostAuthor = styled.span`
@@ -1106,6 +1113,7 @@ const CommentAvatar = styled.img`
   border-radius: 50%;
   flex-shrink: 0;
   margin-top: -1px;
+  ${innerBorder}
 `;
 
 const CommentBody = styled.div`
@@ -1306,6 +1314,7 @@ const UserAvatar = styled.img`
   width: 36px;
   height: 36px;
   border-radius: 50%;
+  ${innerBorder}
 `;
 
 const UserName = styled.span`
@@ -1348,6 +1357,7 @@ const PeopleCardAvatar = styled.img`
   width: 80px;
   height: 80px;
   border-radius: 50%;
+  ${innerBorder}
 `;
 
 const PeopleCardName = styled.span`
@@ -1378,6 +1388,7 @@ const UserProfileAvatar = styled.img`
   height: 80px;
   border-radius: 50%;
   margin-bottom: 12px;
+  ${innerBorder}
 `;
 
 const UserProfileName = styled.h2`
@@ -1656,6 +1667,7 @@ const ProfileAvatar = styled.img`
   height: 80px;
   border-radius: 50%;
   margin-bottom: 16px;
+  ${innerBorder}
 `;
 
 const ProfileName = styled.h2`
@@ -2013,23 +2025,34 @@ function App() {
   const [feedLoadingMore, setFeedLoadingMore] = useState(false);
   const [followers, setFollowers] = useState([]);
   const [followRequests, setFollowRequests] = useState([]);
+  const initialProfileId = useRef(null);
   const [tab, setTabState] = useState(() => {
     const path = window.location.pathname;
     if (path === "/people") return "people";
     if (path === "/profile") return "profile";
+    const userMatch = path.match(/^\/user\/(\d+)$/);
+    if (userMatch) { initialProfileId.current = parseInt(userMatch[1]); return "user-profile"; }
     return "feed";
   });
   const setTab = (newTab) => {
-    setTabState(newTab);
     const slug = newTab === "feed" ? "/" : newTab === "people" ? "/people" : newTab === "profile" ? "/profile" : null;
-    if (slug) window.history.pushState(null, "", slug);
+    if (slug) window.history.pushState({ scrollY: window.scrollY }, "", slug);
+    setTabState(newTab);
+    window.scrollTo(0, 0);
   };
   useEffect(() => {
-    const onPopState = () => {
+    const onPopState = (e) => {
       const path = window.location.pathname;
-      if (path === "/people") setTabState("people");
+      const userMatch = path.match(/^\/user\/(\d+)$/);
+      if (userMatch) {
+        setTabState("user-profile");
+        loadUserProfile(parseInt(userMatch[1]), true);
+      } else if (path === "/people") setTabState("people");
       else if (path === "/profile") setTabState("profile");
       else setTabState("feed");
+      if (e.state?.scrollY != null) {
+        requestAnimationFrame(() => window.scrollTo(0, e.state.scrollY));
+      }
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
@@ -2224,6 +2247,10 @@ function App() {
           loadFollowers();
           loadFollowRequests();
           loadConnectionDegrees();
+          if (initialProfileId.current) {
+            loadUserProfile(initialProfileId.current, true);
+            initialProfileId.current = null;
+          }
         }
       })
       .catch(() => { setLoading(false); });
@@ -2296,7 +2323,7 @@ function App() {
       .catch(() => {});
   };
 
-  const loadUserProfile = (userId) => {
+  const loadUserProfile = (userId, skipPush) => {
     profileBackTab.current = tab === "user-profile" ? profileBackTab.current : tab;
     // Seed with data we already have from the users list so the header renders instantly
     const cached = users.find((u) => u.id === userId);
@@ -2312,7 +2339,11 @@ function App() {
       setViewingProfileLoading(true);
       setViewingProfile(null);
     }
-    setTab("user-profile");
+    if (!skipPush) {
+      window.history.pushState({ scrollY: window.scrollY }, "", `/user/${userId}`);
+      window.scrollTo(0, 0);
+    }
+    setTabState("user-profile");
     fetch(`/api/users/${userId}/profile`)
       .then((res) => { if (res.ok) return res.json(); })
       .then((data) => { if (data) setViewingProfile(data); })
@@ -2795,7 +2826,7 @@ function App() {
     setPosts([]);
   };
 
-  const renderPostCard = (post) => (
+  const renderPostCard = (post, { disableProfileLink } = {}) => (
     <PostItemWithReaction
       key={post.id}
       post={post}
@@ -2803,9 +2834,9 @@ function App() {
       onReact={handleReact}
       renderContent={(postReactProps) => (
         <PostItem data-post-id={post.id} {...postReactProps}>
-          <PostHeader>
-            <Avatar src={post.author_picture} alt={post.author_name} onClick={() => post.user_id !== user.id && loadUserProfile(post.user_id)} style={post.user_id !== user.id ? { cursor: "pointer" } : undefined} />
-            <PostHeaderText onClick={() => post.user_id !== user.id && loadUserProfile(post.user_id)} style={post.user_id !== user.id ? { cursor: "pointer" } : undefined}>
+          <PostHeader onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
+            <Avatar src={post.author_picture} alt={post.author_name} onClick={disableProfileLink ? undefined : () => loadUserProfile(post.user_id)} style={disableProfileLink ? undefined : { cursor: "pointer" }} />
+            <PostHeaderText onClick={disableProfileLink ? undefined : () => loadUserProfile(post.user_id)} style={disableProfileLink ? undefined : { cursor: "pointer" }}>
               <PostAuthor>{post.author_name}</PostAuthor>
               <PostTime>{timeAgo(post.created_at)}</PostTime>
             </PostHeaderText>
@@ -2944,9 +2975,9 @@ function App() {
                   <CommentRowWithReaction key={c.id} postId={post.id} commentId={c.id} onReact={handleCommentReact}
                     renderContent={(commentReactProps) => (
                       <CommentRow {...commentReactProps}>
-                        <CommentAvatar src={c.author_picture} alt={c.author_name} onClick={() => c.user_id !== user.id && loadUserProfile(c.user_id)} style={c.user_id !== user.id ? { cursor: "pointer" } : undefined} />
+                        <CommentAvatar src={c.author_picture} alt={c.author_name} onClick={(e) => { e.stopPropagation(); loadUserProfile(c.user_id); }} style={{ cursor: "pointer" }} />
                         <CommentBody>
-                          <CommentAuthor onClick={() => c.user_id !== user.id && loadUserProfile(c.user_id)} style={c.user_id !== user.id ? { cursor: "pointer" } : undefined}>{c.author_name}</CommentAuthor>
+                          <CommentAuthor onClick={(e) => { e.stopPropagation(); loadUserProfile(c.user_id); }} style={{ cursor: "pointer" }}>{c.author_name}</CommentAuthor>
                           {editingComment === c.id ? (
                             <CommentInputRow>
                               <CommentInput value={editCommentText} onChange={(e) => setEditCommentText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleEditComment(c.id, post.id); if (e.key === "Escape") { setEditingComment(null); setEditCommentText(""); } }} autoFocus style={{ color: resolvedTheme.text }} />
@@ -3087,10 +3118,10 @@ function App() {
               <HeaderName>{user.name}</HeaderName>
             </HeaderProfile>
             <SegmentedControl>
-              <Segment $active={tab === "feed"} onClick={() => setTab("feed")}>
+              <Segment $active={tab === "feed"} onClick={() => setTab("feed")} style={{ padding: "6px 24px" }}>
                 Feed
               </Segment>
-              <Segment $active={tab === "people"} onClick={() => { setTab("people"); loadUsers(); loadFollowRequests(); loadFollowers(); loadConnectionDegrees(); }}>
+              <Segment $active={tab === "people"} onClick={() => { setTab("people"); loadUsers(); loadFollowRequests(); loadFollowers(); loadConnectionDegrees(); }} style={{ padding: "6px 24px" }}>
                 People
               </Segment>
             </SegmentedControl>
@@ -3434,7 +3465,7 @@ function App() {
               ) : viewingProfile.posts.length === 0 ? (
                 <EmptyState>No posts yet</EmptyState>
               ) : (
-                viewingProfile.posts.map((post) => renderPostCard(post))
+                viewingProfile.posts.map((post) => renderPostCard(post, { disableProfileLink: true }))
               )}
             </>
           ) : null
@@ -3460,7 +3491,7 @@ function App() {
                   <PeopleCard key={u.id} onClick={() => loadUserProfile(u.id)} style={{ cursor: "pointer" }}>
                     <PeopleCardAvatar src={u.picture} alt={u.name} />
                     <div>
-                      <PeopleCardName>{u.name}</PeopleCardName>
+                      <PeopleCardName>{u.name.includes(" ") ? u.name.split(" ")[0] : u.name}</PeopleCardName>
                       {peopleFilter !== "friends" && (u.follows_you || u.is_following) && (
                         <PeopleCardStatus>
                           {u.follows_you && u.is_following ? "Friends" : u.follows_you ? "Follows you" : "Following"}
