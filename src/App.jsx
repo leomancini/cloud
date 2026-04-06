@@ -1338,7 +1338,8 @@ const FilterDescription = styled.div`
 const PeopleGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: ${(p) => p.$compact ? "4px" : "12px"};
+  column-gap: 12px;
+  row-gap: ${(p) => p.$compact ? "4px" : "12px"};
 `;
 
 const PeopleCard = styled.div`
@@ -1365,12 +1366,20 @@ const PeopleCardName = styled.span`
   line-height: 1.3;
   margin-bottom: 4px;
   display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 `;
 
 const PeopleCardStatus = styled.div`
   font-size: 14px;
   color: ${(p) => p.theme.textSecondary};
   margin-top: 0px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 `;
 
 const UserProfileHeader = styled.div`
@@ -3484,7 +3493,7 @@ function App() {
                   .map((u) => (
                   <PeopleCard key={u.id} onClick={() => loadUserProfile(u.id)} style={{ cursor: "pointer" }}>
                     <PeopleCardAvatar src={u.picture} alt={u.name} />
-                    <div>
+                    <div style={{ maxWidth: "100%", overflow: "hidden" }}>
                       <PeopleCardName>{u.name.includes(" ") ? u.name.split(" ")[0] : u.name}</PeopleCardName>
                       {peopleFilter !== "friends" && (u.follows_you || !!u.is_following) && (
                         <PeopleCardStatus>
