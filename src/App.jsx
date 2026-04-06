@@ -270,7 +270,8 @@ const BackButton = styled.button`
   cursor: pointer;
   border: none;
   background: none;
-  color: ${(p) => p.theme.text};
+  color: ${(p) => p.theme.textSecondary};
+  text-transform: lowercase;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1357,7 +1358,7 @@ const PeopleCardStatus = styled.div`
 
 const UserProfileHeader = styled.div`
   text-align: center;
-  padding-top: 40px;
+  padding-top: 12px;
   padding-bottom: 24px;
   border-bottom: 1px solid ${(p) => p.theme.border};
   margin-bottom: 16px;
@@ -2127,6 +2128,7 @@ function App() {
   // User profile page state
   const [viewingProfile, setViewingProfile] = useState(null); // { profile, posts, canViewPosts, hasMore }
   const [viewingProfileLoading, setViewingProfileLoading] = useState(false);
+  const profileBackTab = useRef("people"); // track where to go back to
 
   // Returns the resolved emoji set for a given context, falling back: context → global → default
   const getReactionEmojis = (context = "posts") => {
@@ -2266,8 +2268,21 @@ function App() {
   };
 
   const loadUserProfile = (userId) => {
-    setViewingProfileLoading(true);
-    setViewingProfile(null);
+    profileBackTab.current = tab === "user-profile" ? profileBackTab.current : tab;
+    // Seed with data we already have from the users list so the header renders instantly
+    const cached = users.find((u) => u.id === userId);
+    if (cached) {
+      setViewingProfile({
+        profile: { id: cached.id, name: cached.name, picture: cached.picture, follow_status: cached.follow_status, follows_you: cached.follows_you, is_following: cached.is_following, post_count: null, followers_count: null, following_count: null },
+        posts: [],
+        canViewPosts: cached.follow_status === "approved",
+        hasMore: false,
+      });
+      setViewingProfileLoading(false);
+    } else {
+      setViewingProfileLoading(true);
+      setViewingProfile(null);
+    }
     setTab("user-profile");
     fetch(`/api/users/${userId}/profile`)
       .then((res) => { if (res.ok) return res.json(); })
@@ -2584,7 +2599,14 @@ function App() {
     startBusy(`delete-${id}`);
     await fetch(`/api/posts/${id}`, { method: "DELETE" });
     setPosts((prev) => prev.filter((p) => p.id !== id));
+    setViewingProfile((prev) => prev ? { ...prev, posts: prev.posts.filter((p) => p.id !== id) } : prev);
     endBusy(`delete-${id}`);
+  };
+
+  // Helper: update a post in both feed and profile states
+  const updatePostInState = (mapper) => {
+    setPosts((prev) => prev.map(mapper));
+    setViewingProfile((prev) => prev ? { ...prev, posts: prev.posts.map(mapper) } : prev);
   };
 
   const handleReact = async (postId, emoji) => {
@@ -2595,40 +2617,38 @@ function App() {
     });
     if (!res.ok) return;
     const { action, previous } = await res.json();
-    setPosts((prev) =>
-      prev.map((p) => {
-        if (p.id !== postId) return p;
-        let reactions = [...(p.reactions || [])];
+    updatePostInState((p) => {
+      if (p.id !== postId) return p;
+      let reactions = [...(p.reactions || [])];
 
-        // Remove user from previous emoji if changing
-        if (action === "changed" && previous) {
-          const prevIdx = reactions.findIndex((r) => r.emoji === previous);
-          if (prevIdx >= 0) {
-            const names = reactions[prevIdx].names.filter((n) => n !== user.name);
-            if (names.length === 0) reactions.splice(prevIdx, 1);
-            else reactions[prevIdx] = { ...reactions[prevIdx], names, user_reacted: 0 };
-          }
+      // Remove user from previous emoji if changing
+      if (action === "changed" && previous) {
+        const prevIdx = reactions.findIndex((r) => r.emoji === previous);
+        if (prevIdx >= 0) {
+          const names = reactions[prevIdx].names.filter((n) => n !== user.name);
+          if (names.length === 0) reactions.splice(prevIdx, 1);
+          else reactions[prevIdx] = { ...reactions[prevIdx], names, user_reacted: 0 };
         }
+      }
 
-        if (action === "added" || action === "changed") {
-          const idx = reactions.findIndex((r) => r.emoji === emoji);
-          if (idx >= 0) {
-            reactions[idx] = { ...reactions[idx], names: [...reactions[idx].names, user.name], user_reacted: 1 };
-          } else {
-            reactions.push({ emoji, names: [user.name], user_reacted: 1 });
-          }
-        } else if (action === "removed") {
-          const idx = reactions.findIndex((r) => r.emoji === emoji);
-          if (idx >= 0) {
-            const names = reactions[idx].names.filter((n) => n !== user.name);
-            if (names.length === 0) reactions.splice(idx, 1);
-            else reactions[idx] = { ...reactions[idx], names, user_reacted: 0 };
-          }
+      if (action === "added" || action === "changed") {
+        const idx = reactions.findIndex((r) => r.emoji === emoji);
+        if (idx >= 0) {
+          reactions[idx] = { ...reactions[idx], names: [...reactions[idx].names, user.name], user_reacted: 1 };
+        } else {
+          reactions.push({ emoji, names: [user.name], user_reacted: 1 });
         }
+      } else if (action === "removed") {
+        const idx = reactions.findIndex((r) => r.emoji === emoji);
+        if (idx >= 0) {
+          const names = reactions[idx].names.filter((n) => n !== user.name);
+          if (names.length === 0) reactions.splice(idx, 1);
+          else reactions[idx] = { ...reactions[idx], names, user_reacted: 0 };
+        }
+      }
 
-        return { ...p, reactions };
-      })
-    );
+      return { ...p, reactions };
+    });
   };
 
   const handleCommentReact = async (postId, commentId) => {
@@ -2640,17 +2660,15 @@ function App() {
     });
     if (!res.ok) return;
     const data = await res.json();
-    setPosts((prev) =>
-      prev.map((p) => {
-        if (p.id !== postId) return p;
-        return {
-          ...p,
-          comments: (p.comments || []).map((c) =>
-            c.id === commentId ? { ...c, comment_reactions: data.comment_reactions } : c
-          ),
-        };
-      })
-    );
+    updatePostInState((p) => {
+      if (p.id !== postId) return p;
+      return {
+        ...p,
+        comments: (p.comments || []).map((c) =>
+          c.id === commentId ? { ...c, comment_reactions: data.comment_reactions } : c
+        ),
+      };
+    });
   };
 
   const handleComment = async (postId) => {
@@ -2664,10 +2682,8 @@ function App() {
     });
     if (!res.ok) { endBusy(`comment-${postId}`); return; }
     const comment = await res.json();
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId ? { ...p, comments: [...(p.comments || []), comment] } : p
-      )
+    updatePostInState((p) =>
+      p.id === postId ? { ...p, comments: [...(p.comments || []), comment] } : p
     );
     setCommentInputs((prev) => ({ ...prev, [postId]: "" }));
     if (commentRefs.current[postId]) commentRefs.current[postId].style.height = "auto";
@@ -2678,10 +2694,8 @@ function App() {
   const handleDeleteComment = async (commentId, postId) => {
     setOpenCommentMenuId(null);
     await fetch(`/api/comments/${commentId}`, { method: "DELETE" });
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId ? { ...p, comments: p.comments.filter((c) => c.id !== commentId) } : p
-      )
+    updatePostInState((p) =>
+      p.id === postId ? { ...p, comments: p.comments.filter((c) => c.id !== commentId) } : p
     );
   };
 
@@ -2694,12 +2708,10 @@ function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content }),
     });
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId
-          ? { ...p, comments: p.comments.map((c) => (c.id === commentId ? { ...c, content } : c)) }
-          : p
-      )
+    updatePostInState((p) =>
+      p.id === postId
+        ? { ...p, comments: p.comments.map((c) => (c.id === commentId ? { ...c, content } : c)) }
+        : p
     );
     endBusy(`edit-comment-${commentId}`);
     setEditingComment(null);
@@ -2754,6 +2766,263 @@ function App() {
     setPosts([]);
   };
 
+  const renderPostCard = (post) => (
+    <PostItemWithReaction
+      key={post.id}
+      post={post}
+      getReactionEmojis={getReactionEmojis}
+      onReact={handleReact}
+      renderContent={(postReactProps) => (
+        <PostItem data-post-id={post.id} {...postReactProps}>
+          <PostHeader>
+            <Avatar src={post.author_picture} alt={post.author_name} onClick={() => post.user_id !== user.id && loadUserProfile(post.user_id)} style={post.user_id !== user.id ? { cursor: "pointer" } : undefined} />
+            <PostHeaderText onClick={() => post.user_id !== user.id && loadUserProfile(post.user_id)} style={post.user_id !== user.id ? { cursor: "pointer" } : undefined}>
+              <PostAuthor>{post.author_name}</PostAuthor>
+              <PostTime>{timeAgo(post.created_at)}</PostTime>
+            </PostHeaderText>
+            {post.user_id === user.id && (
+              <PostHeaderRight>
+                <PostMenuWrapper>
+                  <PostMenuButton onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenMenuId(openMenuId === post.id ? null : post.id);
+                  }}>
+                    <i className="fa-solid fa-ellipsis-vertical" />
+                  </PostMenuButton>
+                  {openMenuId === post.id && (
+                    <PostMenu onClick={(e) => e.stopPropagation()}>
+                      <PostMenuItem $danger onClick={() => handleDelete(post.id)}>
+                        <i className="fa-solid fa-trash" /> Delete
+                      </PostMenuItem>
+                    </PostMenu>
+                  )}
+                </PostMenuWrapper>
+              </PostHeaderRight>
+            )}
+          </PostHeader>
+          {post.content && <PostContent>{renderText(post.content)}</PostContent>}
+          {post.og_preview && (
+            <LinkPreviewCard href={post.og_preview.url} target="_blank" rel="noopener noreferrer">
+              {post.og_preview.image && <LinkPreviewImage src={post.og_preview.image} />}
+              <LinkPreviewBody>
+                {post.og_preview.siteName && <LinkPreviewSite>{post.og_preview.siteName}</LinkPreviewSite>}
+                {post.og_preview.title && <LinkPreviewTitle>{post.og_preview.title}</LinkPreviewTitle>}
+                {post.og_preview.description && <LinkPreviewDesc>{post.og_preview.description}</LinkPreviewDesc>}
+              </LinkPreviewBody>
+            </LinkPreviewCard>
+          )}
+          {post.media && post.media.length > 0 && (
+            <PostMediaContainer $count={post.media.length}>
+              {post.media.map((m, i) =>
+                m.type === "video" ? (
+                  <PostVideo key={i} src={m.url} autoPlay loop muted playsInline $single={post.media.length === 1} />
+                ) : (
+                  <PostImage
+                    key={i}
+                    src={m.url}
+                    $single={post.media.length === 1}
+                    $tappable={post.media.length > 1}
+                    onClick={post.media.length > 1 ? () => {
+                      const el = document.querySelector(`[data-post-id="${post.id}"]`);
+                      if (el && el._touchHandled) return;
+                      const url = m.url;
+                      const timer = setTimeout(() => setLightboxSrc(url), 300);
+                      if (el) { if (el._lightboxTimer) clearTimeout(el._lightboxTimer); el._lightboxTimer = timer; }
+                    } : undefined}
+                  />
+                )
+              )}
+            </PostMediaContainer>
+          )}
+          {post.place_name && post.place_lat && (
+            <PostLocation>
+              <PostMapWrapper>
+                <PostMap src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`} alt={post.place_name} />
+              </PostMapWrapper>
+              <PostPlaceName>
+                <span>{post.place_name}</span>
+                {post.place_address && <PostPlaceAddress>{shortAddress(post.place_address)}</PostPlaceAddress>}
+              </PostPlaceName>
+            </PostLocation>
+          )}
+          {(post.reactions || []).length > 0 && (
+            <ReactionsRow onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
+              {(post.reactions || []).map((r) => (
+                <ReactionChip key={r.emoji} $active={r.user_reacted} onClick={() => handleReact(post.id, r.emoji)}>
+                  <span style={{ width: 24, textAlign: "center", flexShrink: 0 }}>{r.emoji}</span> <ReactionNames>{(r.names || []).join(", ")}</ReactionNames>
+                </ReactionChip>
+              ))}
+            </ReactionsRow>
+          )}
+          {emojiPickerPostId === post.id ? (
+            <>
+              <ReactionsRow onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
+                {getReactionEmojis("global").map((emoji, i) => (
+                  <div key={emoji + i} style={{ position: "relative" }}>
+                    <EmojiOption
+                      onClick={() => setEmojiPickerSlot(emojiPickerSlot === i ? null : i)}
+                      style={{ width: 44, height: 44, fontSize: 24, paddingBottom: 2, background: "transparent", border: emojiPickerSlot === i ? `2px solid ${resolvedTheme.btnPrimary}` : `2px dashed ${resolvedTheme.border}`, borderRadius: RADIUS_SM, opacity: 1 }}
+                    >{emoji}</EmojiOption>
+                    {getReactionEmojis("global").length > 3 && (
+                      <EmojiEditButton onClick={() => removeEmojiSlot("global", i)} style={{ position: "absolute", top: -8, right: -8, width: 20, height: 20, fontSize: 10, background: resolvedTheme.bgElevated, border: `2px solid ${resolvedTheme.border}`, borderRadius: "50%" }}>
+                        <i className="fa-solid fa-minus" />
+                      </EmojiEditButton>
+                    )}
+                  </div>
+                ))}
+                {getReactionEmojis("global").length < 12 && (
+                  <EmojiEditButton
+                    onClick={() => { const currentSet = [...getReactionEmojis("global")]; if (currentSet.length >= 12) return; const newIndex = currentSet.length; const pool = ["⭐","🎉","💪","🙌","💯","✨","🎶","🌈","☀️","🍕","🌊","🧡","💜","💚","🤩","😎","🥳","🫡","🤝","👀","💡","🌟","🍀","🦋","🐶","🎯","🚀","⚡","🪴","🧸","🎨","🏆","🎸","🌸","🍩","🧁","☕","🫶","🤙","👏","🙏","💎","🔮","🎪","🌻","🐱","🦊","🐻","🌮","🍦","🎲","🛹","🏄","⛷️","🎭","🪩","🫧","🌙","🦄","🐝","🍉","🥑","🧊","🎹","🪻","🌺","🫰","🤟","✌️","🤘","💫","🥂","🍿","☁️","🌴","🦩","🐚","🪸","🎠","🧲"]; currentSet.push(pool[Math.floor(Math.random() * pool.length)]); saveReactionEmojis("global", currentSet); setEmojiPickerSlot(newIndex); }}
+                    style={{ width: 44, height: 44, fontSize: 16, background: "transparent", border: `2px dashed ${resolvedTheme.border}`, borderRadius: RADIUS_SM, color: resolvedTheme.textSecondary }}
+                  ><i className="fa-solid fa-plus" /></EmojiEditButton>
+                )}
+                <EmojiEditButton onClick={() => { setEmojiPickerPostId(null); setEmojiPickerSlot(null); }}><i className="fa-solid fa-check" /></EmojiEditButton>
+              </ReactionsRow>
+              {emojiPickerSlot != null && (
+                <EmojiPickerWrap>
+                  <Picker data={data} dynamicWidth={true} theme={resolvedTheme === darkTheme ? "dark" : "light"} previewPosition="none" maxFrequentRows={0} emojiSize={32} emojiButtonSize={48} emojiButtonRadius="0.5rem" searchPosition="static" onEmojiSelect={(e) => { replaceEmojiInSlot("global", emojiPickerSlot, e.native); }} />
+                </EmojiPickerWrap>
+              )}
+            </>
+          ) : (
+            <>
+              <ReactionsRow onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
+                {(() => {
+                  const hasAnyReaction = (post.reactions || []).some((r) => r.user_reacted);
+                  return getReactionEmojis("posts").map((emoji) => {
+                    const userReacted = (post.reactions || []).some((r) => r.emoji === emoji && r.user_reacted);
+                    return <EmojiOption key={emoji} $dimmed={hasAnyReaction && !userReacted} onClick={() => handleReact(post.id, emoji)}>{emoji}</EmojiOption>;
+                  });
+                })()}
+                <QuickReactButton title="React with any emoji" onClick={(e) => { e.stopPropagation(); setQuickReactPickerPostId(quickReactPickerPostId === post.id ? null : post.id); }}>
+                  <i className="fa-regular fa-face-smile" />
+                </QuickReactButton>
+                <EmojiEditButton onClick={() => { setEmojiPickerPostId(post.id); setEmojiPickerSlot(null); setQuickReactPickerPostId(null); }}>
+                  <i className="fa-solid fa-pen" />
+                </EmojiEditButton>
+              </ReactionsRow>
+              {quickReactPickerPostId === post.id && (
+                <EmojiPickerWrap>
+                  <Picker data={data} dynamicWidth={true} theme={resolvedTheme === darkTheme ? "dark" : "light"} previewPosition="none" maxFrequentRows={1} emojiSize={32} emojiButtonSize={48} emojiButtonRadius="0.5rem" searchPosition="static" onEmojiSelect={(e) => { handleReact(post.id, e.native); setQuickReactPickerPostId(null); }} onClickOutside={() => setQuickReactPickerPostId(null)} />
+                </EmojiPickerWrap>
+              )}
+            </>
+          )}
+          <CommentsSection>
+            {post.comments && post.comments.length > 0 && (
+              <>
+                {post.comments.map((c) => (
+                  <CommentRowWithReaction key={c.id} postId={post.id} commentId={c.id} onReact={handleCommentReact}
+                    renderContent={(commentReactProps) => (
+                      <CommentRow {...commentReactProps}>
+                        <CommentAvatar src={c.author_picture} alt={c.author_name} onClick={() => c.user_id !== user.id && loadUserProfile(c.user_id)} style={c.user_id !== user.id ? { cursor: "pointer" } : undefined} />
+                        <CommentBody>
+                          <CommentAuthor onClick={() => c.user_id !== user.id && loadUserProfile(c.user_id)} style={c.user_id !== user.id ? { cursor: "pointer" } : undefined}>{c.author_name}</CommentAuthor>
+                          {editingComment === c.id ? (
+                            <CommentInputRow>
+                              <CommentInput value={editCommentText} onChange={(e) => setEditCommentText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleEditComment(c.id, post.id); if (e.key === "Escape") { setEditingComment(null); setEditCommentText(""); } }} autoFocus style={{ color: resolvedTheme.text }} />
+                              <CommentPostButton onClick={() => handleEditComment(c.id, post.id)} disabled={isBusy(`edit-comment-${c.id}`)}>
+                                {isBusy(`edit-comment-${c.id}`) ? <Spinner /> : <i className="fa-solid fa-check" />}
+                              </CommentPostButton>
+                            </CommentInputRow>
+                          ) : (
+                            <>
+                              <CommentText style={c.content === "thinking..." ? { color: "#999" } : undefined}>
+                                {c.content === "thinking..." ? c.content : renderText(c.content)}
+                              </CommentText>
+                              {c.content !== "thinking..." && <CommentTime>{timeAgo(c.created_at)}</CommentTime>}
+                              {c.comment_reactions && c.comment_reactions.length > 0 && (
+                                <CommentTime onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()} style={{ display: "flex", gap: 12, marginTop: 4, marginLeft: 0, flexWrap: "wrap" }}>
+                                  {c.comment_reactions.map((r) => (
+                                    <span key={r.emoji} style={r.user_reacted ? { cursor: "pointer" } : undefined}
+                                      onClick={r.user_reacted ? () => { if (commentReactionPicker?.commentId === c.id) { setCommentReactionPicker(null); } else { setTimeout(() => setCommentReactionPicker({ postId: post.id, commentId: c.id }), 0); } } : undefined}
+                                    >{r.emoji}&ensp;<span style={{ fontWeight: 600, color: resolvedTheme.text }}>{r.names.join(", ")}</span></span>
+                                  ))}
+                                </CommentTime>
+                              )}
+                              {commentReactionPicker?.commentId === c.id && (
+                                <EmojiPickerWrap>
+                                  <Picker data={data} dynamicWidth={true} theme={resolvedTheme === darkTheme ? "dark" : "light"} previewPosition="none" maxFrequentRows={0} emojiSize={32} emojiButtonSize={48} emojiButtonRadius="0.5rem" searchPosition="static"
+                                    onEmojiSelect={async (e) => {
+                                      const res = await fetch(`/api/comments/${c.id}/react`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ emoji: e.native }) });
+                                      if (res.ok) { const d = await res.json(); updatePostInState((p) => p.id !== post.id ? p : { ...p, comments: (p.comments || []).map((cm) => cm.id === c.id ? { ...cm, comment_reactions: d.comment_reactions } : cm) }); }
+                                      setCommentReactionPicker(null);
+                                    }}
+                                    onClickOutside={() => setCommentReactionPicker(null)}
+                                  />
+                                </EmojiPickerWrap>
+                              )}
+                            </>
+                          )}
+                        </CommentBody>
+                        {(c.user_id === user.id || (c.author_name === "Sol" && user.email === "leo@leomancinidesign.com")) && editingComment !== c.id && (
+                          <PostMenuWrapper>
+                            <PostMenuButton onClick={(e) => { e.stopPropagation(); setOpenCommentMenuId(openCommentMenuId === c.id ? null : c.id); }}>
+                              <i className="fa-solid fa-ellipsis-vertical" />
+                            </PostMenuButton>
+                            {openCommentMenuId === c.id && (
+                              <PostMenu onClick={(e) => e.stopPropagation()}>
+                                {c.user_id === user.id && (
+                                  <PostMenuItem onClick={() => { setOpenCommentMenuId(null); setEditingComment(c.id); setEditCommentText(c.content); }}>
+                                    <i className="fa-solid fa-pen" /> Edit
+                                  </PostMenuItem>
+                                )}
+                                <PostMenuItem $danger onClick={() => handleDeleteComment(c.id, post.id)}>
+                                  <i className="fa-solid fa-trash" /> Delete
+                                </PostMenuItem>
+                              </PostMenu>
+                            )}
+                          </PostMenuWrapper>
+                        )}
+                      </CommentRow>
+                    )}
+                  />
+                ))}
+              </>
+            )}
+            <div style={{ position: "relative" }}>
+              <CommentInputRow>
+                <CommentInputWrapper>
+                  <CommentHighlight>{renderHighlight(commentInputs[post.id] || "")}</CommentHighlight>
+                  <CommentInput
+                    ref={(el) => (commentRefs.current[post.id] = el)}
+                    placeholder="Add a comment..."
+                    rows={1}
+                    value={commentInputs[post.id] || ""}
+                    onFocus={(e) => { e.target.style.height = e.target.scrollHeight + "px"; }}
+                    onChange={(e) => { setCommentInputs((prev) => ({ ...prev, [post.id]: e.target.value })); handleMentionInput(e.target.value, post.id); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleComment(post.id); } }}
+                  />
+                </CommentInputWrapper>
+                {(commentInputs[post.id] || "").trim() && (
+                  <CommentPostButton onClick={() => handleComment(post.id)} disabled={isBusy(`comment-${post.id}`)}>
+                    {isBusy(`comment-${post.id}`) ? <Spinner /> : <i className="fa-solid fa-arrow-up" />}
+                  </CommentPostButton>
+                )}
+              </CommentInputRow>
+              {mentionQuery && mentionQuery.field === post.id && (() => {
+                const threadUserIds = new Set([post.user_id, ...(post.comments || []).map((c) => c.user_id)]);
+                threadUserIds.delete(user.id);
+                const filtered = mentionUsers.filter((u) => u.name.toLowerCase().includes(mentionQuery.query));
+                if (!filtered.length) return null;
+                const sorted = [...filtered].sort((a, b) => (threadUserIds.has(a.id) ? 0 : 1) - (threadUserIds.has(b.id) ? 0 : 1));
+                return (
+                  <MentionDropdown>
+                    {sorted.map((u) => (
+                      <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, post.id); }} onTouchEnd={(e) => { e.preventDefault(); insertMention(u.name, post.id); }}>
+                        <MentionAvatar src={u.picture} /> {u.name}
+                      </MentionOption>
+                    ))}
+                  </MentionDropdown>
+                );
+              })()}
+            </div>
+          </CommentsSection>
+        </PostItem>
+      )}
+    />
+  );
+
   if (loading) return null;
 
   if (!user) {
@@ -2781,7 +3050,7 @@ function App() {
       {lightboxSrc && <PhotoLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
       <Header>
         {tab === "profile" || tab === "user-profile" ? (
-          <BackButton onClick={() => setTab(tab === "user-profile" ? "people" : "feed")}><i className="fa-solid fa-arrow-left" /> Back</BackButton>
+          <BackButton onClick={() => setTab(tab === "user-profile" ? profileBackTab.current : "feed")}><i className="fa-solid fa-arrow-left" /> Back</BackButton>
         ) : (
           <>
             <HeaderProfile onClick={() => setTab("profile")}>
@@ -3096,419 +3365,7 @@ function App() {
             {posts.length === 0 ? (
               <EmptyState><BigSpinner /></EmptyState>
             ) : (
-              posts.map((post) => (
-                <PostItemWithReaction
-                  key={post.id}
-                  post={post}
-                  getReactionEmojis={getReactionEmojis}
-                  onReact={handleReact}
-                  renderContent={(postReactProps) => (
-                <PostItem data-post-id={post.id} {...postReactProps}>
-                  <PostHeader>
-                    <Avatar src={post.author_picture} alt={post.author_name} />
-                    <PostHeaderText>
-                      <PostAuthor>{post.author_name}</PostAuthor>
-                      <PostTime>{timeAgo(post.created_at)}</PostTime>
-                    </PostHeaderText>
-                    {post.user_id === user.id && (
-                      <PostHeaderRight>
-                        <PostMenuWrapper>
-                          <PostMenuButton onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuId(openMenuId === post.id ? null : post.id);
-                          }}>
-                            <i className="fa-solid fa-ellipsis-vertical" />
-                          </PostMenuButton>
-                          {openMenuId === post.id && (
-                            <PostMenu onClick={(e) => e.stopPropagation()}>
-                              <PostMenuItem $danger onClick={() => handleDelete(post.id)}>
-                                <i className="fa-solid fa-trash" /> Delete
-                              </PostMenuItem>
-                            </PostMenu>
-                          )}
-                        </PostMenuWrapper>
-                      </PostHeaderRight>
-                    )}
-                  </PostHeader>
-                  {post.content && <PostContent>{renderText(post.content)}</PostContent>}
-                  {post.og_preview && (
-                    <LinkPreviewCard href={post.og_preview.url} target="_blank" rel="noopener noreferrer">
-                      {post.og_preview.image && <LinkPreviewImage src={post.og_preview.image} />}
-                      <LinkPreviewBody>
-                        {post.og_preview.siteName && <LinkPreviewSite>{post.og_preview.siteName}</LinkPreviewSite>}
-                        {post.og_preview.title && <LinkPreviewTitle>{post.og_preview.title}</LinkPreviewTitle>}
-                        {post.og_preview.description && <LinkPreviewDesc>{post.og_preview.description}</LinkPreviewDesc>}
-                      </LinkPreviewBody>
-                    </LinkPreviewCard>
-                  )}
-                  {post.media && post.media.length > 0 && (
-                    <PostMediaContainer $count={post.media.length}>
-                      {post.media.map((m, i) =>
-                        m.type === "video" ? (
-                          <PostVideo
-                            key={i}
-                            src={m.url}
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
-                            $single={post.media.length === 1}
-                          />
-                        ) : (
-                          <PostImage
-                            key={i}
-                            src={m.url}
-                            $single={post.media.length === 1}
-                            $tappable={post.media.length > 1}
-                            onClick={post.media.length > 1 ? () => {
-                              const el = document.querySelector(`[data-post-id="${post.id}"]`);
-                              if (el && el._touchHandled) return;
-                              const url = m.url;
-                              const timer = setTimeout(() => setLightboxSrc(url), 300);
-                              if (el) {
-                                if (el._lightboxTimer) clearTimeout(el._lightboxTimer);
-                                el._lightboxTimer = timer;
-                              }
-                            } : undefined}
-                          />
-                        )
-                      )}
-                    </PostMediaContainer>
-                  )}
-                  {post.place_name && post.place_lat && (
-                    <PostLocation>
-                      <PostMapWrapper>
-                        <PostMap
-                          src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`}
-                          alt={post.place_name}
-                        />
-                      </PostMapWrapper>
-                      <PostPlaceName>
-                        <span>{post.place_name}</span>
-                        {post.place_address && <PostPlaceAddress>{shortAddress(post.place_address)}</PostPlaceAddress>}
-                      </PostPlaceName>
-                    </PostLocation>
-                  )}
-                  {(post.reactions || []).length > 0 && (
-                    <ReactionsRow onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
-                      {(post.reactions || []).map((r) => (
-                        <ReactionChip
-                          key={r.emoji}
-                          $active={r.user_reacted}
-                          onClick={() => handleReact(post.id, r.emoji)}
-                        >
-                          <span style={{ width: 24, textAlign: "center", flexShrink: 0 }}>{r.emoji}</span> <ReactionNames>{(r.names || []).join(", ")}</ReactionNames>
-                        </ReactionChip>
-                      ))}
-                    </ReactionsRow>
-                  )}
-                  {emojiPickerPostId === post.id ? (
-                    <>
-                      <ReactionsRow onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
-                        {getReactionEmojis("global").map((emoji, i) => (
-                          <div key={emoji + i} style={{ position: "relative" }}>
-                            <EmojiOption
-                              onClick={() => setEmojiPickerSlot(emojiPickerSlot === i ? null : i)}
-                              style={{
-                                width: 44, height: 44, fontSize: 24, paddingBottom: 2,
-                                background: "transparent",
-                                border: emojiPickerSlot === i ? `2px solid ${resolvedTheme.btnPrimary}` : `2px dashed ${resolvedTheme.border}`,
-                                borderRadius: RADIUS_SM,
-                                opacity: 1,
-                              }}
-                            >
-                              {emoji}
-                            </EmojiOption>
-                            {getReactionEmojis("global").length > 3 && (
-                              <EmojiEditButton
-                                onClick={() => removeEmojiSlot("global", i)}
-                                style={{ position: "absolute", top: -8, right: -8, width: 20, height: 20, fontSize: 10, background: resolvedTheme.bgElevated, border: `2px solid ${resolvedTheme.border}`, borderRadius: "50%" }}
-                              >
-                                <i className="fa-solid fa-minus" />
-                              </EmojiEditButton>
-                            )}
-                          </div>
-                        ))}
-                        {getReactionEmojis("global").length < 12 && (
-                          <EmojiEditButton
-                            onClick={() => {
-                              const currentSet = [...getReactionEmojis("global")];
-                              if (currentSet.length >= 12) return;
-                              const newIndex = currentSet.length;
-                              const pool = ["⭐","🎉","💪","🙌","💯","✨","🎶","🌈","☀️","🍕","🌊","🧡","💜","💚","🤩","😎","🥳","🫡","🤝","👀","💡","🌟","🍀","🦋","🐶","🎯","🚀","⚡","🪴","🧸","🎨","🏆","🎸","🌸","🍩","🧁","☕","🫶","🤙","👏","🙏","💎","🔮","🎪","🌻","🐱","🦊","🐻","🌮","🍦","🎲","🛹","🏄","⛷️","🎭","🪩","🫧","🌙","🦄","🐝","🍉","🥑","🧊","🎹","🪻","🌺","🫰","🤟","✌️","🤘","💫","🥂","🍿","☁️","🌴","🦩","🐚","🪸","🎠","🧲"];
-                              currentSet.push(pool[Math.floor(Math.random() * pool.length)]);
-                              saveReactionEmojis("global", currentSet);
-                              setEmojiPickerSlot(newIndex);
-                            }}
-                            style={{
-                              width: 44, height: 44, fontSize: 16,
-                              background: "transparent",
-                              border: `2px dashed ${resolvedTheme.border}`,
-                              borderRadius: RADIUS_SM,
-                              color: resolvedTheme.textSecondary,
-                            }}
-                          >
-                            <i className="fa-solid fa-plus" />
-                          </EmojiEditButton>
-                        )}
-                        <EmojiEditButton onClick={() => { setEmojiPickerPostId(null); setEmojiPickerSlot(null); }}>
-                          <i className="fa-solid fa-check" />
-                        </EmojiEditButton>
-                      </ReactionsRow>
-                      {emojiPickerSlot != null && (
-                        <EmojiPickerWrap>
-                          <Picker
-                            data={data}
-                            dynamicWidth={true}
-                            theme={resolvedTheme === darkTheme ? "dark" : "light"}
-                            previewPosition="none"
-                            maxFrequentRows={0}
-                            emojiSize={32}
-                            emojiButtonSize={48}
-                            emojiButtonRadius="0.5rem"
-                            searchPosition="static"
-                            onEmojiSelect={(e) => {
-                              replaceEmojiInSlot("global", emojiPickerSlot, e.native);
-                            }}
-                          />
-                        </EmojiPickerWrap>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <ReactionsRow onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
-                        {(() => {
-                          const hasAnyReaction = (post.reactions || []).some((r) => r.user_reacted);
-                          return getReactionEmojis("posts").map((emoji) => {
-                            const userReacted = (post.reactions || []).some((r) => r.emoji === emoji && r.user_reacted);
-                            return (
-                              <EmojiOption
-                                key={emoji}
-                                $dimmed={hasAnyReaction && !userReacted}
-                                onClick={() => handleReact(post.id, emoji)}
-                              >
-                                {emoji}
-                              </EmojiOption>
-                            );
-                          });
-                        })()}
-                        <QuickReactButton
-                          title="React with any emoji"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setQuickReactPickerPostId(quickReactPickerPostId === post.id ? null : post.id);
-                          }}
-                        >
-                          <i className="fa-regular fa-face-smile" />
-                        </QuickReactButton>
-                        <EmojiEditButton onClick={() => {
-                          setEmojiPickerPostId(post.id);
-                          setEmojiPickerSlot(null);
-                          setQuickReactPickerPostId(null);
-                        }}>
-                          <i className="fa-solid fa-pen" />
-                        </EmojiEditButton>
-                      </ReactionsRow>
-                      {quickReactPickerPostId === post.id && (
-                        <EmojiPickerWrap>
-                          <Picker
-                            data={data}
-                            dynamicWidth={true}
-                            theme={resolvedTheme === darkTheme ? "dark" : "light"}
-                            previewPosition="none"
-                            maxFrequentRows={1}
-                            emojiSize={32}
-                            emojiButtonSize={48}
-                            emojiButtonRadius="0.5rem"
-                            searchPosition="static"
-                            onEmojiSelect={(e) => {
-                              handleReact(post.id, e.native);
-                              setQuickReactPickerPostId(null);
-                            }}
-                            onClickOutside={() => setQuickReactPickerPostId(null)}
-                          />
-                        </EmojiPickerWrap>
-                      )}
-                    </>
-                  )}
-                  <CommentsSection>
-                    {post.comments && post.comments.length > 0 && (
-                      <>
-                        {post.comments.map((c) => (
-                          <CommentRowWithReaction
-                            key={c.id}
-                            postId={post.id}
-                            commentId={c.id}
-                            onReact={handleCommentReact}
-                            renderContent={(commentReactProps) => (
-                          <CommentRow {...commentReactProps}>
-                            <CommentAvatar src={c.author_picture} alt={c.author_name} />
-                            <CommentBody>
-                              <CommentAuthor>{c.author_name}</CommentAuthor>
-                              {editingComment === c.id ? (
-                                <CommentInputRow>
-                                  <CommentInput
-                                    value={editCommentText}
-                                    onChange={(e) => setEditCommentText(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") handleEditComment(c.id, post.id);
-                                      if (e.key === "Escape") { setEditingComment(null); setEditCommentText(""); }
-                                    }}
-                                    autoFocus
-                                    style={{ color: resolvedTheme.text }}
-                                  />
-                                  <CommentPostButton onClick={() => handleEditComment(c.id, post.id)} disabled={isBusy(`edit-comment-${c.id}`)}>
-                                    {isBusy(`edit-comment-${c.id}`) ? <Spinner /> : <i className="fa-solid fa-check" />}
-                                  </CommentPostButton>
-                                </CommentInputRow>
-                              ) : (
-                                <>
-                                  <CommentText style={c.content === "thinking..." ? { color: "#999" } : undefined}>
-                                    {c.content === "thinking..." ? c.content : renderText(c.content)}
-                                  </CommentText>
-                                  {c.content !== "thinking..." && <CommentTime>{timeAgo(c.created_at)}</CommentTime>}
-                                  {c.comment_reactions && c.comment_reactions.length > 0 && (
-                                    <CommentTime onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()} style={{ display: "flex", gap: 12, marginTop: 4, marginLeft: 0, flexWrap: "wrap" }}>
-                                      {c.comment_reactions.map((r) => (
-                                        <span
-                                          key={r.emoji}
-                                          style={r.user_reacted ? { cursor: "pointer" } : undefined}
-                                          onClick={r.user_reacted ? () => {
-                                            if (commentReactionPicker?.commentId === c.id) {
-                                              setCommentReactionPicker(null);
-                                            } else {
-                                              setTimeout(() => setCommentReactionPicker({ postId: post.id, commentId: c.id }), 0);
-                                            }
-                                          } : undefined}
-                                        >
-                                          {r.emoji}&ensp;<span style={{ fontWeight: 600, color: resolvedTheme.text }}>{r.names.join(", ")}</span>
-                                        </span>
-                                      ))}
-                                    </CommentTime>
-                                  )}
-                                  {commentReactionPicker?.commentId === c.id && (
-                                    <EmojiPickerWrap>
-                                      <Picker
-                                        data={data}
-                                        dynamicWidth={true}
-                                        theme={resolvedTheme === darkTheme ? "dark" : "light"}
-                                        previewPosition="none"
-                                        maxFrequentRows={0}
-                                        emojiSize={32}
-                                        emojiButtonSize={48}
-                                        emojiButtonRadius="0.5rem"
-                                        searchPosition="static"
-                                        onEmojiSelect={async (e) => {
-                                          const res = await fetch(`/api/comments/${c.id}/react`, {
-                                            method: "POST",
-                                            headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ emoji: e.native }),
-                                          });
-                                          if (res.ok) {
-                                            const d = await res.json();
-                                            setPosts((prev) =>
-                                              prev.map((p) => p.id !== post.id ? p : {
-                                                ...p,
-                                                comments: (p.comments || []).map((cm) =>
-                                                  cm.id === c.id ? { ...cm, comment_reactions: d.comment_reactions } : cm
-                                                ),
-                                              })
-                                            );
-                                          }
-                                          setCommentReactionPicker(null);
-                                        }}
-                                        onClickOutside={() => setCommentReactionPicker(null)}
-                                      />
-                                    </EmojiPickerWrap>
-                                  )}
-                                </>
-                              )}
-                            </CommentBody>
-                            {(c.user_id === user.id || (c.author_name === "Sol" && user.email === "leo@leomancinidesign.com")) && editingComment !== c.id && (
-                              <PostMenuWrapper>
-                                <PostMenuButton onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenCommentMenuId(openCommentMenuId === c.id ? null : c.id);
-                                }}>
-                                  <i className="fa-solid fa-ellipsis-vertical" />
-                                </PostMenuButton>
-                                {openCommentMenuId === c.id && (
-                                  <PostMenu onClick={(e) => e.stopPropagation()}>
-                                    {c.user_id === user.id && (
-                                      <PostMenuItem onClick={() => {
-                                        setOpenCommentMenuId(null);
-                                        setEditingComment(c.id);
-                                        setEditCommentText(c.content);
-                                      }}>
-                                        <i className="fa-solid fa-pen" /> Edit
-                                      </PostMenuItem>
-                                    )}
-                                    <PostMenuItem $danger onClick={() => handleDeleteComment(c.id, post.id)}>
-                                      <i className="fa-solid fa-trash" /> Delete
-                                    </PostMenuItem>
-                                  </PostMenu>
-                                )}
-                              </PostMenuWrapper>
-                            )}
-                          </CommentRow>
-                        )}
-                      />
-                    ))}
-                      </>
-                    )}
-                    <div style={{ position: "relative" }}>
-                      <CommentInputRow>
-                        <CommentInputWrapper>
-                          <CommentHighlight>{renderHighlight(commentInputs[post.id] || "")}</CommentHighlight>
-                          <CommentInput
-                            ref={(el) => (commentRefs.current[post.id] = el)}
-                            placeholder="Add a comment..."
-                            rows={1}
-                            value={commentInputs[post.id] || ""}
-                            onFocus={(e) => { e.target.style.height = e.target.scrollHeight + "px"; }}
-                            onChange={(e) => {
-                              setCommentInputs((prev) => ({ ...prev, [post.id]: e.target.value }));
-                              handleMentionInput(e.target.value, post.id);
-                              e.target.style.height = "auto";
-                              e.target.style.height = e.target.scrollHeight + "px";
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleComment(post.id); }
-                            }}
-                          />
-                        </CommentInputWrapper>
-                        {(commentInputs[post.id] || "").trim() && (
-                          <CommentPostButton onClick={() => handleComment(post.id)} disabled={isBusy(`comment-${post.id}`)}>
-                            {isBusy(`comment-${post.id}`) ? <Spinner /> : <i className="fa-solid fa-arrow-up" />}
-                          </CommentPostButton>
-                        )}
-                      </CommentInputRow>
-                      {mentionQuery && mentionQuery.field === post.id && (() => {
-                        const threadUserIds = new Set([post.user_id, ...(post.comments || []).map((c) => c.user_id)]);
-                        threadUserIds.delete(user.id);
-                        const filtered = mentionUsers.filter((u) => u.name.toLowerCase().includes(mentionQuery.query));
-                        if (!filtered.length) return null;
-                        const sorted = [...filtered].sort((a, b) => {
-                          const aIn = threadUserIds.has(a.id) ? 0 : 1;
-                          const bIn = threadUserIds.has(b.id) ? 0 : 1;
-                          return aIn - bIn;
-                        });
-                        return (
-                          <MentionDropdown>
-                            {sorted.map((u) => (
-                              <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, post.id); }} onTouchEnd={(e) => { e.preventDefault(); insertMention(u.name, post.id); }}>
-                                <MentionAvatar src={u.picture} /> {u.name}
-                              </MentionOption>
-                            ))}
-                          </MentionDropdown>
-                        );
-                      })()}
-                    </div>
-                  </CommentsSection>
-                </PostItem>
-                  )}
-                />
-              ))
+              posts.map((post) => renderPostCard(post))
             )}
             {feedLoadingMore && <EmptyState><BigSpinner /></EmptyState>}
           </>
@@ -3520,11 +3377,11 @@ function App() {
               <UserProfileHeader>
                 <UserProfileAvatar src={viewingProfile.profile.picture} alt={viewingProfile.profile.name} />
                 <UserProfileName>{viewingProfile.profile.name}</UserProfileName>
-                <UserProfileStats>
+                {viewingProfile.profile.post_count != null && <UserProfileStats>
                   <UserProfileStat><span>{viewingProfile.profile.post_count}</span> posts</UserProfileStat>
                   <UserProfileStat><span>{viewingProfile.profile.followers_count}</span> followers</UserProfileStat>
                   <UserProfileStat><span>{viewingProfile.profile.following_count}</span> following</UserProfileStat>
-                </UserProfileStats>
+                </UserProfileStats>}
                 <FollowBtn
                   user={{
                     id: viewingProfile.profile.id,
@@ -3548,102 +3405,7 @@ function App() {
               ) : viewingProfile.posts.length === 0 ? (
                 <EmptyState>No posts yet</EmptyState>
               ) : (
-                viewingProfile.posts.map((post) => (
-                  <PostItemWithReaction
-                    key={post.id}
-                    post={post}
-                    getReactionEmojis={getReactionEmojis}
-                    onReact={handleReact}
-                    renderContent={(postReactProps) => (
-                  <PostItem data-post-id={post.id} {...postReactProps}>
-                    <PostHeader>
-                      <Avatar src={post.author_picture} alt={post.author_name} />
-                      <PostHeaderText>
-                        <PostAuthor>{post.author_name}</PostAuthor>
-                        <PostTime>{timeAgo(post.created_at)}</PostTime>
-                      </PostHeaderText>
-                    </PostHeader>
-                    {post.content && <PostContent>{renderText(post.content)}</PostContent>}
-                    {post.og_preview && (
-                      <LinkPreviewCard href={post.og_preview.url} target="_blank" rel="noopener noreferrer">
-                        {post.og_preview.image && <LinkPreviewImage src={post.og_preview.image} />}
-                        <LinkPreviewBody>
-                          {post.og_preview.siteName && <LinkPreviewSite>{post.og_preview.siteName}</LinkPreviewSite>}
-                          {post.og_preview.title && <LinkPreviewTitle>{post.og_preview.title}</LinkPreviewTitle>}
-                          {post.og_preview.description && <LinkPreviewDesc>{post.og_preview.description}</LinkPreviewDesc>}
-                        </LinkPreviewBody>
-                      </LinkPreviewCard>
-                    )}
-                    {post.media && post.media.length > 0 && (
-                      <PostMediaContainer $count={post.media.length}>
-                        {post.media.map((m, i) =>
-                          m.type === "video" ? (
-                            <PostVideo
-                              key={i}
-                              src={m.url}
-                              autoPlay
-                              loop
-                              muted
-                              playsInline
-                              $single={post.media.length === 1}
-                            />
-                          ) : (
-                            <PostImage
-                              key={i}
-                              src={m.url}
-                              $single={post.media.length === 1}
-                            />
-                          )
-                        )}
-                      </PostMediaContainer>
-                    )}
-                    {post.place_name && post.place_lat && (
-                      <PostLocation>
-                        <PostMapWrapper>
-                          <PostMap
-                            src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`}
-                            alt={post.place_name}
-                          />
-                        </PostMapWrapper>
-                        <PostPlaceName>
-                          <span>{post.place_name}</span>
-                          {post.place_address && <PostPlaceAddress>{shortAddress(post.place_address)}</PostPlaceAddress>}
-                        </PostPlaceName>
-                      </PostLocation>
-                    )}
-                    {(post.reactions || []).length > 0 && (
-                      <ReactionsRow onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
-                        {(post.reactions || []).map((r) => (
-                          <ReactionChip
-                            key={r.emoji}
-                            $active={r.user_reacted}
-                            onClick={() => handleReact(post.id, r.emoji)}
-                          >
-                            <span style={{ width: 24, textAlign: "center", flexShrink: 0 }}>{r.emoji}</span> <ReactionNames>{(r.names || []).join(", ")}</ReactionNames>
-                          </ReactionChip>
-                        ))}
-                      </ReactionsRow>
-                    )}
-                    <CommentsSection>
-                      {post.comments && post.comments.length > 0 && (
-                        <>
-                          {post.comments.map((c) => (
-                            <CommentRow key={c.id}>
-                              <CommentAvatar src={c.author_picture} alt={c.author_name} />
-                              <CommentBody>
-                                <CommentAuthor>{c.author_name}</CommentAuthor>
-                                <CommentText>{renderText(c.content)}</CommentText>
-                                <CommentTime>{timeAgo(c.created_at)}</CommentTime>
-                              </CommentBody>
-                            </CommentRow>
-                          ))}
-                        </>
-                      )}
-                    </CommentsSection>
-                  </PostItem>
-                    )}
-                  />
-                ))
+                viewingProfile.posts.map((post) => renderPostCard(post))
               )}
             </>
           ) : null
