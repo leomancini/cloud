@@ -178,7 +178,7 @@ const Page = styled.div`
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background: ${(p) => p.theme.bg};
   color: ${(p) => p.theme.text};
-  padding: 40px 20px;
+  padding: 20px 20px;
   transition: background 0.2s ease, color 0.2s ease;
 `;
 
@@ -1377,8 +1377,7 @@ const PeopleCardStatus = styled.div`
 
 const UserProfileHeader = styled.div`
   text-align: center;
-  padding-top: 12px;
-  padding-bottom: 24px;
+  padding: 20px;
   border-bottom: 1px solid ${(p) => p.theme.border};
   margin-bottom: 16px;
 `;
@@ -3437,11 +3436,6 @@ function App() {
               <UserProfileHeader>
                 <UserProfileAvatar src={viewingProfile.profile.picture} alt={viewingProfile.profile.name} />
                 <UserProfileName>{viewingProfile.profile.name}</UserProfileName>
-                {viewingProfile.profile.post_count != null && <UserProfileStats>
-                  <UserProfileStat><span>{viewingProfile.profile.post_count}</span> posts</UserProfileStat>
-                  <UserProfileStat><span>{viewingProfile.profile.followers_count}</span> followers</UserProfileStat>
-                  <UserProfileStat><span>{viewingProfile.profile.following_count}</span> following</UserProfileStat>
-                </UserProfileStats>}
                 <FollowBtn
                   user={{
                     id: viewingProfile.profile.id,
