@@ -286,6 +286,7 @@ const LogoutButton = styled.button`
   padding: 8px 16px;
   border-radius: ${RADIUS};
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   border: 2px solid ${(p) => p.theme.borderStrong};
   background: ${(p) => p.theme.bgElevated};
@@ -704,7 +705,7 @@ const PostButton = styled.button`
   padding: 0 20px;
   border-radius: ${RADIUS};
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   border: none;
   background: ${(p) => p.theme.btnPrimary};
@@ -789,9 +790,8 @@ const PostMenu = styled.div`
   right: 0;
   top: 100%;
   background: ${(p) => p.theme.bgElevated};
-  border: 2px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
-  box-shadow: 0 2px 8px ${(p) => p.theme.shadow};
+  box-shadow: 0 2px 12px ${(p) => p.theme.shadow};
   z-index: 10;
   overflow: hidden;
   min-width: 120px;
@@ -806,6 +806,7 @@ const PostMenuItem = styled.button`
   border: none;
   background: none;
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   color: ${(p) => (p.$danger ? "#e53e3e" : p.theme.text)};
 
@@ -1319,7 +1320,7 @@ const UserAvatar = styled.img`
 
 const UserName = styled.span`
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
   color: ${(p) => p.theme.text};
 `;
 
@@ -1362,7 +1363,7 @@ const PeopleCardAvatar = styled.img`
 
 const PeopleCardName = styled.span`
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
   color: ${(p) => p.theme.text};
   line-height: 1.3;
   margin-bottom: 4px;
@@ -1830,9 +1831,9 @@ function timeAgo(dateStr) {
   if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 8) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-  return date.toLocaleString(undefined, {
-    month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
-  });
+  const datePart = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const timePart = date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return `${datePart} at ${timePart}`;
 }
 
 function urlBase64ToUint8Array(base64String) {
