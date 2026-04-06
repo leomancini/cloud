@@ -252,6 +252,7 @@ const SegmentedControl = styled.div`
 `;
 
 const Segment = styled.button`
+  flex: 1;
   padding: 6px 16px;
   border-radius: ${RADIUS_SM};
   font-size: 13px;
@@ -1319,6 +1320,14 @@ const UserStatus = styled.div`
   margin-top: 1px;
 `;
 
+const FilterDescription = styled.div`
+  font-size: 14px;
+  color: ${(p) => p.theme.textSecondary};
+  text-align: center;
+  margin-top: 16px;
+  margin-bottom: 16px;
+`;
+
 const PeopleGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1342,7 +1351,7 @@ const PeopleCardAvatar = styled.img`
 `;
 
 const PeopleCardName = styled.span`
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 500;
   color: ${(p) => p.theme.text};
   line-height: 1.3;
@@ -1351,7 +1360,7 @@ const PeopleCardName = styled.span`
 `;
 
 const PeopleCardStatus = styled.div`
-  font-size: 11px;
+  font-size: 14px;
   color: ${(p) => p.theme.textSecondary};
   margin-top: 0px;
 `;
@@ -2004,7 +2013,27 @@ function App() {
   const [feedLoadingMore, setFeedLoadingMore] = useState(false);
   const [followers, setFollowers] = useState([]);
   const [followRequests, setFollowRequests] = useState([]);
-  const [tab, setTab] = useState("feed");
+  const [tab, setTabState] = useState(() => {
+    const path = window.location.pathname;
+    if (path === "/people") return "people";
+    if (path === "/profile") return "profile";
+    return "feed";
+  });
+  const setTab = (newTab) => {
+    setTabState(newTab);
+    const slug = newTab === "feed" ? "/" : newTab === "people" ? "/people" : newTab === "profile" ? "/profile" : null;
+    if (slug) window.history.pushState(null, "", slug);
+  };
+  useEffect(() => {
+    const onPopState = () => {
+      const path = window.location.pathname;
+      if (path === "/people") setTabState("people");
+      else if (path === "/profile") setTabState("profile");
+      else setTabState("feed");
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
   const [compose, setCompose] = useState("");
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
@@ -2109,7 +2138,7 @@ function App() {
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [openCommentMenuId, setOpenCommentMenuId] = useState(null);
   const [connectionDegrees, setConnectionDegrees] = useState({}); // userId -> 1 | 2
-  const [selectedDegrees, setSelectedDegrees] = useState(new Set()); // empty = show all
+  const [peopleFilter, setPeopleFilter] = useState("friends"); // "all" | "friends" | "fof"
   const [editingComment, setEditingComment] = useState(null);
   const [editingName, setEditingName] = useState(null);
   const [editCommentText, setEditCommentText] = useState("");
@@ -3411,47 +3440,30 @@ function App() {
           ) : null
         ) : (
           <>
-            <DegreeFilterBar>
-              <DegreeFilterLabel>Filter</DegreeFilterLabel>
-              <DegreeFilterChip
-                $active={selectedDegrees.has(1)}
-                $degree={1}
-                onClick={() => setSelectedDegrees((prev) => {
-                  const next = new Set(prev);
-                  next.has(1) ? next.delete(1) : next.add(1);
-                  return next;
-                })}
-              >
-                <i className="fa-solid fa-user" /> 1st
-              </DegreeFilterChip>
-              <DegreeFilterChip
-                $active={selectedDegrees.has(2)}
-                $degree={2}
-                onClick={() => setSelectedDegrees((prev) => {
-                  const next = new Set(prev);
-                  next.has(2) ? next.delete(2) : next.add(2);
-                  return next;
-                })}
-              >
-                <i className="fa-solid fa-user-group" /> 2nd
-              </DegreeFilterChip>
-            </DegreeFilterBar>
+            <SegmentedControl style={{ marginBottom: 8 }}>
+              <Segment $active={peopleFilter === "friends"} onClick={() => setPeopleFilter("friends")}>Friends</Segment>
+              <Segment $active={peopleFilter === "fof"} onClick={() => setPeopleFilter("fof")}>Connected</Segment>
+              <Segment $active={peopleFilter === "all"} onClick={() => setPeopleFilter("all")}>Everyone</Segment>
+            </SegmentedControl>
+            <FilterDescription>
+              {peopleFilter === "friends" && "Mutual followers"}
+              {peopleFilter === "fof" && "One-way followers"}
+              {peopleFilter === "all" && "Everyone on Cloud"}
+            </FilterDescription>
             <PeopleGrid>
               {users.length === 0 ? (
                 <EmptyState style={{ gridColumn: "1 / -1" }}>No other users yet</EmptyState>
               ) : (
                 users
-                  .filter((u) => selectedDegrees.size === 0 || selectedDegrees.has(connectionDegrees[u.id]))
+                  .filter((u) => peopleFilter === "all" || (peopleFilter === "friends" && connectionDegrees[u.id] === 1) || (peopleFilter === "fof" && connectionDegrees[u.id] === 2))
                   .map((u) => (
                   <PeopleCard key={u.id} onClick={() => loadUserProfile(u.id)} style={{ cursor: "pointer" }}>
                     <PeopleCardAvatar src={u.picture} alt={u.name} />
                     <div>
                       <PeopleCardName>{u.name}</PeopleCardName>
-                      {(u.follows_you || connectionDegrees[u.id]) && (
+                      {peopleFilter !== "friends" && (u.follows_you || u.is_following) && (
                         <PeopleCardStatus>
-                          {u.follows_you && "Follows you"}
-                          {u.follows_you && connectionDegrees[u.id] && " · "}
-                          {connectionDegrees[u.id] && (connectionDegrees[u.id] === 1 ? "1st" : "2nd")}
+                          {u.follows_you && u.is_following ? "Friends" : u.follows_you ? "Follows you" : "Following"}
                         </PeopleCardStatus>
                       )}
                     </div>
