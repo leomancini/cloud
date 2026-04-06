@@ -362,8 +362,19 @@ app.get("/api/users/:id/profile", (req, res) => {
 app.get("/api/users/connections", (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
 
-  // First-degree: users the current user follows OR who follow the current user (approved)
+  // First-degree: mutual follows (you follow them AND they follow you, both approved)
   const firstDegreeRows = db.prepare(`
+    SELECT DISTINCT u.id
+    FROM users u
+    WHERE u.id != ? AND u.id != ?
+      AND EXISTS (SELECT 1 FROM follows WHERE follower_id = ? AND following_id = u.id AND status = 'approved')
+      AND EXISTS (SELECT 1 FROM follows WHERE follower_id = u.id AND following_id = ? AND status = 'approved')
+  `).all(req.user.id, SOL_USER_ID, req.user.id, req.user.id);
+
+  const firstDegreeIds = new Set(firstDegreeRows.map((r) => r.id));
+
+  // Second-degree (Connected): one-way follows — you follow them OR they follow you, but not mutual
+  const connectedRows = db.prepare(`
     SELECT DISTINCT u.id
     FROM users u
     WHERE u.id != ? AND u.id != ?
@@ -373,32 +384,9 @@ app.get("/api/users/connections", (req, res) => {
       )
   `).all(req.user.id, SOL_USER_ID, req.user.id, req.user.id);
 
-  const firstDegreeIds = new Set(firstDegreeRows.map((r) => r.id));
-
-  // Second-degree: users connected (follows or followed-by) to any first-degree person,
-  // excluding the current user and first-degree people already found
   let secondDegreeIds = new Set();
-  if (firstDegreeIds.size > 0) {
-    const placeholders = Array.from(firstDegreeIds).map(() => "?").join(",");
-    const secondDegreeRows = db.prepare(`
-      SELECT DISTINCT u.id
-      FROM users u
-      WHERE u.id != ? AND u.id != ?
-        AND (
-          EXISTS (
-            SELECT 1 FROM follows
-            WHERE follower_id IN (${placeholders}) AND following_id = u.id AND status = 'approved'
-          )
-          OR EXISTS (
-            SELECT 1 FROM follows
-            WHERE following_id IN (${placeholders}) AND follower_id = u.id AND status = 'approved'
-          )
-        )
-    `).all(req.user.id, SOL_USER_ID, ...Array.from(firstDegreeIds), ...Array.from(firstDegreeIds));
-
-    for (const r of secondDegreeRows) {
-      if (!firstDegreeIds.has(r.id)) secondDegreeIds.add(r.id);
-    }
+  for (const r of connectedRows) {
+    if (!firstDegreeIds.has(r.id)) secondDegreeIds.add(r.id);
   }
 
   // Build degree map: userId -> 1 | 2 | null
