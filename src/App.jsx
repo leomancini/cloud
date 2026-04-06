@@ -178,7 +178,7 @@ const Page = styled.div`
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background: ${(p) => p.theme.bg};
   color: ${(p) => p.theme.text};
-  padding: 20px 20px;
+  padding: 20px 20px 48px;
   transition: background 0.2s ease, color 0.2s ease;
 `;
 
@@ -3486,7 +3486,7 @@ function App() {
                     <PeopleCardAvatar src={u.picture} alt={u.name} />
                     <div>
                       <PeopleCardName>{u.name.includes(" ") ? u.name.split(" ")[0] : u.name}</PeopleCardName>
-                      {peopleFilter !== "friends" && (u.follows_you || u.is_following) && (
+                      {peopleFilter !== "friends" && (u.follows_you || !!u.is_following) && (
                         <PeopleCardStatus>
                           {u.follows_you && u.is_following ? "Friends" : u.follows_you ? "Follows you" : "Following"}
                         </PeopleCardStatus>
