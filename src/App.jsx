@@ -1378,7 +1378,6 @@ const PeopleCardStatus = styled.div`
 const UserProfileHeader = styled.div`
   text-align: center;
   padding: 20px;
-  border-bottom: 1px solid ${(p) => p.theme.border};
   margin-bottom: 16px;
 `;
 
@@ -3436,6 +3435,7 @@ function App() {
               <UserProfileHeader>
                 <UserProfileAvatar src={viewingProfile.profile.picture} alt={viewingProfile.profile.name} />
                 <UserProfileName>{viewingProfile.profile.name}</UserProfileName>
+                <div style={{ marginTop: 24 }} />
                 <FollowBtn
                   user={{
                     id: viewingProfile.profile.id,
