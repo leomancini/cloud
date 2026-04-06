@@ -1333,14 +1333,14 @@ const FilterDescription = styled.div`
   font-size: 14px;
   color: ${(p) => p.theme.textSecondary};
   text-align: center;
-  margin-top: 16px;
+  margin-top: 24px;
   margin-bottom: 16px;
 `;
 
 const PeopleGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: ${(p) => p.$compact ? "4px" : "12px"};
 `;
 
 const PeopleCard = styled.div`
@@ -3475,7 +3475,7 @@ function App() {
               {peopleFilter === "fof" && "One-way followers"}
               {peopleFilter === "all" && "Everyone on Cloud"}
             </FilterDescription>
-            <PeopleGrid>
+            <PeopleGrid $compact={peopleFilter === "friends"}>
               {users.length === 0 ? (
                 <EmptyState style={{ gridColumn: "1 / -1" }}>No other users yet</EmptyState>
               ) : (
