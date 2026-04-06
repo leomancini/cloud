@@ -906,9 +906,22 @@ const QuickReactButton = styled.button`
 const EmojiPickerWrap = styled.div`
   position: relative;
   margin-top: 8px;
+  border-radius: ${RADIUS};
+  overflow: hidden;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: ${RADIUS};
+    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.1);
+    pointer-events: none;
+    z-index: 1;
+  }
   em-emoji-picker {
     width: 100%;
     --border-radius: ${RADIUS};
+    --shadow: none;
+    --font-size: 16px;
   }
 `;
 
@@ -2964,12 +2977,12 @@ function App() {
                     return <EmojiOption key={emoji} $dimmed={hasAnyReaction && !userReacted} onClick={(e) => { if (e.detail > 1) return; handleReact(post.id, emoji); }}>{emoji}</EmojiOption>;
                   });
                 })()}
-                <QuickReactButton title="React with any emoji" onClick={() => setQuickReactPickerPostId(quickReactPickerPostId === post.id ? null : post.id)}>
-                  <i className="fa-regular fa-face-smile" />
-                </QuickReactButton>
                 <EmojiEditButton onClick={() => { setEmojiPickerPostId(post.id); setEmojiPickerSlot(null); setQuickReactPickerPostId(null); }}>
                   <i className="fa-solid fa-pen" />
                 </EmojiEditButton>
+                <QuickReactButton title="React with any emoji" onClick={(e) => { e.stopPropagation(); setQuickReactPickerPostId(quickReactPickerPostId === post.id ? null : post.id); }}>
+                  <i className="fa-regular fa-face-smile" />
+                </QuickReactButton>
               </ReactionsRow>
               {quickReactPickerPostId === post.id && (
                 <EmojiPickerWrap>
