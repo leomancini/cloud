@@ -190,11 +190,12 @@ const MentionAvatar = styled.img`
 `;
 
 const Page = styled.div`
-  min-height: 100vh;
+  min-height: 100dvh;
+  box-sizing: border-box;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background: ${(p) => p.theme.bg};
   color: ${(p) => p.theme.text};
-  padding: 20px 20px 48px;
+  padding: 20px;
   transition: background 0.2s ease, color 0.2s ease;
 `;
 
