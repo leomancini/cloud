@@ -1807,6 +1807,131 @@ function useDoubleTap(onDoubleTap, delay = 300) {
   return { onTouchEnd: handleTap, onClick: handleTap };
 }
 
+// ─── useReactionDoubleTap hook ────────────────────────────────────────────────
+// Robust double-tap / double-click handler for reaction triggers.
+//
+// Guards against accidental reactions during scrolling by:
+//   • Measuring finger travel between touchstart and touchend — any movement
+//     beyond `SCROLL_THRESHOLD` pixels (in either axis) is treated as a scroll
+//     and completely ignored, even if two touches arrive close together in time.
+//   • Requiring both taps to be within `TAP_WINDOW` ms of each other.
+//   • Enforcing a `COOLDOWN` ms lockout after a reaction fires, so rapidly
+//     repeated accidental touches can't queue up multiple reactions.
+//
+// Returns { onTouchStart, onTouchEnd, onClick } to spread onto the element.
+const SCROLL_THRESHOLD = 8;   // px — finger movement beyond this = scroll, not tap
+const TAP_WINDOW      = 350;  // ms — max gap between two taps for a double-tap
+const REACT_COOLDOWN  = 700;  // ms — minimum time between two reaction fires
+
+function useReactionDoubleTap(onReact) {
+  // Touch tracking
+  const touchStartX   = useRef(null);
+  const touchStartY   = useRef(null);
+  const touchMoved    = useRef(false);   // true once finger drifts past threshold
+
+  // Double-tap state
+  const lastTapTime   = useRef(0);       // timestamp of previous qualifying tap
+  const resetTimer    = useRef(null);    // clears lastTapTime after TAP_WINDOW
+
+  // Cooldown state
+  const lastReactTime = useRef(0);       // timestamp of last fired reaction
+  const isCoolingDown = useRef(false);   // true while cooldown is in effect
+
+  const firereaction = useCallback((e) => {
+    const now = Date.now();
+    if (now - lastReactTime.current < REACT_COOLDOWN) return; // still cooling down
+    lastReactTime.current = now;
+    isCoolingDown.current = true;
+    setTimeout(() => { isCoolingDown.current = false; }, REACT_COOLDOWN);
+    onReact(e);
+  }, [onReact]);
+
+  const handleTouchStart = useCallback((e) => {
+    // Record finger position; assume no movement yet
+    const touch = e.touches[0];
+    touchStartX.current = touch.clientX;
+    touchStartY.current = touch.clientY;
+    touchMoved.current  = false;
+  }, []);
+
+  const handleTouchEnd = useCallback((e) => {
+    // If there are still fingers on screen it's a multi-touch gesture — ignore
+    if (e.touches.length > 0) {
+      touchStartX.current = null;
+      touchStartY.current = null;
+      touchMoved.current  = true; // treat as moved so click path also ignores this
+      return;
+    }
+
+    // Measure travel distance
+    if (touchStartX.current !== null && touchStartY.current !== null) {
+      const dx = Math.abs(e.changedTouches[0].clientX - touchStartX.current);
+      const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
+      if (dx > SCROLL_THRESHOLD || dy > SCROLL_THRESHOLD) {
+        // Finger moved — this is part of a scroll/pan gesture; abort entirely
+        touchMoved.current = true;
+        touchStartX.current = null;
+        touchStartY.current = null;
+        lastTapTime.current = 0; // also reset first-tap memory so scroll never
+        clearTimeout(resetTimer.current); // accidentally contributes to a double-tap
+        return;
+      }
+    }
+
+    touchStartX.current = null;
+    touchStartY.current = null;
+
+    // --- Double-tap detection ---
+    const now = Date.now();
+    if (now - lastTapTime.current < TAP_WINDOW) {
+      // Second tap within the window → double-tap confirmed
+      clearTimeout(resetTimer.current);
+      lastTapTime.current = 0;
+      firereaction(e);
+    } else {
+      // First tap — record it and set a window expiry timer
+      lastTapTime.current = now;
+      clearTimeout(resetTimer.current);
+      resetTimer.current = setTimeout(() => { lastTapTime.current = 0; }, TAP_WINDOW);
+    }
+  }, [firereaction]);
+
+  // Desktop double-click path (no movement risk, just needs the cooldown guard)
+  const handleDoubleClick = useCallback((e) => {
+    firereaction(e);
+  }, [firereaction]);
+
+  return {
+    onTouchStart:  handleTouchStart,
+    onTouchEnd:    handleTouchEnd,
+    onDoubleClick: handleDoubleClick,
+  };
+}
+
+// ─── PostItemWithReaction ─────────────────────────────────────────────────────
+// Thin wrapper that owns the useReactionDoubleTap hook for a single post and
+// passes the resulting event props down via a render-prop, so the hook's refs
+// are stable across re-renders (hooks can't be called inside .map() directly).
+function PostItemWithReaction({ post, getReactionEmojis, onReact, renderContent }) {
+  const handleReact = useCallback(() => {
+    onReact(post.id, getReactionEmojis("posts")[0]);
+  }, [post.id, onReact, getReactionEmojis]);
+
+  const reactProps = useReactionDoubleTap(handleReact);
+  return renderContent(reactProps);
+}
+
+// ─── CommentRowWithReaction ───────────────────────────────────────────────────
+// Same pattern for individual comment rows.
+function CommentRowWithReaction({ postId, commentId, onReact, renderContent }) {
+  const handleReact = useCallback(() => {
+    onReact(postId, commentId);
+  }, [postId, commentId, onReact]);
+
+  const reactProps = useReactionDoubleTap(handleReact);
+  return renderContent(reactProps);
+}
+
 function App() {
   const [themePref, setThemePref] = useState(() => localStorage.getItem("theme-pref") || "system");
   const systemDark = useSystemDark();
@@ -2903,23 +3028,13 @@ function App() {
               <EmptyState><BigSpinner /></EmptyState>
             ) : (
               posts.map((post) => (
-                <PostItem key={post.id} data-post-id={post.id} onDoubleClick={(e) => {
-                  if (e.currentTarget._touchHandled) { e.currentTarget._touchHandled = false; return; }
-                  if (e.currentTarget._lightboxTimer) { clearTimeout(e.currentTarget._lightboxTimer); e.currentTarget._lightboxTimer = null; }
-                  handleReact(post.id, getReactionEmojis("posts")[0]);
-                }} onTouchStart={(e) => {
-                  const now = Date.now();
-                  const el = e.currentTarget;
-                  if (now - (el._lastTap || 0) < 400) {
-                    el._lastTap = 0;
-                    el._touchHandled = true;
-                    if (el._lightboxTimer) { clearTimeout(el._lightboxTimer); el._lightboxTimer = null; }
-                    handleReact(post.id, getReactionEmojis("posts")[0]);
-                    setTimeout(() => { el._touchHandled = false; }, 500);
-                  } else {
-                    el._lastTap = now;
-                  }
-                }}>
+                <PostItemWithReaction
+                  key={post.id}
+                  post={post}
+                  getReactionEmojis={getReactionEmojis}
+                  onReact={handleReact}
+                  renderContent={(postReactProps) => (
+                <PostItem data-post-id={post.id} {...postReactProps}>
                   <PostHeader>
                     <Avatar src={post.author_picture} alt={post.author_name} />
                     <PostHeaderText>
@@ -3151,20 +3266,13 @@ function App() {
                     {post.comments && post.comments.length > 0 && (
                       <>
                         {post.comments.map((c) => (
-                          <CommentRow key={c.id} onDoubleClick={(e) => {
-                            if (e.currentTarget._touchHandled) { e.currentTarget._touchHandled = false; return; }
-                            handleCommentReact(post.id, c.id);
-                          }} onTouchStart={(e) => {
-                            const now = Date.now();
-                            const el = e.currentTarget;
-                            if (now - (el._lastTap || 0) < 400) {
-                              el._lastTap = 0;
-                              el._touchHandled = true;
-                              handleCommentReact(post.id, c.id);
-                            } else {
-                              el._lastTap = now;
-                            }
-                          }}>
+                          <CommentRowWithReaction
+                            key={c.id}
+                            postId={post.id}
+                            commentId={c.id}
+                            onReact={handleCommentReact}
+                            renderContent={(commentReactProps) => (
+                          <CommentRow {...commentReactProps}>
                             <CommentAvatar src={c.author_picture} alt={c.author_name} />
                             <CommentBody>
                               <CommentAuthor>{c.author_name}</CommentAuthor>
@@ -3327,6 +3435,8 @@ function App() {
                     </div>
                   </CommentsSection>
                 </PostItem>
+                  )}
+                />
               ))
             )}
             {feedLoadingMore && <EmptyState><BigSpinner /></EmptyState>}
