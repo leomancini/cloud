@@ -1318,6 +1318,42 @@ const UserStatus = styled.div`
   margin-top: 1px;
 `;
 
+const PeopleGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+`;
+
+const PeopleCard = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 12px 4px;
+`;
+
+const PeopleCardAvatar = styled.img`
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+`;
+
+const PeopleCardName = styled.span`
+  font-size: 13px;
+  font-weight: 500;
+  color: ${(p) => p.theme.text};
+  line-height: 1.3;
+  margin-bottom: 4px;
+  display: block;
+`;
+
+const PeopleCardStatus = styled.div`
+  font-size: 11px;
+  color: ${(p) => p.theme.textSecondary};
+  margin-top: 0px;
+`;
+
 const DegreeBadge = styled.span`
   display: inline-flex;
   align-items: center;
@@ -1443,6 +1479,25 @@ const FollowBtn = ({ user, onFollow, busy }) => {
     >
       {busy ? <Spinner /> : label}
     </FollowButton>
+  );
+};
+
+const PeopleFollowButton = styled(FollowButton)``;
+
+const PeopleFollowBtn = ({ user, onFollow, busy }) => {
+  const status = user.follow_status;
+  const following = user.is_following;
+  const followsYou = user.follows_you;
+  const label = status === "pending" ? "Requested" : following ? "Following" : followsYou ? "Follow back" : "Follow";
+  return (
+    <PeopleFollowButton
+      $following={!!following}
+      $status={status}
+      disabled={busy}
+      onClick={() => onFollow(user.id, status || (following ? "approved" : null))}
+    >
+      {busy ? <Spinner /> : label}
+    </PeopleFollowButton>
   );
 };
 
@@ -3336,7 +3391,9 @@ function App() {
                               </PostMenuWrapper>
                             )}
                           </CommentRow>
-                        ))}
+                        )}
+                      />
+                    ))}
                       </>
                     )}
                     <div style={{ position: "relative" }}>
@@ -3422,35 +3479,30 @@ function App() {
                 <i className="fa-solid fa-user-group" /> 2nd
               </DegreeFilterChip>
             </DegreeFilterBar>
-            <UserList>
+            <PeopleGrid>
               {users.length === 0 ? (
-                <EmptyState>No other users yet</EmptyState>
+                <EmptyState style={{ gridColumn: "1 / -1" }}>No other users yet</EmptyState>
               ) : (
                 users
                   .filter((u) => selectedDegrees.size === 0 || selectedDegrees.has(connectionDegrees[u.id]))
                   .map((u) => (
-                  <UserRow key={u.id}>
-                    <UserInfo>
-                      <UserAvatar src={u.picture} alt={u.name} />
-                      <div>
-                        <UserName>
-                          {u.name}
-                          {connectionDegrees[u.id] && (
-                            <>{" "}<DegreeBadge $degree={connectionDegrees[u.id]}>
-                              {connectionDegrees[u.id] === 1 ? "1st" : "2nd"}
-                            </DegreeBadge></>
-                          )}
-                        </UserName>
-                        {u.follows_you && (
-                          <UserStatus>Follows you</UserStatus>
-                        )}
-                      </div>
-                    </UserInfo>
-                    <FollowBtn user={u} onFollow={handleFollow} busy={isBusy(`follow-${u.id}`)} />
-                  </UserRow>
+                  <PeopleCard key={u.id}>
+                    <PeopleCardAvatar src={u.picture} alt={u.name} />
+                    <div>
+                      <PeopleCardName>{u.name}</PeopleCardName>
+                      {(u.follows_you || connectionDegrees[u.id]) && (
+                        <PeopleCardStatus>
+                          {u.follows_you && "Follows you"}
+                          {u.follows_you && connectionDegrees[u.id] && " · "}
+                          {connectionDegrees[u.id] && (connectionDegrees[u.id] === 1 ? "1st" : "2nd")}
+                        </PeopleCardStatus>
+                      )}
+                    </div>
+                    <PeopleFollowBtn user={u} onFollow={handleFollow} busy={isBusy(`follow-${u.id}`)} />
+                  </PeopleCard>
                 ))
               )}
-            </UserList>
+            </PeopleGrid>
           </>
         )}
       </Content>
