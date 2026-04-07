@@ -196,6 +196,8 @@ const avatarBase = `
   background-size: cover;
   background-position: center;
   flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
 `;
 
 const randomTilt = () => {
@@ -1475,7 +1477,7 @@ const UserProfileAvatar = styled.div`
   width: 80px;
   height: 80px;
   ${avatarBase}
-  margin-bottom: 12px;
+  margin: 0 auto 12px;
   ${innerBorder}
   ${avatarHover}
 `;
@@ -1755,7 +1757,7 @@ const ProfileAvatar = styled.div`
   width: 80px;
   height: 80px;
   ${avatarBase}
-  margin-bottom: 16px;
+  margin: 0 auto 16px;
   ${innerBorder}
   ${avatarHover}
 `;
