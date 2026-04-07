@@ -779,6 +779,7 @@ const PostAuthor = styled.span`
 const PostTime = styled.span`
   font-size: 12px;
   color: ${(p) => p.theme.textSecondary};
+  white-space: nowrap;
 `;
 
 const PostHeaderRight = styled.div`
@@ -1147,7 +1148,8 @@ const CommentAvatar = styled.img`
   border-radius: 50%;
   flex-shrink: 0;
   margin-top: -1px;
-  ${innerBorder}
+  outline: 1px solid rgba(0, 0, 0, 0.1);
+  outline-offset: -1px;
 `;
 
 const CommentBody = styled.div`
@@ -1169,10 +1171,11 @@ const CommentText = styled.span`
 `;
 
 const CommentTime = styled.span`
+  display: inline-block;
   font-size: 12px;
   color: ${(p) => p.theme.textSecondary};
-  margin-left: 8px;
   vertical-align: baseline;
+  white-space: nowrap;
 `;
 
 const CommentInputRow = styled.div`
@@ -3034,9 +3037,9 @@ function App() {
                               <CommentText style={c.content === "thinking..." ? { color: "#999" } : undefined}>
                                 {c.content === "thinking..." ? c.content : renderText(c.content)}
                               </CommentText>
-                              {c.content !== "thinking..." && <CommentTime>{timeAgo(c.created_at)}</CommentTime>}
+                              {c.content !== "thinking..." && <>{" \u00A0"}<CommentTime>{timeAgo(c.created_at)}</CommentTime></>}
                               {c.comment_reactions && c.comment_reactions.length > 0 && (
-                                <CommentTime style={{ display: "flex", gap: 12, marginTop: 4, marginLeft: 0, flexWrap: "wrap" }}>
+                                <CommentTime style={{ display: "flex", gap: 12, marginTop: 6, marginLeft: 0, flexWrap: "wrap" }}>
                                   {c.comment_reactions.map((r) => (
                                     <span key={r.emoji} style={r.user_reacted ? { cursor: "pointer" } : undefined}
                                       onClick={r.user_reacted ? () => { if (commentReactionPicker?.commentId === c.id) { setCommentReactionPicker(null); } else { setTimeout(() => setCommentReactionPicker({ postId: post.id, commentId: c.id }), 0); } } : undefined}
