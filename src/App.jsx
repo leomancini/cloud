@@ -855,6 +855,8 @@ const ReactionsRow = styled.div`
   gap: 12px;
   margin-top: 14px;
   flex-wrap: wrap;
+  user-select: none;
+  -webkit-user-select: none;
 `;
 
 const ReactionChip = styled.div`
@@ -886,6 +888,10 @@ const EmojiOption = styled.button`
   cursor: pointer;
   border-radius: ${RADIUS_SM};
   opacity: ${(p) => (p.$dimmed ? 0.35 : 1)};
+  transition: transform 0.1s ease;
+  &:active {
+    transform: scale(0.8);
+  }
   @media (hover: hover) {
     &:hover {
       background: none;
