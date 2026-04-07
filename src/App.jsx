@@ -1177,10 +1177,8 @@ const CommentText = styled.span`
 `;
 
 const CommentTime = styled.span`
-  display: inline-block;
   font-size: 12px;
   color: ${(p) => p.theme.textSecondary};
-  vertical-align: baseline;
   white-space: nowrap;
 `;
 
@@ -1656,7 +1654,7 @@ const RejectButton = styled.button`
   }
 `;
 
-const EmptyState = styled.p`
+const EmptyState = styled.div`
   text-align: center;
   color: ${(p) => p.theme.textSecondary};
   font-size: 16px;
@@ -2101,7 +2099,7 @@ function App() {
       else if (path === "/profile") setTabState("profile");
       else setTabState("feed");
       if (e.state?.scrollY != null) {
-        requestAnimationFrame(() => window.scrollTo(0, e.state.scrollY));
+        requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, e.state.scrollY)));
       }
     };
     window.addEventListener("popstate", onPopState);
@@ -3043,7 +3041,7 @@ function App() {
                               <CommentText style={c.content === "thinking..." ? { color: "#999" } : undefined}>
                                 {c.content === "thinking..." ? c.content : renderText(c.content)}
                               </CommentText>
-                              {c.content !== "thinking..." && <>{" \u00A0"}<CommentTime>{timeAgo(c.created_at)}</CommentTime></>}
+                              {c.content !== "thinking..." && <>{" "}<CommentTime>{timeAgo(c.created_at)}</CommentTime></>}
                               {c.comment_reactions && c.comment_reactions.length > 0 && (
                                 <CommentTime style={{ display: "flex", gap: 12, marginTop: 6, marginLeft: 0, flexWrap: "wrap" }}>
                                   {c.comment_reactions.map((r) => (
@@ -3163,7 +3161,7 @@ function App() {
       {lightboxSrc && <PhotoLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
       <Header>
         {tab === "profile" || tab === "user-profile" ? (
-          <BackButton onClick={() => setTab(tab === "user-profile" ? profileBackTab.current : "feed")}><i className="fa-solid fa-arrow-left" /> Back</BackButton>
+          <BackButton onClick={() => window.history.back()}><i className="fa-solid fa-arrow-left" /> Back</BackButton>
         ) : (
           <>
             <HeaderProfile onClick={() => setTab("profile")}>
