@@ -85,6 +85,11 @@ const GlobalStyle = createGlobalStyle`
     color: ${(p) => p.theme.text};
     transition: background 0.2s ease, color 0.2s ease;
   }
+  button {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
   .ptr--ptr {
     box-shadow: none !important;
   }
@@ -183,7 +188,7 @@ const MentionOption = styled.div`
   @media (hover: hover) { &:hover { background: ${(p) => p.theme.bgHover}; } }
 `;
 
-const innerBorder = "outline: 2px solid rgba(0, 0, 0, 0.1); outline-offset: -2px;";
+const innerBorder = "outline: 2px solid rgba(0, 0, 0, 0.1); outline-offset: -2px; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;";
 
 const randomTilt = () => {
   const deg = 10 + Math.random() * 10;
