@@ -2083,8 +2083,10 @@ function App() {
     return "feed";
   });
   const setTab = (newTab) => {
+    // Save current scroll position in the current entry before navigating
+    window.history.replaceState({ scrollY: window.scrollY }, "");
     const slug = newTab === "feed" ? "/" : newTab === "people" ? "/people" : newTab === "profile" ? "/profile" : null;
-    if (slug) window.history.pushState({ scrollY: window.scrollY }, "", slug);
+    if (slug) window.history.pushState(null, "", slug);
     setTabState(newTab);
     window.scrollTo(0, 0);
   };
@@ -2099,7 +2101,8 @@ function App() {
       else if (path === "/profile") setTabState("profile");
       else setTabState("feed");
       if (e.state?.scrollY != null) {
-        requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, e.state.scrollY)));
+        const savedY = e.state.scrollY;
+        setTimeout(() => window.scrollTo(0, savedY), 50);
       }
     };
     window.addEventListener("popstate", onPopState);
@@ -2388,7 +2391,8 @@ function App() {
       setViewingProfile(null);
     }
     if (!skipPush) {
-      window.history.pushState({ scrollY: window.scrollY }, "", `/user/${userId}`);
+      window.history.replaceState({ scrollY: window.scrollY }, "");
+      window.history.pushState(null, "", `/user/${userId}`);
       window.scrollTo(0, 0);
     }
     setTabState("user-profile");
