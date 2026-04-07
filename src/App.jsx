@@ -85,10 +85,11 @@ const GlobalStyle = createGlobalStyle`
     color: ${(p) => p.theme.text};
     transition: background 0.2s ease, color 0.2s ease;
   }
-  button {
+  button, img, video {
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
+    -webkit-user-drag: none;
   }
   .ptr--ptr {
     box-shadow: none !important;
@@ -188,7 +189,14 @@ const MentionOption = styled.div`
   @media (hover: hover) { &:hover { background: ${(p) => p.theme.bgHover}; } }
 `;
 
-const innerBorder = "outline: 2px solid rgba(0, 0, 0, 0.1); outline-offset: -2px; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;";
+const innerBorder = "outline: 2px solid rgba(0, 0, 0, 0.1); outline-offset: -2px;";
+
+const avatarBase = `
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
+`;
 
 const randomTilt = () => {
   const deg = 10 + Math.random() * 10;
@@ -207,11 +215,14 @@ const avatarHover = `
   }
 `;
 
-const MentionAvatar = styled.img`
+const MentionAvatar = styled.div`
   width: 24px;
   height: 24px;
-  border-radius: 50%;
-  ${innerBorder}
+  ${avatarBase}
+  outline: 1px solid rgba(0, 0, 0, 0.1);
+  outline-offset: -1px;
+  display: inline-block;
+  vertical-align: middle;
 `;
 
 const Page = styled.div`
@@ -239,10 +250,10 @@ const HeaderProfile = styled.div`
   cursor: pointer;
 `;
 
-const SmallAvatar = styled.img`
+const SmallAvatar = styled.div`
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  ${avatarBase}
   ${innerBorder}
   ${avatarHover}
 `;
@@ -789,10 +800,10 @@ const PostHeaderText = styled.div`
   min-width: 0;
 `;
 
-const Avatar = styled.img`
+const Avatar = styled.div`
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  ${avatarBase}
   ${innerBorder}
   ${avatarHover}
 `;
@@ -1175,11 +1186,10 @@ const ThumbsUpEmoji = styled.span`
   animation: ${(p) => (p.$animate ? css`${thumbsUpPop} 0.35s ease forwards` : "none")};
 `;
 
-const CommentAvatar = styled.img`
+const CommentAvatar = styled.div`
   width: 24px;
   height: 24px;
-  border-radius: 50%;
-  flex-shrink: 0;
+  ${avatarBase}
   margin-top: -1px;
   outline: 1px solid rgba(0, 0, 0, 0.1);
   outline-offset: -1px;
@@ -1379,10 +1389,10 @@ const UserInfo = styled.div`
   gap: 12px;
 `;
 
-const UserAvatar = styled.img`
+const UserAvatar = styled.div`
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  ${avatarBase}
   ${innerBorder}
   ${avatarHover}
 `;
@@ -1424,10 +1434,10 @@ const PeopleCard = styled.div`
   min-width: 0;
 `;
 
-const PeopleCardAvatar = styled.img`
+const PeopleCardAvatar = styled.div`
   width: 80px;
   height: 80px;
-  border-radius: 50%;
+  ${avatarBase}
   ${innerBorder}
   ${avatarHover}
 `;
@@ -1461,10 +1471,10 @@ const UserProfileHeader = styled.div`
   margin-bottom: 16px;
 `;
 
-const UserProfileAvatar = styled.img`
+const UserProfileAvatar = styled.div`
   width: 80px;
   height: 80px;
-  border-radius: 50%;
+  ${avatarBase}
   margin-bottom: 12px;
   ${innerBorder}
   ${avatarHover}
@@ -1741,10 +1751,10 @@ const ProfilePage = styled.div`
   padding-top: 40px;
 `;
 
-const ProfileAvatar = styled.img`
+const ProfileAvatar = styled.div`
   width: 80px;
   height: 80px;
-  border-radius: 50%;
+  ${avatarBase}
   margin-bottom: 16px;
   ${innerBorder}
   ${avatarHover}
@@ -2923,7 +2933,7 @@ function App() {
       renderContent={(postReactProps) => (
         <PostItem data-post-id={post.id}>
           <PostHeader onClick={disableProfileLink ? undefined : () => post.user_id === user.id ? setTab("profile") : loadUserProfile(post.user_id)} style={disableProfileLink ? undefined : { cursor: "pointer" }}>
-            <Avatar src={post.author_picture} alt={post.author_name} style={{ '--tilt': randomTilt() }} />
+            <Avatar style={{ backgroundImage: `url(${post.author_picture})`, '--tilt': randomTilt() }} />
             <PostHeaderText>
               <PostAuthor>{post.author_name}</PostAuthor>
               <PostTime>{timeAgo(post.created_at)}</PostTime>
@@ -3062,7 +3072,7 @@ function App() {
                   <CommentRowWithReaction key={c.id} postId={post.id} commentId={c.id} onReact={handleCommentReact}
                     renderContent={(commentReactProps) => (
                       <CommentRow {...commentReactProps}>
-                        <CommentAvatar src={c.author_picture} alt={c.author_name} style={{ '--tilt': randomTilt() }} />
+                        <CommentAvatar style={{ backgroundImage: `url(${c.author_picture})`, '--tilt': randomTilt() }} />
                         <CommentBody>
                           <CommentAuthor>{c.author_name}</CommentAuthor>
                           {editingComment === c.id ? (
@@ -3157,7 +3167,7 @@ function App() {
                   <MentionDropdown>
                     {sorted.map((u) => (
                       <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, post.id); }} onTouchEnd={(e) => { e.preventDefault(); insertMention(u.name, post.id); }}>
-                        <MentionAvatar src={u.picture} /> {u.name}
+                        <MentionAvatar style={{ backgroundImage: `url(${u.picture})` }} /> {u.name}
                       </MentionOption>
                     ))}
                   </MentionDropdown>
@@ -3201,7 +3211,7 @@ function App() {
         ) : (
           <>
             <HeaderProfile onClick={() => setTab("profile")}>
-              <SmallAvatar src={user.picture} alt={user.name} style={{ '--tilt': randomTilt() }} />
+              <SmallAvatar style={{ backgroundImage: `url(${user.picture})`, '--tilt': randomTilt() }} />
               <HeaderName>{user.name}</HeaderName>
             </HeaderProfile>
             <SegmentedControl>
@@ -3235,7 +3245,7 @@ function App() {
         )}
         {tab === "profile" ? (
           <ProfilePage>
-            <ProfileAvatar src={user.picture} alt={user.name} style={{ '--tilt': randomTilt() }} />
+            <ProfileAvatar style={{ backgroundImage: `url(${user.picture})`, '--tilt': randomTilt() }} />
             {editingName !== null ? (
               <form onSubmit={(e) => {
                 e.preventDefault();
@@ -3339,7 +3349,7 @@ function App() {
                     <MentionDropdown>
                       {filtered.map((u) => (
                         <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, "compose"); }} onTouchEnd={(e) => { e.preventDefault(); insertMention(u.name, "compose"); }}>
-                          <MentionAvatar src={u.picture} /> {u.name}
+                          <MentionAvatar style={{ backgroundImage: `url(${u.picture})` }} /> {u.name}
                         </MentionOption>
                       ))}
                     </MentionDropdown>
@@ -3462,7 +3472,7 @@ function App() {
                 {followRequests.map((r) => (
                   <UserRow key={r.id}>
                     <UserInfo>
-                      <UserAvatar src={r.picture} alt={r.name} style={{ '--tilt': randomTilt() }} />
+                      <UserAvatar style={{ backgroundImage: `url(${r.picture})`, '--tilt': randomTilt() }} />
                       <UserName>{r.name}</UserName>
                     </UserInfo>
                     {r.approved ? (
@@ -3502,7 +3512,7 @@ function App() {
                   .map((u) => (
                     <UserRow key={u.id}>
                       <UserInfo>
-                        <UserAvatar src={u.picture} alt={u.name} style={{ '--tilt': randomTilt() }} />
+                        <UserAvatar style={{ backgroundImage: `url(${u.picture})`, '--tilt': randomTilt() }} />
                         <UserName>{u.name}</UserName>
                       </UserInfo>
                       <FollowBtn user={u} onFollow={handleFollow} busy={isBusy(`follow-${u.id}`)} />
@@ -3523,7 +3533,7 @@ function App() {
           ) : viewingProfile ? (
             <>
               <UserProfileHeader>
-                <UserProfileAvatar src={viewingProfile.profile.picture} alt={viewingProfile.profile.name} style={{ '--tilt': randomTilt() }} />
+                <UserProfileAvatar style={{ backgroundImage: `url(${viewingProfile.profile.picture})`, '--tilt': randomTilt() }} />
                 <UserProfileName>{viewingProfile.profile.name}</UserProfileName>
                 {(viewingProfile.profile.follows_you || viewingProfile.profile.is_following) && (
                   <PeopleCardStatus>
@@ -3578,7 +3588,7 @@ function App() {
                   .filter((u) => peopleFilter === "all" || (peopleFilter === "friends" && connectionDegrees[u.id] === 1) || (peopleFilter === "fof" && connectionDegrees[u.id] === 2))
                   .map((u) => (
                   <PeopleCard key={u.id} onClick={() => loadUserProfile(u.id)} style={{ cursor: "pointer" }}>
-                    <PeopleCardAvatar src={u.picture} alt={u.name} style={{ '--tilt': randomTilt() }} />
+                    <PeopleCardAvatar style={{ backgroundImage: `url(${u.picture})`, '--tilt': randomTilt() }} />
                     <div style={{ maxWidth: "100%", overflow: "hidden" }}>
                       <PeopleCardName>{u.name.includes(" ") ? u.name.split(" ")[0] : u.name}</PeopleCardName>
                       {peopleFilter !== "friends" && (u.follows_you || !!u.is_following) && (
