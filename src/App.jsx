@@ -170,21 +170,22 @@ const MentionDropdown = styled.div`
   left: 0;
   right: 0;
   background: ${(p) => p.theme.bgElevated};
-  border: 2px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
+  box-shadow: 0 2px 12px ${(p) => p.theme.shadowMd};
   max-height: 150px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   z-index: 10;
-  box-shadow: 0 2px 8px ${(p) => p.theme.shadowMd};
 `;
 
 const MentionOption = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 12px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: 600;
   color: ${(p) => p.theme.text};
   @media (hover: hover) { &:hover { background: ${(p) => p.theme.bgHover}; } }
 `;
@@ -442,6 +443,7 @@ const IconButton = styled.button`
 const LocationSearch = styled.div`
   position: relative;
   margin-top: 8px;
+  z-index: 10;
 `;
 
 const LocationInput = styled.input`
@@ -469,16 +471,14 @@ const LocationResults = styled.div`
   left: 0;
   right: 0;
   background: ${(p) => p.theme.bgElevated};
-  border: 2px solid ${(p) => p.theme.border};
   border-radius: ${RADIUS};
-  max-height: 150px;
-  overflow-y: auto;
+  box-shadow: 0 2px 12px ${(p) => p.theme.shadowMd};
+  overflow: hidden;
   z-index: 10;
-  box-shadow: 0 2px 8px ${(p) => p.theme.shadowMd};
 `;
 
 const LocationResult = styled.div`
-  padding: 8px 12px;
+  padding: 12px;
   cursor: pointer;
 
   @media (hover: hover) {
@@ -489,13 +489,13 @@ const LocationResult = styled.div`
 `;
 
 const LocationName = styled.div`
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   color: ${(p) => p.theme.text};
 `;
 
 const LocationAddress = styled.div`
-  font-size: 12px;
+  font-size: 14px;
   color: ${(p) => p.theme.textSecondary};
   margin-top: 2px;
 `;
@@ -535,6 +535,9 @@ const RemoveLocation = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.15s ease;
+  @media (hover: hover) { &:hover { background: rgba(0,0,0,0.7); } }
+  &:active { background: rgba(0,0,0,0.8); }
   line-height: 1;
   z-index: 1;
 `;
@@ -591,6 +594,9 @@ const RemoveMedia = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.15s ease;
+  @media (hover: hover) { &:hover { background: rgba(0,0,0,0.7); } }
+  &:active { background: rgba(0,0,0,0.8); }
   line-height: 1;
   z-index: 1;
 `;
@@ -598,12 +604,37 @@ const RemoveMedia = styled.button`
 const LinkPreviewCard = styled.a`
   display: block;
   margin-top: 10px;
-  border: 2px solid ${(p) => p.theme.border};
-  border-radius: ${RADIUS};
-  overflow: hidden;
   text-decoration: none;
   color: inherit;
-  @media (hover: hover) { &:hover { background: ${(p) => p.theme.bgHover} }; }
+  @media (hover: hover) {
+    &[href]:hover .link-body { border-color: ${(p) => p.theme.borderStrong}; }
+  }
+  &[href]:active .link-body { border-color: ${(p) => p.theme.borderStrong}; }
+`;
+
+const LinkPreviewImageWrap = styled.div`
+  position: relative;
+  border-radius: ${RADIUS} ${RADIUS} 0 0;
+  overflow: hidden;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: ${RADIUS} ${RADIUS} 0 0;
+    box-shadow: inset 0 0 0 2px ${(p) => p.theme.border};
+    pointer-events: none;
+    transition: box-shadow 0.15s ease;
+  }
+  a:hover &::after {
+    box-shadow: inset 0 0 0 2px ${(p) => p.theme.borderStrong};
+  }
+  a:active &::after {
+    box-shadow: inset 0 0 0 2px ${(p) => p.theme.borderStrong};
+  }
 `;
 
 const LinkPreviewImage = styled.img`
@@ -614,7 +645,11 @@ const LinkPreviewImage = styled.img`
 `;
 
 const LinkPreviewBody = styled.div`
-  padding: 10px 12px;
+  padding: 14px 12px;
+  border: 2px solid ${(p) => p.theme.border};
+  border-top: ${(p) => p.$hasImage ? "none" : `2px solid ${p.theme.border}`};
+  border-radius: ${(p) => p.$hasImage ? `0 0 ${RADIUS} ${RADIUS}` : RADIUS};
+  transition: border-color 0.15s ease;
 `;
 
 const LinkPreviewSite = styled.div`
@@ -853,7 +888,7 @@ const PostMenu = styled.div`
   top: 100%;
   background: ${(p) => p.theme.bgElevated};
   border-radius: ${RADIUS};
-  box-shadow: 0 2px 12px ${(p) => p.theme.shadow};
+  box-shadow: 0 2px 12px ${(p) => p.theme.shadowMd};
   z-index: 10;
   overflow: hidden;
   min-width: 120px;
@@ -1324,6 +1359,10 @@ const CommentCount = styled.button`
 const PostLocation = styled.div`
   margin-top: 10px;
   display: block;
+  @media (hover: hover) {
+    &[href]:hover .place-name { border-color: ${(p) => p.theme.borderStrong}; }
+  }
+  &[href]:active .place-name { border-color: ${(p) => p.theme.borderStrong}; }
 `;
 
 const PostMapWrapper = styled.div`
@@ -1341,6 +1380,13 @@ const PostMapWrapper = styled.div`
     border-radius: ${RADIUS} ${RADIUS} 0 0;
     box-shadow: inset 0 0 0 2px ${(p) => p.theme.shadow};
     pointer-events: none;
+    transition: box-shadow 0.15s ease;
+  }
+  a:hover &::after {
+    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.15);
+  }
+  a:active &::after {
+    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.2);
   }
 `;
 
@@ -1352,8 +1398,8 @@ const PostMap = styled.img`
 `;
 
 const PostPlaceName = styled.div`
-  padding: 10px 12px;
-  font-size: 14px;
+  padding: 14px 12px;
+  font-size: 16px;
   font-weight: 500;
   color: ${(p) => p.theme.text};
   border: 2px solid ${(p) => p.theme.border};
@@ -1362,6 +1408,7 @@ const PostPlaceName = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
+  transition: background 0.15s ease, border-color 0.15s ease;
 `;
 
 const PostPlaceAddress = styled.span`
@@ -2963,8 +3010,8 @@ function App() {
             {post.content && <PostContent>{renderText(post.content)}</PostContent>}
             {post.og_preview && (
               <LinkPreviewCard href={post.og_preview.url} target="_blank" rel="noopener noreferrer">
-                {post.og_preview.image && <LinkPreviewImage src={post.og_preview.image} />}
-                <LinkPreviewBody>
+                {post.og_preview.image && <LinkPreviewImageWrap className="link-image-wrap"><LinkPreviewImage src={post.og_preview.image} /></LinkPreviewImageWrap>}
+                <LinkPreviewBody className="link-body" $hasImage={!!post.og_preview.image}>
                   {post.og_preview.siteName && <LinkPreviewSite>{post.og_preview.siteName}</LinkPreviewSite>}
                   {post.og_preview.title && <LinkPreviewTitle>{post.og_preview.title}</LinkPreviewTitle>}
                   {post.og_preview.description && <LinkPreviewDesc>{post.og_preview.description}</LinkPreviewDesc>}
@@ -2996,10 +3043,10 @@ function App() {
             )}
             {post.place_name && post.place_lat && (
               <PostLocation as="a" href={post.place_maps_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}>
-                <PostMapWrapper>
+                <PostMapWrapper className="map-wrapper">
                   <PostMap src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`} alt={post.place_name} />
                 </PostMapWrapper>
-                <PostPlaceName>
+                <PostPlaceName className="place-name">
                   <span>{post.place_name}</span>
                   {post.place_address && <PostPlaceAddress>{shortAddress(post.place_address)}</PostPlaceAddress>}
                 </PostPlaceName>
@@ -3374,15 +3421,26 @@ function App() {
                   ))}
                 </PostMediaContainer>
               )}
+              {ogPreview && (
+                <LinkPreviewCard as="div" style={{ cursor: "default", position: "relative" }}>
+                  {ogPreview.image && <LinkPreviewImageWrap className="link-image-wrap"><LinkPreviewImage src={ogPreview.image} /></LinkPreviewImageWrap>}
+                  <LinkPreviewBody className="link-body" $hasImage={!!ogPreview.image}>
+                    {ogPreview.siteName && <LinkPreviewSite>{ogPreview.siteName}</LinkPreviewSite>}
+                    {ogPreview.title && <LinkPreviewTitle>{ogPreview.title}</LinkPreviewTitle>}
+                    {ogPreview.description && <LinkPreviewDesc>{ogPreview.description}</LinkPreviewDesc>}
+                  </LinkPreviewBody>
+                  <RemoveMedia onClick={() => { setOgPreview(null); ogFetchedUrl.current = "dismissed"; }}><i className="fa-solid fa-xmark" /></RemoveMedia>
+                </LinkPreviewCard>
+              )}
               {selectedLocation && (
                 <PostLocation style={{ position: "relative" }}>
-                  <PostMapWrapper>
+                  <PostMapWrapper className="map-wrapper">
                     <PostMap
                       src={`/api/staticmap?lat=${selectedLocation.lat}&lng=${selectedLocation.lng}&v=4`}
                       alt={selectedLocation.name}
                     />
                   </PostMapWrapper>
-                  <PostPlaceName>
+                  <PostPlaceName className="place-name">
                     <span>{selectedLocation.name}</span>
                     {selectedLocation.address && <PostPlaceAddress>{shortAddress(selectedLocation.address)}</PostPlaceAddress>}
                   </PostPlaceName>
@@ -3411,20 +3469,6 @@ function App() {
                   )}
                 </LocationSearch>
               )}
-              {ogPreview && (
-                <LinkPreviewCard as="div" style={{ cursor: "default", position: "relative" }}>
-                  {ogPreview.image && <LinkPreviewImage src={ogPreview.image} />}
-                  <LinkPreviewBody>
-                    {ogPreview.siteName && <LinkPreviewSite>{ogPreview.siteName}</LinkPreviewSite>}
-                    {ogPreview.title && <LinkPreviewTitle>{ogPreview.title}</LinkPreviewTitle>}
-                    {ogPreview.description && <LinkPreviewDesc>{ogPreview.description}</LinkPreviewDesc>}
-                  </LinkPreviewBody>
-                  <EmojiEditButton onClick={() => { setOgPreview(null); ogFetchedUrl.current = "dismissed"; }} style={{ position: "absolute", top: 8, right: 8, background: resolvedTheme.bgElevated, border: `2px solid ${resolvedTheme.border}`, borderRadius: "50%", width: 24, height: 24 }}>
-                    <i className="fa-solid fa-xmark" />
-                  </EmojiEditButton>
-                </LinkPreviewCard>
-              )}
-              {ogLoading && <CommentTime style={{ marginTop: 8 }}>Loading preview...</CommentTime>}
               <HiddenFileInput
                 ref={fileInputRef}
                 type="file"
