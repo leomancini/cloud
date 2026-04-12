@@ -1323,6 +1323,7 @@ const CommentCount = styled.button`
 
 const PostLocation = styled.div`
   margin-top: 10px;
+  display: block;
 `;
 
 const PostMapWrapper = styled.div`
@@ -2993,7 +2994,7 @@ function App() {
               </PostMediaContainer>
             )}
             {post.place_name && post.place_lat && (
-              <PostLocation as="a" href={`https://maps.google.com/maps/place/${encodeURIComponent(post.place_name)}/@${post.place_lat},${post.place_lng},17z`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}>
+              <PostLocation as="a" href={`https://maps.google.com/maps/search/${encodeURIComponent(post.place_name)}/@${post.place_lat},${post.place_lng},17z`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}>
                 <PostMapWrapper>
                   <PostMap src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`} alt={post.place_name} />
                 </PostMapWrapper>
