@@ -606,10 +606,11 @@ const LinkPreviewCard = styled.a`
   margin-top: 10px;
   text-decoration: none;
   color: inherit;
+  -webkit-tap-highlight-color: transparent;
   @media (hover: hover) {
-    &[href]:hover .link-body { border-color: ${(p) => p.theme.borderStrong}; }
+    &:hover .link-body { border-color: rgba(0, 0, 0, 0.15); }
   }
-  &[href]:active .link-body { border-color: ${(p) => p.theme.borderStrong}; }
+  &:active .link-body { border-color: rgba(0, 0, 0, 0.2); }
 `;
 
 const LinkPreviewImageWrap = styled.div`
@@ -630,10 +631,10 @@ const LinkPreviewImageWrap = styled.div`
     transition: box-shadow 0.15s ease;
   }
   a:hover &::after {
-    box-shadow: inset 0 0 0 2px ${(p) => p.theme.borderStrong};
+    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.15);
   }
   a:active &::after {
-    box-shadow: inset 0 0 0 2px ${(p) => p.theme.borderStrong};
+    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.2);
   }
 `;
 
@@ -645,7 +646,7 @@ const LinkPreviewImage = styled.img`
 `;
 
 const LinkPreviewBody = styled.div`
-  padding: 14px 12px;
+  padding: 12px;
   border: 2px solid ${(p) => p.theme.border};
   border-top: ${(p) => p.$hasImage ? "none" : `2px solid ${p.theme.border}`};
   border-radius: ${(p) => p.$hasImage ? `0 0 ${RADIUS} ${RADIUS}` : RADIUS};
@@ -664,7 +665,6 @@ const LinkPreviewTitle = styled.div`
   font-size: 16px;
   font-weight: 600;
   color: ${(p) => p.theme.text};
-  margin-top: 2px;
   line-height: 1.3;
 `;
 
@@ -827,7 +827,7 @@ const PostHeader = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 `;
 
 const PostHeaderLink = styled.div`
