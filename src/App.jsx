@@ -657,6 +657,7 @@ const LinkPreviewSite = styled.div`
   color: ${(p) => p.theme.textSecondary};
   text-transform: uppercase;
   letter-spacing: 0.3px;
+  margin-top: 6px;
 `;
 
 const LinkPreviewTitle = styled.div`
@@ -3035,7 +3036,7 @@ function App() {
             const aboveMap = hasMedia || hasLink;
             return (
               <div {...postReactProps}>
-                {post.content && <PostContent>{renderText(post.content)}</PostContent>}
+                {post.content && <PostContent>{renderText(post.og_preview ? post.content.replace(/https?:\/\/[^\s]+/g, "").trim() : post.content)}</PostContent>}
                 {hasMedia && (
                   <PostMediaContainer $count={post.media.length} style={{ ...(belowMedia ? { marginBottom: SMALL } : {}) }}>
                     {post.media.map((m, i) =>
@@ -3064,9 +3065,9 @@ function App() {
                   <LinkPreviewCard href={post.og_preview.url} target="_blank" rel="noopener noreferrer" style={{ marginTop: aboveLink ? 0 : 10, ...(aboveLink || belowLink ? { borderRadius: `${aboveLink ? SMALL : RADIUS} ${aboveLink ? SMALL : RADIUS} ${belowLink ? SMALL : RADIUS} ${belowLink ? SMALL : RADIUS}` } : {}), ...(belowLink ? { marginBottom: SMALL } : {}) }}>
                     {post.og_preview.image && <LinkPreviewImageWrap className="link-image-wrap" style={aboveLink ? { borderRadius: `${SMALL} ${SMALL} 0 0` } : undefined}><LinkPreviewImage src={post.og_preview.image} /></LinkPreviewImageWrap>}
                     <LinkPreviewBody className="link-body" $hasImage={!!post.og_preview.image} style={belowLink ? { borderRadius: `0 0 ${SMALL} ${SMALL}` } : undefined}>
-                      {post.og_preview.siteName && <LinkPreviewSite>{post.og_preview.siteName}</LinkPreviewSite>}
                       {post.og_preview.title && <LinkPreviewTitle>{post.og_preview.title}</LinkPreviewTitle>}
                       {post.og_preview.description && <LinkPreviewDesc>{post.og_preview.description}</LinkPreviewDesc>}
+                      {post.og_preview.siteName && <LinkPreviewSite>{post.og_preview.siteName}</LinkPreviewSite>}
                     </LinkPreviewBody>
                   </LinkPreviewCard>
                 )}
@@ -3456,9 +3457,9 @@ function App() {
                 <LinkPreviewCard as="div" style={{ cursor: "default", position: "relative" }}>
                   {ogPreview.image && <LinkPreviewImageWrap className="link-image-wrap"><LinkPreviewImage src={ogPreview.image} /></LinkPreviewImageWrap>}
                   <LinkPreviewBody className="link-body" $hasImage={!!ogPreview.image}>
-                    {ogPreview.siteName && <LinkPreviewSite>{ogPreview.siteName}</LinkPreviewSite>}
                     {ogPreview.title && <LinkPreviewTitle>{ogPreview.title}</LinkPreviewTitle>}
                     {ogPreview.description && <LinkPreviewDesc>{ogPreview.description}</LinkPreviewDesc>}
+                    {ogPreview.siteName && <LinkPreviewSite>{ogPreview.siteName}</LinkPreviewSite>}
                   </LinkPreviewBody>
                   <RemoveMedia onClick={() => { setOgPreview(null); ogFetchedUrl.current = "dismissed"; }}><i className="fa-solid fa-xmark" /></RemoveMedia>
                 </LinkPreviewCard>
