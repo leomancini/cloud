@@ -979,12 +979,18 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
   }
 
   const followers = db.prepare("SELECT follower_id FROM follows WHERE following_id = ? AND status = 'approved'").all(req.user.id);
+  const mediaFiles = req.files || [];
+  const photoCount = mediaFiles.filter((f) => f.mimetype.startsWith("image/")).length;
+  const videoCount = mediaFiles.filter((f) => f.mimetype.startsWith("video/")).length;
+  let mediaDesc = "";
+  if (photoCount && videoCount) mediaDesc = `Shared ${photoCount > 1 ? `${photoCount} photos` : "a photo"} and ${videoCount > 1 ? `${videoCount} videos` : "a video"}`;
+  else if (videoCount) mediaDesc = videoCount === 1 ? "Shared a video" : `Shared ${videoCount} videos`;
+  else if (photoCount) mediaDesc = photoCount === 1 ? "Shared a photo" : `Shared ${photoCount} photos`;
   for (const f of followers) {
     notifyUser(f.follower_id, "feed-update");
-    // Push: new post from someone they follow
     sendPushNotification(f.follower_id, "new_posts", {
       title: `${getUserDisplayName(req.user.id)} posted`,
-      body: (content || "").trim().slice(0, 100) || "Shared a photo",
+      body: (content || "").trim().slice(0, 100) || mediaDesc || "New post",
       tag: `new-post-${postId}`,
       url: "/",
     });
