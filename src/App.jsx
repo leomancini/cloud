@@ -1261,6 +1261,8 @@ const CommentText = styled.span`
   font-size: 16px;
   color: ${(p) => p.theme.text};
   line-height: 1.4;
+  user-select: text;
+  -webkit-user-select: text;
 `;
 
 const CommentTime = styled.span`
