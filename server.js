@@ -307,7 +307,7 @@ app.get("/api/users/:id/profile", (req, res) => {
   const offset = parseInt(req.query.offset) || 0;
 
   const posts = db.prepare(
-    `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.og_preview,
+    `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.place_maps_url, p.og_preview,
       COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
     FROM posts p
     JOIN users u ON p.user_id = u.id
@@ -498,6 +498,7 @@ try { db.exec("ALTER TABLE posts ADD COLUMN place_name TEXT"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN place_lat REAL"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN place_lng REAL"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN place_address TEXT"); } catch {}
+try { db.exec("ALTER TABLE posts ADD COLUMN place_maps_url TEXT"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN og_preview TEXT"); } catch {}
 
 db.exec(`
@@ -926,7 +927,7 @@ Choose one action:
 
 app.post("/api/posts", upload.array("media", 10), async (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
-  const { content, place_name, place_lat, place_lng, place_address, og_preview } = req.body;
+  const { content, place_name, place_lat, place_lng, place_address, place_maps_url, og_preview } = req.body;
   if ((!content || !content.trim()) && (!req.files || req.files.length === 0) && !place_name)
     return res.status(400).json({ error: "Content, media, or location required" });
 
@@ -943,7 +944,7 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
 
   const result = db
     .prepare(
-      "INSERT INTO posts (user_id, content, place_name, place_lat, place_lng, place_address, og_preview) VALUES (?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO posts (user_id, content, place_name, place_lat, place_lng, place_address, place_maps_url, og_preview) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
     )
     .run(
       req.user.id,
@@ -952,6 +953,7 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
       place_lat || null,
       place_lng || null,
       place_address || null,
+      place_maps_url || null,
       ogPreviewJson
     );
 
@@ -1029,7 +1031,7 @@ app.get("/api/feed", (req, res) => {
 
   const posts = db
     .prepare(
-      `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.og_preview,
+      `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.place_maps_url, p.og_preview,
         COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
       FROM posts p
       JOIN users u ON p.user_id = u.id
@@ -1481,7 +1483,7 @@ app.get("/api/places/search", async (req, res) => {
           "Content-Type": "application/json",
           "X-Goog-Api-Key": process.env.GOOGLE_PLACES_API_KEY,
           "X-Goog-FieldMask":
-            "places.displayName,places.formattedAddress,places.location",
+            "places.id,places.displayName,places.formattedAddress,places.location,places.googleMapsUri",
         },
         body: JSON.stringify(body),
       }
@@ -1493,6 +1495,7 @@ app.get("/api/places/search", async (req, res) => {
       address: p.formattedAddress,
       lat: p.location?.latitude,
       lng: p.location?.longitude,
+      maps_url: p.googleMapsUri || null,
     }));
 
     res.json({ places });
