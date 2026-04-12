@@ -2995,7 +2995,7 @@ function App() {
               </PostMediaContainer>
             )}
             {post.place_name && post.place_lat && (
-              <PostLocation as="a" href={post.place_maps_url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(post.place_name + " " + post.place_lat + "," + post.place_lng)}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}>
+              <PostLocation as="a" href={post.place_maps_url || `https://www.google.com/maps/search/${encodeURIComponent(post.place_name)}/@${post.place_lat},${post.place_lng},17z`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}>
                 <PostMapWrapper>
                   <PostMap src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`} alt={post.place_name} />
                 </PostMapWrapper>
