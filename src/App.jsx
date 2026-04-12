@@ -2993,7 +2993,7 @@ function App() {
               </PostMediaContainer>
             )}
             {post.place_name && post.place_lat && (
-              <PostLocation>
+              <PostLocation as="a" href={`https://maps.google.com/?q=${post.place_lat},${post.place_lng}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}>
                 <PostMapWrapper>
                   <PostMap src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`} alt={post.place_name} />
                 </PostMapWrapper>
