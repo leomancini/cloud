@@ -1374,9 +1374,9 @@ const PostLocation = styled.div`
   margin-top: 10px;
   display: block;
   @media (hover: hover) {
-    &[href]:hover .place-name { border-color: ${(p) => p.theme.borderStrong}; }
+    &[href]:hover .place-name { border-color: rgba(0, 0, 0, 0.15); }
   }
-  &[href]:active .place-name { border-color: ${(p) => p.theme.borderStrong}; }
+  &[href]:active .place-name { border-color: rgba(0, 0, 0, 0.2); }
 `;
 
 const PostMapWrapper = styled.div`
