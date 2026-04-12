@@ -1184,7 +1184,29 @@ app.post("/api/posts/:id/comments", (req, res) => {
     .prepare("INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)")
     .run(post.id, req.user.id, content.trim());
 
-  if (post.user_id !== req.user.id) notifyUser(post.user_id, "feed-update");
+  if (post.user_id !== req.user.id) {
+    notifyUser(post.user_id, "feed-update");
+    sendPushNotification(post.user_id, "comments", {
+      title: `${getUserDisplayName(req.user.id)} commented`,
+      body: content.trim().slice(0, 100),
+      tag: `comment-${post.id}-${req.user.id}`,
+      url: "/",
+    });
+  }
+
+  // Notify other commenters on this post (thread replies)
+  const previousCommenters = db.prepare(
+    `SELECT DISTINCT user_id FROM comments WHERE post_id = ? AND user_id != ? AND user_id != ?`
+  ).all(post.id, req.user.id, post.user_id);
+  for (const { user_id } of previousCommenters) {
+    notifyUser(user_id, "feed-update");
+    sendPushNotification(user_id, "replies", {
+      title: `${getUserDisplayName(req.user.id)} also commented`,
+      body: content.trim().slice(0, 100),
+      tag: `thread-${post.id}-${req.user.id}`,
+      url: "/",
+    });
+  }
 
   if (content.toLowerCase().includes("@sol")) {
     handleSolMention(post.id, content.trim());

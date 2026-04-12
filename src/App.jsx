@@ -3315,11 +3315,11 @@ function App() {
                       <ToggleTrack $on={pushPrefs.reactions}><ToggleThumb $on={pushPrefs.reactions} /></ToggleTrack>
                     </PushRow>
                     <PushRow onClick={(e) => { e.preventDefault(); updatePushPref("comments", !pushPrefs.comments); }}>
-                      <PushRowLabel>Comments</PushRowLabel>
+                      <PushRowLabel>Comments on your posts</PushRowLabel>
                       <ToggleTrack $on={pushPrefs.comments}><ToggleThumb $on={pushPrefs.comments} /></ToggleTrack>
                     </PushRow>
                     <PushRow onClick={(e) => { e.preventDefault(); updatePushPref("replies", !pushPrefs.replies); }}>
-                      <PushRowLabel>Replies</PushRowLabel>
+                      <PushRowLabel>Replies in threads you're in</PushRowLabel>
                       <ToggleTrack $on={pushPrefs.replies}><ToggleThumb $on={pushPrefs.replies} /></ToggleTrack>
                     </PushRow>
                   </>
