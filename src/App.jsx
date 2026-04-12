@@ -624,7 +624,7 @@ const LinkPreviewImageWrap = styled.div`
     left: 0;
     right: 0;
     bottom: 0;
-    border-radius: ${RADIUS} ${RADIUS} 0 0;
+    border-radius: inherit;
     box-shadow: inset 0 0 0 2px ${(p) => p.theme.border};
     pointer-events: none;
     transition: box-shadow 0.15s ease;
@@ -827,6 +827,17 @@ const PostHeader = styled.div`
   align-items: center;
   gap: 10px;
   margin-bottom: 16px;
+`;
+
+const PostHeaderLink = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: ${(p) => p.$clickable ? "pointer" : "default"};
+  @media (hover: hover) {
+    &:hover > div { transform: rotate(calc(var(--tilt) * 1deg)); }
+  }
+  &:active > div { transform: rotate(calc(var(--tilt) * 1deg)); }
 `;
 
 const PostHeaderText = styled.div`
@@ -1377,7 +1388,7 @@ const PostMapWrapper = styled.div`
     left: 0;
     right: 0;
     bottom: 0;
-    border-radius: ${RADIUS} ${RADIUS} 0 0;
+    border-radius: inherit;
     box-shadow: inset 0 0 0 2px ${(p) => p.theme.shadow};
     pointer-events: none;
     transition: box-shadow 0.15s ease;
@@ -1482,6 +1493,10 @@ const PeopleCard = styled.div`
   gap: 12px;
   padding: 12px 0;
   min-width: 0;
+  @media (hover: hover) {
+    &:hover > div:first-child { transform: rotate(calc(var(--tilt) * 1deg)); }
+  }
+  &:active > div:first-child { transform: rotate(calc(var(--tilt) * 1deg)); }
 `;
 
 const PeopleCardAvatar = styled.div`
@@ -2983,10 +2998,12 @@ function App() {
       onReact={handleReact}
       renderContent={(postReactProps) => (
         <PostItem data-post-id={post.id}>
-          <PostHeader onClick={disableProfileLink ? undefined : () => post.user_id === user.id ? setTab("profile") : loadUserProfile(post.user_id)} style={disableProfileLink ? undefined : { cursor: "pointer" }}>
-            <Avatar style={{ backgroundImage: `url(${post.author_picture})`, '--tilt': randomTilt() }} />
-            <PostHeaderText>
+          <PostHeader>
+            <PostHeaderLink $clickable={!disableProfileLink} onClick={disableProfileLink ? undefined : () => post.user_id === user.id ? setTab("profile") : loadUserProfile(post.user_id)}>
+              <Avatar style={{ backgroundImage: `url(${post.author_picture})`, '--tilt': randomTilt() }} />
               <PostAuthor>{post.author_name}</PostAuthor>
+            </PostHeaderLink>
+            <PostHeaderText>
               <PostTime>{timeAgo(post.created_at)}</PostTime>
             </PostHeaderText>
             {post.user_id === user.id && (
@@ -3006,53 +3023,67 @@ function App() {
               </PostHeaderRight>
             )}
           </PostHeader>
-          <div {...postReactProps}>
-            {post.content && <PostContent>{renderText(post.content)}</PostContent>}
-            {post.og_preview && (
-              <LinkPreviewCard href={post.og_preview.url} target="_blank" rel="noopener noreferrer">
-                {post.og_preview.image && <LinkPreviewImageWrap className="link-image-wrap"><LinkPreviewImage src={post.og_preview.image} /></LinkPreviewImageWrap>}
-                <LinkPreviewBody className="link-body" $hasImage={!!post.og_preview.image}>
-                  {post.og_preview.siteName && <LinkPreviewSite>{post.og_preview.siteName}</LinkPreviewSite>}
-                  {post.og_preview.title && <LinkPreviewTitle>{post.og_preview.title}</LinkPreviewTitle>}
-                  {post.og_preview.description && <LinkPreviewDesc>{post.og_preview.description}</LinkPreviewDesc>}
-                </LinkPreviewBody>
-              </LinkPreviewCard>
-            )}
-            {post.media && post.media.length > 0 && (
-              <PostMediaContainer $count={post.media.length}>
-                {post.media.map((m, i) =>
-                  m.type === "video" ? (
-                    <PostVideo key={i} src={m.url} autoPlay loop muted playsInline $single={post.media.length === 1} />
-                  ) : (
-                    <PostImage
-                      key={i}
-                      src={m.url}
-                      $single={post.media.length === 1}
-                      $tappable={post.media.length > 1}
-                      onClick={post.media.length > 1 ? () => {
-                        const el = document.querySelector(`[data-post-id="${post.id}"]`);
-                        if (el && el._touchHandled) return;
-                        const url = m.url;
-                        const timer = setTimeout(() => setLightboxSrc(url), 300);
-                        if (el) { if (el._lightboxTimer) clearTimeout(el._lightboxTimer); el._lightboxTimer = timer; }
-                      } : undefined}
-                    />
-                  )
+          {(() => {
+            const hasLink = !!post.og_preview;
+            const hasMedia = post.media && post.media.length > 0;
+            const hasMap = !!(post.place_name && post.place_lat);
+            const SMALL = "4px";
+            // Order: media → link → map
+            const belowMedia = hasLink || hasMap;
+            const aboveLink = hasMedia;
+            const belowLink = hasMap;
+            const aboveMap = hasMedia || hasLink;
+            return (
+              <div {...postReactProps}>
+                {post.content && <PostContent>{renderText(post.content)}</PostContent>}
+                {hasMedia && (
+                  <PostMediaContainer $count={post.media.length} style={{ ...(belowMedia ? { marginBottom: SMALL } : {}) }}>
+                    {post.media.map((m, i) =>
+                      m.type === "video" ? (
+                        <PostVideo key={i} src={m.url} autoPlay loop muted playsInline $single={post.media.length === 1} style={post.media.length === 1 && belowMedia ? { borderRadius: `${RADIUS} ${RADIUS} ${SMALL} ${SMALL}` } : undefined} />
+                      ) : (
+                        <PostImage
+                          key={i}
+                          src={m.url}
+                          $single={post.media.length === 1}
+                          $tappable={post.media.length > 1}
+                          style={post.media.length === 1 && belowMedia ? { borderRadius: `${RADIUS} ${RADIUS} ${SMALL} ${SMALL}` } : undefined}
+                          onClick={post.media.length > 1 ? () => {
+                            const el = document.querySelector(`[data-post-id="${post.id}"]`);
+                            if (el && el._touchHandled) return;
+                            const url = m.url;
+                            const timer = setTimeout(() => setLightboxSrc(url), 300);
+                            if (el) { if (el._lightboxTimer) clearTimeout(el._lightboxTimer); el._lightboxTimer = timer; }
+                          } : undefined}
+                        />
+                      )
+                    )}
+                  </PostMediaContainer>
                 )}
-              </PostMediaContainer>
-            )}
-            {post.place_name && post.place_lat && (
-              <PostLocation as="a" href={post.place_maps_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}>
-                <PostMapWrapper className="map-wrapper">
-                  <PostMap src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`} alt={post.place_name} />
-                </PostMapWrapper>
-                <PostPlaceName className="place-name">
-                  <span>{post.place_name}</span>
-                  {post.place_address && <PostPlaceAddress>{shortAddress(post.place_address)}</PostPlaceAddress>}
-                </PostPlaceName>
-              </PostLocation>
-            )}
-          </div>
+                {hasLink && (
+                  <LinkPreviewCard href={post.og_preview.url} target="_blank" rel="noopener noreferrer" style={{ marginTop: aboveLink ? 0 : 10, ...(aboveLink || belowLink ? { borderRadius: `${aboveLink ? SMALL : RADIUS} ${aboveLink ? SMALL : RADIUS} ${belowLink ? SMALL : RADIUS} ${belowLink ? SMALL : RADIUS}` } : {}), ...(belowLink ? { marginBottom: SMALL } : {}) }}>
+                    {post.og_preview.image && <LinkPreviewImageWrap className="link-image-wrap" style={aboveLink ? { borderRadius: `${SMALL} ${SMALL} 0 0` } : undefined}><LinkPreviewImage src={post.og_preview.image} /></LinkPreviewImageWrap>}
+                    <LinkPreviewBody className="link-body" $hasImage={!!post.og_preview.image} style={belowLink ? { borderRadius: `0 0 ${SMALL} ${SMALL}` } : undefined}>
+                      {post.og_preview.siteName && <LinkPreviewSite>{post.og_preview.siteName}</LinkPreviewSite>}
+                      {post.og_preview.title && <LinkPreviewTitle>{post.og_preview.title}</LinkPreviewTitle>}
+                      {post.og_preview.description && <LinkPreviewDesc>{post.og_preview.description}</LinkPreviewDesc>}
+                    </LinkPreviewBody>
+                  </LinkPreviewCard>
+                )}
+                {hasMap && (
+                  <PostLocation as="a" href={post.place_maps_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit", cursor: "pointer", marginTop: aboveMap ? 0 : 10 }}>
+                    <PostMapWrapper className="map-wrapper" style={aboveMap ? { borderRadius: `${SMALL} ${SMALL} 0 0` } : undefined}>
+                      <PostMap src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`} alt={post.place_name} />
+                    </PostMapWrapper>
+                    <PostPlaceName className="place-name">
+                      <span>{post.place_name}</span>
+                      {post.place_address && <PostPlaceAddress>{shortAddress(post.place_address)}</PostPlaceAddress>}
+                    </PostPlaceName>
+                  </PostLocation>
+                )}
+              </div>
+            );
+          })()}
           {(post.reactions || []).length > 0 && (
             <ReactionsRow>
               {(post.reactions || []).map((r) => (
