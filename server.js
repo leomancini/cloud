@@ -764,9 +764,20 @@ Steps: 1) Read the file(s) you need to change. 2) Use edit_file for targeted rep
       return null;
     }
 
+    // Generate short title
+    let shortTitle = description.slice(0, 50);
+    try {
+      const titleRes = await anthropic.messages.create({
+        model: "claude-haiku-4-5-20251001", max_tokens: 30,
+        messages: [{ role: "user", content: `Write a concise PR title (max 10 words, no quotes, lowercase) for this change: ${description}` }],
+      });
+      const generated = titleRes.content[0]?.text?.trim();
+      if (generated && generated.length <= 60) shortTitle = generated;
+    } catch {}
+
     // Commit and push
     execFileSync("git", ["add", "-A"], { cwd: worktreePath });
-    execFileSync("git", ["commit", "-m", `sol: ${description.slice(0, 200)}`], { cwd: worktreePath });
+    execFileSync("git", ["commit", "-m", `sol: ${shortTitle}`], { cwd: worktreePath });
 
     const pushUrl = `https://x-access-token:${process.env.GITHUB_TOKEN}@github.com/${GITHUB_OWNER}/${GITHUB_REPO}.git`;
     execFileSync("git", ["push", pushUrl, branchName], { cwd: worktreePath });
@@ -776,7 +787,7 @@ Steps: 1) Read the file(s) you need to change. 2) Use edit_file for targeted rep
       method: "POST",
       headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        title: `sol: ${description.slice(0, 72)}`,
+        title: `sol: ${shortTitle}`,
         body: `requested via cloud\n\n> ${description}`,
         head: branchName,
         base: "main",
