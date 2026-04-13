@@ -657,7 +657,7 @@ const LinkPreviewSite = styled.div`
   font-size: 12px;
   color: ${(p) => p.theme.textSecondary};
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: normal;
   margin-top: 6px;
 `;
 
@@ -843,8 +843,8 @@ const PostHeaderLink = styled.div`
 
 const PostHeaderText = styled.div`
   display: flex;
-  align-items: baseline;
-  gap: 10px;
+  align-items: flex-end;
+  justify-content: flex-end;
   flex: 1;
   min-width: 0;
 `;
@@ -864,13 +864,15 @@ const PostAuthor = styled.span`
 `;
 
 const PostTime = styled.span`
-  font-size: 12px;
+  font-size: 14px;
   color: ${(p) => p.theme.textSecondary};
   white-space: nowrap;
 `;
 
 const PostHeaderRight = styled.div`
   margin-left: auto;
+  position: relative;
+  top: 1px;
 `;
 
 const PostMenuWrapper = styled.div`
@@ -1585,7 +1587,7 @@ const DegreeBadge = styled.span`
   font-weight: 600;
   padding: 2px 7px;
   border-radius: 20px;
-  letter-spacing: 0.01em;
+  letter-spacing: normal;
   background: ${(p) =>
     p.$degree === 1
       ? "rgba(37,99,235,0.12)"
@@ -1613,7 +1615,7 @@ const DegreeFilterLabel = styled.span`
   font-weight: 600;
   color: ${(p) => p.theme.textMuted};
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: normal;
   margin-right: 2px;
 `;
 
