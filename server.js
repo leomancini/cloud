@@ -502,6 +502,18 @@ try { db.exec("ALTER TABLE posts ADD COLUMN place_maps_url TEXT"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN og_preview TEXT"); } catch {}
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS sol_prs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    branch_name TEXT NOT NULL,
+    pr_url TEXT,
+    pr_number INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id)
+  )
+`);
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS post_media (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     post_id INTEGER NOT NULL,
@@ -674,15 +686,27 @@ const CLASSIFY_TOOLS = [
 ];
 
 
-async function handleSolCodeChange(description) {
+async function handleSolCodeChange(description, postId) {
   if (!process.env.GITHUB_TOKEN) return null;
 
-  const slug = `sol-${Date.now()}`;
-  const branchName = `sol/${slug}`;
+  // Check for existing PR on this post thread
+  const existingPr = postId ? db.prepare("SELECT * FROM sol_prs WHERE post_id = ? ORDER BY created_at DESC LIMIT 1").get(postId) : null;
+  const isUpdate = !!(existingPr && existingPr.branch_name);
+
+  const slug = isUpdate ? existingPr.branch_name.replace("sol/", "") : `sol-${Date.now()}`;
+  const branchName = isUpdate ? existingPr.branch_name : `sol/${slug}`;
   const worktreePath = `/tmp/${slug}`;
 
   try {
-    execFileSync("git", ["worktree", "add", worktreePath, "-b", branchName], { cwd: __dirname });
+    if (isUpdate) {
+      // Fetch latest and create worktree from existing branch
+      execFileSync("git", ["fetch", "origin", branchName], { cwd: __dirname });
+      execFileSync("git", ["worktree", "add", worktreePath, branchName], { cwd: __dirname });
+      // Merge main into the branch to stay up to date
+      try { execFileSync("git", ["merge", "origin/main", "--no-edit"], { cwd: worktreePath }); } catch {}
+    } else {
+      execFileSync("git", ["worktree", "add", worktreePath, "-b", branchName], { cwd: __dirname });
+    }
     console.log(`[Sol] Worktree created at ${worktreePath}`);
 
     // Agent loop with direct API
@@ -782,24 +806,45 @@ Steps: 1) Read the file(s) you need to change. 2) Use edit_file for targeted rep
     const pushUrl = `https://x-access-token:${process.env.GITHUB_TOKEN}@github.com/${GITHUB_OWNER}/${GITHUB_REPO}.git`;
     execFileSync("git", ["push", pushUrl, branchName], { cwd: worktreePath });
 
-    // Create PR via GitHub API
-    const prRes = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/pulls`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: `sol: ${shortTitle}`,
-        body: `requested via cloud\n\n> ${description}`,
-        head: branchName,
-        base: "main",
-      }),
-    });
-    const pr = await prRes.json();
-    console.log("[Sol] PR created:", pr.html_url);
+    let prUrl;
+    if (isUpdate && existingPr.pr_url) {
+      // Add a comment to the existing PR noting the update
+      if (existingPr.pr_number) {
+        await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues/${existingPr.pr_number}/comments`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ body: `Updated: ${description}` }),
+        });
+      }
+      prUrl = existingPr.pr_url;
+      console.log("[Sol] PR updated:", prUrl);
+    } else {
+      // Create new PR
+      const prRes = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/pulls`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `sol: ${shortTitle}`,
+          body: `requested via cloud\n\n> ${description}`,
+          head: branchName,
+          base: "main",
+        }),
+      });
+      const pr = await prRes.json();
+      prUrl = pr.html_url || null;
+      const prNumber = pr.number || null;
+      console.log("[Sol] PR created:", prUrl);
+
+      // Track the PR for this post thread
+      if (postId && prUrl) {
+        db.prepare("INSERT INTO sol_prs (post_id, branch_name, pr_url, pr_number) VALUES (?, ?, ?, ?)").run(postId, branchName, prUrl, prNumber);
+      }
+    }
 
     // Clean up worktree
     execFileSync("git", ["worktree", "remove", "--force", worktreePath], { cwd: __dirname });
 
-    return pr.html_url || null;
+    return prUrl;
   } catch (e) {
     console.warn("Sol PR error:", e);
     try { execFileSync("git", ["worktree", "remove", "--force", worktreePath], { cwd: __dirname }); } catch {}
@@ -915,11 +960,13 @@ Choose one action:
       console.log("[Sol] Posting acknowledgment:", toolBlock.input.message);
       updatePlaceholder(toolBlock.input.message);
 
-      const prUrl = await handleSolCodeChange(toolBlock.input.description);
+      const prUrl = await handleSolCodeChange(toolBlock.input.description, postId);
       console.log("[Sol] PR result:", prUrl || "failed");
 
       if (prUrl) {
-        solComment(`i opened a pr for that — ${prUrl}`);
+        const existingCheck = postId ? db.prepare("SELECT COUNT(*) as c FROM sol_prs WHERE post_id = ?").get(postId) : null;
+        const isExisting = existingCheck && existingCheck.c > 1;
+        solComment(isExisting ? `updated the pr — ${prUrl}` : `i opened a pr for that — ${prUrl}`);
       } else {
         solComment("i tried but couldn't make that change, sorry");
       }
