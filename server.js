@@ -316,7 +316,7 @@ app.get("/api/users/:id/profile", (req, res) => {
     LIMIT ? OFFSET ?`
   ).all(targetId, limit + 1, offset);
 
-  const getMedia = db.prepare("SELECT filename, media_type FROM post_media WHERE post_id = ? ORDER BY id");
+  const getMedia = db.prepare("SELECT filename, media_type, source FROM post_media WHERE post_id = ? ORDER BY id");
   const getComments = db.prepare(
     `SELECT c.id, c.content, c.created_at, c.user_id,
       COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
@@ -340,7 +340,7 @@ app.get("/api/users/:id/profile", (req, res) => {
     return {
       ...post,
       og_preview: ogPreview,
-      media: getMedia.all(post.id).map((m) => ({ url: `/api/uploads/${m.filename}`, type: m.media_type })),
+      media: getMedia.all(post.id).map((m) => ({ url: `/api/uploads/${m.filename}`, type: m.media_type, source: m.source || null })),
       comments: getComments.all(post.id).map((c) => {
         const cReactions = getCommentReactions.all(c.id);
         const grouped = {};
@@ -519,10 +519,13 @@ db.exec(`
     post_id INTEGER NOT NULL,
     filename TEXT NOT NULL,
     media_type TEXT NOT NULL,
+    source TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (post_id) REFERENCES posts(id)
   )
 `);
+
+try { db.exec("ALTER TABLE post_media ADD COLUMN source TEXT"); } catch {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS comments (
@@ -859,7 +862,7 @@ async function handleSolMention(postId, triggerText = null) {
   const post = db.prepare("SELECT p.*, COALESCE(u.display_name, u.name) as author_name FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?").get(postId);
   if (!post) return;
 
-  const media = db.prepare("SELECT filename, media_type FROM post_media WHERE post_id = ? ORDER BY id").all(postId);
+  const media = db.prepare("SELECT filename, media_type, source FROM post_media WHERE post_id = ? ORDER BY id").all(postId);
   const comments = db.prepare(
     "SELECT c.content, COALESCE(u.display_name, u.name) as author_name FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ? ORDER BY c.created_at ASC"
   ).all(postId);
@@ -1018,10 +1021,13 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
   const postId = result.lastInsertRowid;
 
   if (req.files) {
+    let mediaSources = {};
+    try { if (req.body.media_sources) mediaSources = JSON.parse(req.body.media_sources); } catch {}
     const insertMedia = db.prepare(
-      "INSERT INTO post_media (post_id, filename, media_type) VALUES (?, ?, ?)"
+      "INSERT INTO post_media (post_id, filename, media_type, source) VALUES (?, ?, ?, ?)"
     );
-    for (const file of req.files) {
+    for (let i = 0; i < req.files.length; i++) {
+      const file = req.files[i];
       const mediaType = file.mimetype.startsWith("video/") ? "video" : "image";
       if (mediaType === "image") {
         try {
@@ -1034,7 +1040,7 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
           console.warn("Image compression failed:", e);
         }
       }
-      insertMedia.run(postId, file.filename, mediaType);
+      insertMedia.run(postId, file.filename, mediaType, mediaSources[i] || null);
     }
   }
 
@@ -1102,7 +1108,7 @@ app.get("/api/feed", (req, res) => {
     .all(req.user.id, req.user.id, limit + 1, offset);
 
   const getMedia = db.prepare(
-    "SELECT filename, media_type FROM post_media WHERE post_id = ? ORDER BY id"
+    "SELECT filename, media_type, source FROM post_media WHERE post_id = ? ORDER BY id"
   );
   const getComments = db.prepare(
     `SELECT c.id, c.content, c.created_at, c.user_id,
@@ -1142,6 +1148,7 @@ app.get("/api/feed", (req, res) => {
     media: getMedia.all(post.id).map((m) => ({
       url: `/api/uploads/${m.filename}`,
       type: m.media_type,
+      source: m.source || null,
     })),
     comments: getComments.all(post.id).map((c) => {
       const cReactions = getCommentReactions.all(c.id);
@@ -1184,6 +1191,29 @@ app.get("/api/uploads/:filename", (req, res) => {
   } else {
     res.status(404).end();
   }
+});
+
+// Prefill media from external apps (e.g. mosaic → cloud compose)
+app.post("/api/prefill-media", upload.single("image"), async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  if (!req.file) return res.status(400).json({ error: "No image provided" });
+  try {
+    await sharp(req.file.path)
+      .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 80 })
+      .toFile(req.file.path + ".tmp");
+    renameSync(req.file.path + ".tmp", req.file.path);
+  } catch (e) {
+    console.warn("Prefill image compression failed:", e);
+  }
+  res.json({ filename: req.file.filename });
+});
+
+app.options("/api/prefill-media", (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.status(204).end();
 });
 
 app.delete("/api/posts/:id", (req, res) => {
