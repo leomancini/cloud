@@ -2485,6 +2485,13 @@ function App() {
 
   useEffect(() => {
     if (!user) return;
+    const onVisible = () => { if (document.visibilityState === "visible") loadFeed(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(`${proto}//${window.location.host}/ws?userId=${user.id}`);
     ws.onmessage = (e) => {
