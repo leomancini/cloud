@@ -740,6 +740,53 @@ const PostVideo = styled.video`
   ${innerBorder}
 `;
 
+const shimmer = keyframes`
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+`;
+
+const MosaicBadgeBg = styled.div`
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    110deg,
+    rgba(255,255,255,0.12) 0%,
+    rgba(255,255,255,0.25) 25%,
+    rgba(255,255,255,0.12) 50%,
+    rgba(255,255,255,0.25) 75%,
+    rgba(255,255,255,0.12) 100%
+  );
+  background-size: 200% 100%;
+  animation: ${shimmer} 8s linear infinite;
+  mix-blend-mode: overlay;
+`;
+
+const MosaicBadge = styled.a`
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  overflow: hidden;
+`;
+
+const MediaWrapper = styled.div`
+  position: relative;
+  overflow: hidden;
+`;
+
 /* ── Lightbox ── */
 const fadeIn = keyframes`from { opacity: 0; } to { opacity: 1; }`;
 const fadeOut = keyframes`from { opacity: 1; } to { opacity: 0; }`;
@@ -2241,6 +2288,7 @@ function App() {
   // Media state
   const [mediaFiles, setMediaFiles] = useState([]);
   const [mediaPreviews, setMediaPreviews] = useState([]);
+  const [mediaSources, setMediaSources] = useState([]);
   const fileInputRef = useRef(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [commentInputs, setCommentInputs] = useState({});
@@ -2413,6 +2461,22 @@ function App() {
           if (initialProfileId.current) {
             loadUserProfile(initialProfileId.current, true);
             initialProfileId.current = null;
+          }
+          // Prefill composer from ?compose=filename&source=mosaic
+          const params = new URLSearchParams(window.location.search);
+          const prefillFile = params.get("compose");
+          if (prefillFile) {
+            const prefillSource = params.get("source") || null;
+            window.history.replaceState(null, "", "/");
+            fetch(`/api/uploads/${prefillFile}`)
+              .then((r) => { if (r.ok) return r.blob(); })
+              .then((blob) => {
+                if (!blob) return;
+                const file = new File([blob], prefillFile, { type: blob.type });
+                setMediaFiles([file]);
+                setMediaPreviews([{ url: URL.createObjectURL(blob), type: "image" }]);
+                setMediaSources([prefillSource]);
+              });
           }
         }
       })
@@ -2750,6 +2814,7 @@ function App() {
       type: file.type.startsWith("video/") ? "video" : "image",
     }));
     setMediaPreviews((prev) => [...prev, ...newPreviews]);
+    setMediaSources((prev) => [...prev, ...processed.map(() => null)]);
     e.target.value = "";
   };
 
@@ -2757,6 +2822,7 @@ function App() {
     URL.revokeObjectURL(mediaPreviews[index].url);
     setMediaFiles((prev) => prev.filter((_, i) => i !== index));
     setMediaPreviews((prev) => prev.filter((_, i) => i !== index));
+    setMediaSources((prev) => prev.filter((_, i) => i !== index));
   };
 
   const fetchOgPreview = async (text) => {
@@ -2800,6 +2866,11 @@ function App() {
     for (const file of mediaFiles) {
       formData.append("media", file);
     }
+    if (mediaSources.some(Boolean)) {
+      const srcMap = {};
+      mediaSources.forEach((src, i) => { if (src) srcMap[i] = src; });
+      formData.append("media_sources", JSON.stringify(srcMap));
+    }
     if (ogPreview) {
       formData.append("og_preview", JSON.stringify(ogPreview));
     }
@@ -2815,6 +2886,7 @@ function App() {
     mediaPreviews.forEach((p) => URL.revokeObjectURL(p.url));
     setMediaFiles([]);
     setMediaPreviews([]);
+    setMediaSources([]);
     setPosting(false);
     loadFeed();
   };
@@ -3043,16 +3115,17 @@ function App() {
                 {post.content && <PostContent>{renderText(post.og_preview ? post.content.replace(/https?:\/\/[^\s]+/g, "").trim() : post.content)}</PostContent>}
                 {hasMedia && (
                   <PostMediaContainer $count={post.media.length} style={{ ...(belowMedia ? { marginBottom: SMALL } : {}) }}>
-                    {post.media.map((m, i) =>
-                      m.type === "video" ? (
-                        <PostVideo key={i} src={m.url} autoPlay loop muted playsInline $single={post.media.length === 1} style={post.media.length === 1 && belowMedia ? { borderRadius: `${RADIUS} ${RADIUS} ${SMALL} ${SMALL}` } : undefined} />
-                      ) : (
+                    {post.media.map((m, i) => {
+                      const radiusStyle = post.media.length === 1 && belowMedia ? { borderRadius: `${RADIUS} ${RADIUS} ${SMALL} ${SMALL}` } : undefined;
+                      if (m.type === "video") return (
+                        <PostVideo key={i} src={m.url} autoPlay loop muted playsInline $single={post.media.length === 1} style={radiusStyle} />
+                      );
+                      const img = (
                         <PostImage
-                          key={i}
                           src={m.url}
                           $single={post.media.length === 1}
                           $tappable={post.media.length > 1}
-                          style={post.media.length === 1 && belowMedia ? { borderRadius: `${RADIUS} ${RADIUS} ${SMALL} ${SMALL}` } : undefined}
+                          style={m.source ? undefined : radiusStyle}
                           onClick={post.media.length > 1 ? () => {
                             const el = document.querySelector(`[data-post-id="${post.id}"]`);
                             if (el && el._touchHandled) return;
@@ -3061,8 +3134,15 @@ function App() {
                             if (el) { if (el._lightboxTimer) clearTimeout(el._lightboxTimer); el._lightboxTimer = timer; }
                           } : undefined}
                         />
-                      )
-                    )}
+                      );
+                      if (m.source === "mosaic") return (
+                        <MediaWrapper key={i} style={radiusStyle}>
+                          {img}
+                          <MosaicBadge href="https://mosaic.fcc.lol" target="_blank" rel="noopener noreferrer"><MosaicBadgeBg />Made with Mosaic <span style={{ opacity: 0.75, fontWeight: 400 }}>Try it <i className="fa-solid fa-arrow-right" style={{ fontSize: 11 }} /></span></MosaicBadge>
+                        </MediaWrapper>
+                      );
+                      return <React.Fragment key={i}>{img}</React.Fragment>;
+                    })}
                   </PostMediaContainer>
                 )}
                 {hasLink && (
@@ -3452,6 +3532,7 @@ function App() {
                       ) : (
                         <PostImage src={preview.url} $single={mediaPreviews.length === 1} />
                       )}
+                      {mediaSources[i] === "mosaic" && <MosaicBadge href="https://mosaic.fcc.lol" target="_blank" rel="noopener noreferrer"><MosaicBadgeBg />Made with Mosaic <span style={{ opacity: 0.75, fontWeight: 400 }}>Try it <i className="fa-solid fa-arrow-right" style={{ fontSize: 11 }} /></span></MosaicBadge>}
                       <RemoveMedia onClick={() => removeMedia(i)}><i className="fa-solid fa-xmark" /></RemoveMedia>
                     </MediaPreview>
                   ))}
