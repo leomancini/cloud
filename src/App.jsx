@@ -764,8 +764,8 @@ const MosaicBadgeBg = styled.div`
 
 const MosaicBadge = styled.a`
   position: absolute;
-  top: 10px;
-  left: 10px;
+  bottom: 10px;
+  right: 10px;
   padding: 10px 12px;
   border-radius: 10px;
   font-size: 14px;
