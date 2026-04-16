@@ -3358,7 +3358,7 @@ function App() {
             <LoginCard>
               <Title>Cloud</Title>
               <Subtitle>Share your day</Subtitle>
-              <SignInButton href="/api/auth/google">Log in with Google</SignInButton>
+              <SignInButton href={`/api/auth/google${window.location.search ? `?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}` : ''}`}>Log in with Google</SignInButton>
             </LoginCard>
           </Page>
         </ThemeProvider>
