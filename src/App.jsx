@@ -778,13 +778,14 @@ const MosaicBadge = styled.a`
   gap: 6px;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.3);
   overflow: hidden;
 `;
 
 const MediaWrapper = styled.div`
   position: relative;
   overflow: hidden;
+  border-radius: ${RADIUS};
 `;
 
 /* ── Lightbox ── */
