@@ -204,6 +204,10 @@ app.use(express.json());
 // Auth routes
 app.get(
   "/api/auth/google",
+  (req, res, next) => {
+    if (req.query.redirect) req.session.loginRedirect = req.query.redirect;
+    next();
+  },
   passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
@@ -211,7 +215,10 @@ app.get(
   "/api/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
   (req, res) => {
-    res.redirect(process.env.BASE_URL || "http://localhost:5173");
+    const base = process.env.BASE_URL || "http://localhost:5173";
+    const redirect = req.session.loginRedirect;
+    delete req.session.loginRedirect;
+    res.redirect(redirect ? `${base}${redirect}` : base);
   }
 );
 
