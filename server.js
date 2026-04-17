@@ -954,7 +954,7 @@ Return ONLY the raw HTML code. No markdown fences, no explanation, no commentary
       "there you go, enjoy!",
       "done! let me know what you think",
       "all yours, have at it!",
-      "just dropped it above, enjoy!",
+      "just made this one, enjoy!",
       "ready to play, good luck!",
     ];
     const doneMsg = doneMessages[Math.floor(Math.random() * doneMessages.length)];
