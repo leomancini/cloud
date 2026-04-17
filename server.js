@@ -1062,7 +1062,7 @@ Choose one action:
     };
 
     const updatePlaceholder = (text) => {
-      db.prepare("UPDATE comments SET content = ? WHERE id = ?").run(text, placeholderId);
+      db.prepare("UPDATE comments SET content = ? WHERE id = ?").run(text || "...", placeholderId);
       notify();
     };
 
