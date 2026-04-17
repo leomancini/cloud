@@ -740,6 +740,17 @@ const PostVideo = styled.video`
   ${innerBorder}
 `;
 
+const GameFrame = styled.iframe`
+  width: 100%;
+  aspect-ratio: 1;
+  border: none;
+  border-radius: ${RADIUS};
+  display: block;
+  background: ${(p) => p.theme.bgControl};
+  margin-top: 10px;
+  ${innerBorder}
+`;
+
 const shimmer = keyframes`
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
@@ -785,7 +796,7 @@ const MosaicBadge = styled.a`
 const MediaWrapper = styled.div`
   position: relative;
   overflow: hidden;
-  border-radius: ${RADIUS};
+  border-radius: ${RADIUS}
 `;
 
 /* ── Lightbox ── */
@@ -3121,6 +3132,9 @@ function App() {
             return (
               <div {...postReactProps}>
                 {post.content && <PostContent>{renderText(post.og_preview ? post.content.replace(/https?:\/\/[^\s]+/g, "").trim() : post.content)}</PostContent>}
+                {post.mini_game && (
+                  <GameFrame srcDoc={post.mini_game} sandbox="allow-scripts allow-same-origin" title="Mini game" />
+                )}
                 {hasMedia && (
                   <PostMediaContainer $count={post.media.length} style={{ ...(belowMedia ? { marginBottom: SMALL } : {}) }}>
                     {post.media.map((m, i) => {
@@ -3246,7 +3260,7 @@ function App() {
                 {post.comments.map((c) => (
                   <CommentRowWithReaction key={c.id} postId={post.id} commentId={c.id} onReact={handleCommentReact}
                     renderContent={(commentReactProps) => (
-                      <CommentRow {...commentReactProps}>
+                      <><CommentRow {...commentReactProps}>
                         <CommentAvatar style={{ backgroundImage: `url(${c.author_picture})`, '--tilt': randomTilt() }} />
                         <CommentBody>
                           <CommentAuthor>{c.author_name}</CommentAuthor>
@@ -3307,6 +3321,10 @@ function App() {
                           </PostMenuWrapper>
                         )}
                       </CommentRow>
+                      {c.mini_game && (
+                        <GameFrame srcDoc={c.mini_game} sandbox="allow-scripts allow-same-origin" title="Mini game" style={{ marginTop: 8 }} />
+                      )}
+                      </>
                     )}
                   />
                 ))}

@@ -314,7 +314,7 @@ app.get("/api/users/:id/profile", (req, res) => {
   const offset = parseInt(req.query.offset) || 0;
 
   const posts = db.prepare(
-    `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.place_maps_url, p.og_preview,
+    `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.place_maps_url, p.og_preview, p.mini_game,
       COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
     FROM posts p
     JOIN users u ON p.user_id = u.id
@@ -325,7 +325,7 @@ app.get("/api/users/:id/profile", (req, res) => {
 
   const getMedia = db.prepare("SELECT filename, media_type, source FROM post_media WHERE post_id = ? ORDER BY id");
   const getComments = db.prepare(
-    `SELECT c.id, c.content, c.created_at, c.user_id,
+    `SELECT c.id, c.content, c.created_at, c.user_id, c.mini_game,
       COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
     FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ? ORDER BY c.created_at ASC`
   );
@@ -507,6 +507,7 @@ try { db.exec("ALTER TABLE posts ADD COLUMN place_lng REAL"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN place_address TEXT"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN place_maps_url TEXT"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN og_preview TEXT"); } catch {}
+try { db.exec("ALTER TABLE posts ADD COLUMN mini_game TEXT"); } catch {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS sol_prs (
@@ -545,6 +546,7 @@ db.exec(`
     FOREIGN KEY (user_id) REFERENCES users(id)
   )
 `);
+try { db.exec("ALTER TABLE comments ADD COLUMN mini_game TEXT"); } catch {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS reactions (
@@ -691,6 +693,18 @@ const CLASSIFY_TOOLS = [
         message: { type: "string", description: "A brief comment acknowledging what the user asked for and letting them know you're on it and will comment here when it's ready. Reference the specific request. All lowercase, no emojis." }
       },
       required: ["description", "message"]
+    }
+  },
+  {
+    name: "post_mini_game",
+    description: "Create and post a fun interactive mini game for everyone to play. Use this when someone asks for a game, challenge, puzzle, or something playable/interactive.",
+    input_schema: {
+      type: "object",
+      properties: {
+        game_description: { type: "string", description: "Detailed description of what mini game to create, including theme, mechanics, and any specific requests" },
+        message: { type: "string", description: "A brief comment acknowledging the game request and letting them know you're creating it. All lowercase, no emojis." }
+      },
+      required: ["game_description", "message"]
     }
   }
 ];
@@ -863,6 +877,93 @@ Steps: 1) Read the file(s) you need to change. 2) Use edit_file for targeted rep
   }
 }
 
+async function handleSolMiniGame(gameDescription, originalPostId) {
+  try {
+    console.log("[Sol] Generating mini game with Opus...");
+    let response;
+    for (let retry = 0; retry < 3; retry++) {
+      try {
+        response = await anthropic.messages.create({
+          model: "claude-opus-4-7",
+          max_tokens: 16384,
+          messages: [{
+            role: "user",
+            content: `Create a mini game as a single self-contained HTML file. The game runs inside a sandboxed iframe (sandbox="allow-scripts allow-same-origin") embedded in a social feed post card. It does NOT have access to the parent page. Do not use localStorage or sessionStorage — keep all state in JS variables.
+
+Requirements:
+- Single HTML file with ALL CSS and JS inline (no external dependencies, no CDNs)
+- The game fills a square container — use 100vw × 100vh and assume the viewport is square
+- Must work on BOTH mobile (touch) and desktop (mouse/keyboard):
+  - Touch: tap, swipe, drag. Buttons and tap targets minimum 44px
+  - Mouse: click, mousemove where applicable
+  - Keyboard: arrow keys / WASD / spacebar as appropriate for the game type
+  - Always bind BOTH touch and mouse events (touchstart+mousedown, touchmove+mousemove, touchend+mouseup)
+  - No hover-dependent mechanics
+- Simple, fun, and immediately playable — no instructions screen, just start playing
+- Include score tracking visible in the game
+- Default to a pixel art visual style (blocky sprites, limited color palette, retro feel) unless the user's description specifies a different style
+- Use canvas for rendering. Size the canvas to fill the viewport and handle resize events
+- Keep it lightweight and performant
+- Test all variable references — do not use undefined variables
+- Add a <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> tag
+- Prevent default on touch events used for game controls to avoid scrolling/zooming the iframe
+- Use requestAnimationFrame for the game loop
+
+Game to create: ${gameDescription}
+
+Return ONLY the raw HTML code. No markdown fences, no explanation, no commentary — just the HTML starting with <!DOCTYPE html> or <html>.`
+          }],
+        });
+        break;
+      } catch (e) {
+        if (e.status === 429 && retry < 2) {
+          const wait = (retry + 1) * 60;
+          console.log(`[Sol] Rate limited, waiting ${wait}s...`);
+          await new Promise(r => setTimeout(r, wait * 1000));
+        } else throw e;
+      }
+    }
+
+    let gameHtml = response.content.find(b => b.type === "text")?.text?.trim();
+    if (!gameHtml) return null;
+
+    // Strip markdown fences if present
+    if (gameHtml.startsWith("```")) {
+      gameHtml = gameHtml.replace(/^```(?:html)?\n?/, "").replace(/\n?```$/, "");
+    }
+
+    // Post the game as a comment in the same thread
+    const doneMessages = [
+      "here you go, have fun!",
+      "game's ready, give it a try!",
+      "there you go, enjoy!",
+      "done! let me know what you think",
+      "all yours, have at it!",
+      "just dropped it above, enjoy!",
+      "ready to play, good luck!",
+    ];
+    const doneMsg = doneMessages[Math.floor(Math.random() * doneMessages.length)];
+    const result = db.prepare(
+      "INSERT INTO comments (post_id, user_id, content, mini_game) VALUES (?, ?, ?, ?)"
+    ).run(originalPostId, SOL_USER_ID, doneMsg, gameHtml);
+
+    console.log("[Sol] Mini game comment created:", result.lastInsertRowid);
+
+    // Notify the post author and followers
+    const post = db.prepare("SELECT user_id FROM posts WHERE id = ?").get(originalPostId);
+    if (post) {
+      notifyUser(post.user_id, "feed-update");
+      const postFollowers = db.prepare("SELECT follower_id FROM follows WHERE following_id = ? AND status = 'approved'").all(post.user_id);
+      for (const f of postFollowers) notifyUser(f.follower_id, "feed-update");
+    }
+
+    return result.lastInsertRowid;
+  } catch (e) {
+    console.warn("[Sol] Mini game generation error:", e);
+    return null;
+  }
+}
+
 async function handleSolMention(postId, triggerText = null) {
   if (!anthropic) return;
 
@@ -925,8 +1026,9 @@ async function handleSolMention(postId, triggerText = null) {
 Respond to the most recent message directed at you (above). The post and comment thread are context, but focus on what was just said to you.
 
 Choose one action:
-- post_comment: Write a brief, natural comment. Be friendly and conversational. 1-2 sentences. No emojis. Always all lowercase. Use this for casual messages, greetings, questions, or anything that isn't explicitly asking for a code change.
-- make_code_change: ONLY use this if the message directed at you is explicitly asking you to change, add, fix, or build something in the app's code. Do not use this for casual conversation even if the surrounding thread mentions code.${!process.env.GITHUB_TOKEN ? " (Currently unavailable — no GitHub token configured)" : ""}`;
+- post_comment: Write a brief, natural comment. Be friendly and conversational. 1-2 sentences. No emojis. Always all lowercase. Use this for casual messages, greetings, questions, or anything that isn't explicitly asking for a code change or a game.
+- make_code_change: ONLY use this if the message directed at you is explicitly asking you to change, add, fix, or build something in the app's code. Do not use this for casual conversation even if the surrounding thread mentions code.${!process.env.GITHUB_TOKEN ? " (Currently unavailable — no GitHub token configured)" : ""}
+- post_mini_game: Use this when someone asks you to create a game, challenge, puzzle, or something interactive/playable. You'll create a fun mini game that gets posted to the feed for everyone to play.`;
 
   content.push({ type: "text", text: textContext });
 
@@ -979,6 +1081,13 @@ Choose one action:
         solComment(isExisting ? `updated the pr — ${prUrl}` : `i opened a pr for that — ${prUrl}`);
       } else {
         solComment("i tried but couldn't make that change, sorry");
+      }
+    } else if (toolBlock && toolBlock.name === "post_mini_game") {
+      updatePlaceholder(toolBlock.input.message);
+
+      const gamePostId = await handleSolMiniGame(toolBlock.input.game_description, postId);
+      if (!gamePostId) {
+        solComment("i tried to make a game but something went wrong, sorry");
       }
     } else if (toolBlock && toolBlock.name === "post_comment") {
       updatePlaceholder(toolBlock.input.comment);
@@ -1102,7 +1211,7 @@ app.get("/api/feed", (req, res) => {
 
   const posts = db
     .prepare(
-      `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.place_maps_url, p.og_preview,
+      `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.place_maps_url, p.og_preview, p.mini_game,
         COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
       FROM posts p
       JOIN users u ON p.user_id = u.id
@@ -1118,7 +1227,7 @@ app.get("/api/feed", (req, res) => {
     "SELECT filename, media_type, source FROM post_media WHERE post_id = ? ORDER BY id"
   );
   const getComments = db.prepare(
-    `SELECT c.id, c.content, c.created_at, c.user_id,
+    `SELECT c.id, c.content, c.created_at, c.user_id, c.mini_game,
       COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
     FROM comments c
     JOIN users u ON c.user_id = u.id
