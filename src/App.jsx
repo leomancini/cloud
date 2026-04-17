@@ -765,6 +765,242 @@ const GameFrameInner = styled.iframe`
   display: block;
 `;
 
+// ─── Game of Life ─────────────────────────────────────────────────────────────
+
+const GOL_COLS = 10;
+const GOL_ROWS = 10;
+const GOL_NEON  = "#FFE600";   // R46 LCD neon yellow
+const GOL_CREAM = "#F0ECD8";   // R46 beige/cream
+
+const createEmptyGrid = () =>
+  Array.from({ length: GOL_ROWS }, () => Array(GOL_COLS).fill(0));
+
+function golNextGen(grid) {
+  return grid.map((row, r) =>
+    row.map((cell, c) => {
+      let neighbors = 0;
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr >= 0 && nr < GOL_ROWS && nc >= 0 && nc < GOL_COLS) {
+            neighbors += grid[nr][nc];
+          }
+        }
+      }
+      if (cell === 1) return neighbors === 2 || neighbors === 3 ? 1 : 0;
+      return neighbors === 3 ? 1 : 0;
+    })
+  );
+}
+
+const GolWrapper = styled.div`
+  font-family: "Courier New", Courier, monospace;
+  background: #1a1a0a;
+  border-radius: ${RADIUS};
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 500px;
+  margin: 0 auto;
+  box-shadow: 0 0 0 2px #333, 0 0 24px rgba(255, 230, 0, 0.08);
+`;
+
+const GolTitle = styled.div`
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: ${GOL_NEON};
+  opacity: 0.65;
+  align-self: flex-start;
+`;
+
+const GolGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(${GOL_COLS}, 1fr);
+  gap: 3px;
+  width: 100%;
+`;
+
+const GolCell = styled.button`
+  aspect-ratio: 1;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  background: ${(p) => (p.$alive ? GOL_NEON : "rgba(240, 236, 216, 0.07)")};
+  box-shadow: ${(p) =>
+    p.$alive
+      ? `0 0 6px 1px rgba(255,230,0,0.55), inset 0 0 4px rgba(255,255,180,0.3)`
+      : `inset 0 0 0 1px rgba(240,236,216,0.12)`};
+  transition: background 0.08s ease, box-shadow 0.08s ease;
+  -webkit-tap-highlight-color: transparent;
+
+  @media (hover: hover) {
+    &:hover {
+      background: ${(p) => (p.$alive ? GOL_NEON : "rgba(255,230,0,0.18)")};
+    }
+  }
+  &:active {
+    transform: scale(0.9);
+  }
+`;
+
+const GolControls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+`;
+
+const GolBtn = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 20px;
+  border-radius: ${RADIUS_SM};
+  border: 1.5px solid ${(p) => (p.$primary ? GOL_NEON : "rgba(240,236,216,0.22)")};
+  background: ${(p) => (p.$primary ? "rgba(255,230,0,0.12)" : "transparent")};
+  color: ${(p) => (p.$primary ? GOL_NEON : GOL_CREAM)};
+  font-family: "Courier New", Courier, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+  opacity: ${(p) => (p.$disabled ? 0.35 : 1)};
+  pointer-events: ${(p) => (p.$disabled ? "none" : "auto")};
+
+  @media (hover: hover) {
+    &:hover {
+      background: ${(p) =>
+        p.$primary ? "rgba(255,230,0,0.22)" : "rgba(240,236,216,0.08)"};
+    }
+  }
+  &:active {
+    opacity: 0.7;
+  }
+`;
+
+const GolGenCounter = styled.div`
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: ${GOL_CREAM};
+  opacity: 0.45;
+`;
+
+// Play icon (triangle SVG inline)
+const PlayIcon = () => (
+  <svg width="11" height="12" viewBox="0 0 11 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M1 1L10 6L1 11V1Z" fill="currentColor" />
+  </svg>
+);
+
+// Pause icon (two vertical bars)
+const PauseIcon = () => (
+  <svg width="11" height="12" viewBox="0 0 11 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="1" y="1" width="3" height="10" rx="1" fill="currentColor" />
+    <rect x="7" y="1" width="3" height="10" rx="1" fill="currentColor" />
+  </svg>
+);
+
+// Reset icon (circular arrow)
+const ResetIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M6.5 1.5A5 5 0 1 0 10.95 4.5"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      fill="none"
+    />
+    <path d="M11 1.5L11 4.5L8 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+  </svg>
+);
+
+function GameOfLife() {
+  const [grid, setGrid] = useState(createEmptyGrid);
+  const [running, setRunning] = useState(false);
+  const [generation, setGeneration] = useState(0);
+  const intervalRef = useRef(null);
+  const gridRef = useRef(grid);
+  gridRef.current = grid;
+
+  // Start / stop the ticker
+  useEffect(() => {
+    if (running) {
+      intervalRef.current = setInterval(() => {
+        setGrid((g) => golNextGen(g));
+        setGeneration((n) => n + 1);
+      }, 180);
+    } else {
+      clearInterval(intervalRef.current);
+    }
+    return () => clearInterval(intervalRef.current);
+  }, [running]);
+
+  const toggleCell = (r, c) => {
+    if (running) return; // lock while playing
+    setGrid((g) =>
+      g.map((row, ri) =>
+        row.map((cell, ci) => (ri === r && ci === c ? (cell ? 0 : 1) : cell))
+      )
+    );
+  };
+
+  const handleReset = () => {
+    setRunning(false);
+    setGrid(createEmptyGrid());
+    setGeneration(0);
+  };
+
+  const handlePlayPause = () => setRunning((r) => !r);
+
+  const hasSeed = grid.some((row) => row.some((c) => c === 1));
+
+  return (
+    <GolWrapper>
+      <GolTitle>Conway's Game of Life</GolTitle>
+      <GolGrid>
+        {grid.map((row, r) =>
+          row.map((cell, c) => (
+            <GolCell
+              key={`${r}-${c}`}
+              $alive={cell === 1}
+              onClick={() => toggleCell(r, c)}
+              aria-label={`Cell ${r},${c} ${cell ? "alive" : "dead"}`}
+            />
+          ))
+        )}
+      </GolGrid>
+      <GolControls>
+        <GolBtn
+          $primary
+          $disabled={!hasSeed}
+          onClick={handlePlayPause}
+          aria-label={running ? "Pause" : "Play"}
+        >
+          {running ? <PauseIcon /> : <PlayIcon />}
+          {running ? "Pause" : "Play"}
+        </GolBtn>
+        <GolBtn onClick={handleReset} aria-label="Reset">
+          <ResetIcon />
+          Reset
+        </GolBtn>
+      </GolControls>
+      {generation > 0 && (
+        <GolGenCounter>GEN {String(generation).padStart(4, "0")}</GolGenCounter>
+      )}
+    </GolWrapper>
+  );
+}
+
+// ─── End Game of Life ─────────────────────────────────────────────────────────
+
 const shimmer = keyframes`
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
@@ -3544,6 +3780,7 @@ function App() {
           </ProfilePage>
         ) : tab === "feed" ? (
           <>
+            <GameOfLife />
             <ComposeBox>
               <ComposeWrapper>
                 <ComposeHighlight ref={composeHighlightRef}>{renderHighlight(compose)}</ComposeHighlight>
