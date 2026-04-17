@@ -1036,14 +1036,16 @@ async function handleSolMention(postId, triggerText = null) {
   if (triggerText) {
     textContext += `The message you are responding to: "${triggerText}"\n\n`;
   }
+  const threadHasGame = !!db.prepare("SELECT 1 FROM comments WHERE post_id = ? AND mini_game IS NOT NULL LIMIT 1").get(postId);
+
   textContext += `You are Sol, an AI participant in this social feed called Cloud. Cloud is also the name of the app's codebase. You are powered by Claude Sonnet 4.6 (Anthropic). When making code changes, you also use Claude Sonnet 4.6.
 
 Respond to the most recent message directed at you (above). The post and comment thread are context, but focus on what was just said to you.
 
-Choose one action:
+${threadHasGame ? "IMPORTANT: This thread already contains a mini game you created. If the user is asking for changes, updates, tweaks, or modifications (e.g. \"make it simpler\", \"change the colors\", \"add a feature\", \"update it\"), use post_mini_game to update the game — NOT make_code_change. Only use make_code_change if they are explicitly asking about the Cloud app's source code, not the game.\n\n" : ""}Choose one action:
 - post_comment: Write a brief, natural comment. Be friendly and conversational. 1-2 sentences. No emojis. Always all lowercase. Use this for casual messages, greetings, questions, or anything that isn't explicitly asking for a code change or a game.
-- make_code_change: ONLY use this if the message directed at you is explicitly asking you to change, add, fix, or build something in the app's code. Do not use this for casual conversation even if the surrounding thread mentions code.${!process.env.GITHUB_TOKEN ? " (Currently unavailable — no GitHub token configured)" : ""}
-- post_mini_game: Use this when someone asks you to create a game, challenge, puzzle, or something interactive/playable. You'll create a fun mini game that gets posted to the feed for everyone to play.`;
+- make_code_change: ONLY use this if the message directed at you is explicitly asking you to change, add, fix, or build something in the app's code.${threadHasGame ? " Do NOT use this for game updates — use post_mini_game instead." : ""} Do not use this for casual conversation even if the surrounding thread mentions code.${!process.env.GITHUB_TOKEN ? " (Currently unavailable — no GitHub token configured)" : ""}
+- post_mini_game: Use this when someone asks you to create a game, challenge, puzzle, or something interactive/playable.${threadHasGame ? " Also use this when updating or modifying the existing game in this thread." : ""}`;
 
   content.push({ type: "text", text: textContext });
 
@@ -1102,14 +1104,14 @@ Choose one action:
 
       // Check for existing game in the thread
       const existingGame = db.prepare(
-        "SELECT id, mini_game FROM comments WHERE post_id = ? AND mini_game IS NOT NULL ORDER BY created_at DESC LIMIT 1"
+        "SELECT id, mini_game, created_at FROM comments WHERE post_id = ? AND mini_game IS NOT NULL ORDER BY created_at DESC LIMIT 1"
       ).get(postId);
 
       const existingGameHtml = existingGame?.mini_game || null;
 
       // Replace old game with placeholder
       if (existingGame) {
-        db.prepare("UPDATE comments SET mini_game = NULL, content = 'previous version' WHERE id = ?").run(existingGame.id);
+        db.prepare("UPDATE comments SET mini_game = NULL, content = 'generated a game (old version)' WHERE id = ?").run(existingGame.id);
         notify();
       }
 
