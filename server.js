@@ -979,8 +979,16 @@ Return ONLY the raw HTML code. No markdown fences, no explanation, no commentary
   }
 }
 
+const solPostLocks = new Map();
 async function handleSolMention(postId, triggerText = null) {
   if (!anthropic) return;
+
+  // Serialize Sol's responses per thread
+  const prev = solPostLocks.get(postId) || Promise.resolve();
+  let resolve;
+  const lock = new Promise(r => { resolve = r; });
+  solPostLocks.set(postId, lock);
+  await prev;
 
   const post = db.prepare("SELECT p.*, COALESCE(u.display_name, u.name) as author_name FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?").get(postId);
   if (!post) return;
@@ -1129,6 +1137,9 @@ ${threadHasGame ? "IMPORTANT: This thread already contains a mini game you creat
     console.warn("Sol response error:", e);
     db.prepare("UPDATE comments SET content = ? WHERE id = ?").run("sorry, i couldn't respond right now.", placeholderId);
     notifyUser(post.user_id, "feed-update");
+  } finally {
+    resolve();
+    if (solPostLocks.get(postId) === lock) solPostLocks.delete(postId);
   }
 }
 
