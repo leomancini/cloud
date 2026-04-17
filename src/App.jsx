@@ -3296,8 +3296,8 @@ function App() {
                             </CommentInputRow>
                           ) : (
                             <>
-                              <CommentText style={c.content === "thinking..." ? { color: "#999" } : undefined}>
-                                {c.content === "thinking..." ? c.content : renderText(c.content)}
+                              <CommentText style={c.content === "thinking..." || c.content === "generated a game (old version)" ? { color: "#999" } : undefined}>
+                                {c.content === "thinking..." || c.content === "generated a game (old version)" ? c.content : renderText(c.content)}
                               </CommentText>
                               {c.content !== "thinking..." && <>{" "}<CommentTime>{timeAgo(c.created_at)}</CommentTime></>}
                               {c.comment_reactions && c.comment_reactions.length > 0 && (
