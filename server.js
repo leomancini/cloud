@@ -877,18 +877,11 @@ Steps: 1) Read the file(s) you need to change. 2) Use edit_file for targeted rep
   }
 }
 
-async function handleSolMiniGame(gameDescription, originalPostId) {
+async function handleSolMiniGame(gameDescription, originalPostId, existingGameHtml = null) {
   try {
-    console.log("[Sol] Generating mini game with Opus...");
-    let response;
-    for (let retry = 0; retry < 3; retry++) {
-      try {
-        response = await anthropic.messages.create({
-          model: "claude-opus-4-7",
-          max_tokens: 16384,
-          messages: [{
-            role: "user",
-            content: `Create a mini game as a single self-contained HTML file. The game runs inside a sandboxed iframe (sandbox="allow-scripts allow-same-origin") embedded in a social feed post card. It does NOT have access to the parent page. Do not use localStorage or sessionStorage — keep all state in JS variables.
+    console.log("[Sol] Generating mini game with Opus...", existingGameHtml ? "(updating existing)" : "(new)");
+
+    const baseRequirements = `The game runs inside a sandboxed iframe (sandbox="allow-scripts allow-same-origin") embedded in a social feed post card. It does NOT have access to the parent page. Do not use localStorage or sessionStorage — keep all state in JS variables.
 
 Requirements:
 - Single HTML file with ALL CSS and JS inline (no external dependencies, no CDNs)
@@ -907,12 +900,34 @@ Requirements:
 - Test all variable references — do not use undefined variables
 - Add a <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> tag
 - Prevent default on touch events used for game controls to avoid scrolling/zooming the iframe
-- Use requestAnimationFrame for the game loop
+- Use requestAnimationFrame for the game loop`;
+
+    const prompt = existingGameHtml
+      ? `Here is an existing mini game that needs to be updated. Apply the requested changes while keeping everything else intact.
+
+${baseRequirements}
+
+Existing game HTML:
+${existingGameHtml}
+
+Requested changes: ${gameDescription}
+
+Return ONLY the complete updated HTML code. No markdown fences, no explanation, no commentary — just the HTML starting with <!DOCTYPE html> or <html>.`
+      : `Create a mini game as a single self-contained HTML file.
+
+${baseRequirements}
 
 Game to create: ${gameDescription}
 
-Return ONLY the raw HTML code. No markdown fences, no explanation, no commentary — just the HTML starting with <!DOCTYPE html> or <html>.`
-          }],
+Return ONLY the raw HTML code. No markdown fences, no explanation, no commentary — just the HTML starting with <!DOCTYPE html> or <html>.`;
+
+    let response;
+    for (let retry = 0; retry < 3; retry++) {
+      try {
+        response = await anthropic.messages.create({
+          model: "claude-opus-4-7",
+          max_tokens: 16384,
+          messages: [{ role: "user", content: prompt }],
         });
         break;
       } catch (e) {
@@ -1085,7 +1100,20 @@ Choose one action:
     } else if (toolBlock && toolBlock.name === "post_mini_game") {
       updatePlaceholder(toolBlock.input.message);
 
-      const gamePostId = await handleSolMiniGame(toolBlock.input.game_description, postId);
+      // Check for existing game in the thread
+      const existingGame = db.prepare(
+        "SELECT id, mini_game FROM comments WHERE post_id = ? AND mini_game IS NOT NULL ORDER BY created_at DESC LIMIT 1"
+      ).get(postId);
+
+      const existingGameHtml = existingGame?.mini_game || null;
+
+      // Replace old game with placeholder
+      if (existingGame) {
+        db.prepare("UPDATE comments SET mini_game = NULL, content = 'previous version' WHERE id = ?").run(existingGame.id);
+        notify();
+      }
+
+      const gamePostId = await handleSolMiniGame(toolBlock.input.game_description, postId, existingGameHtml);
       if (!gamePostId) {
         solComment("i tried to make a game but something went wrong, sorry");
       }
