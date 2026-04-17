@@ -740,15 +740,29 @@ const PostVideo = styled.video`
   ${innerBorder}
 `;
 
-const GameFrame = styled.iframe`
+const GameFrameWrap = styled.div`
+  position: relative;
   width: 100%;
   aspect-ratio: 1;
-  border: none;
   border-radius: ${RADIUS};
-  display: block;
-  background: ${(p) => p.theme.bgControl};
+  overflow: hidden;
   margin-top: 10px;
-  ${innerBorder}
+  background: ${(p) => p.theme.bgControl};
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.1);
+    pointer-events: none;
+  }
+`;
+
+const GameFrameInner = styled.iframe`
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
 `;
 
 const shimmer = keyframes`
@@ -2504,15 +2518,24 @@ function App() {
 
   useEffect(() => {
     if (!user) return;
-    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${proto}//${window.location.host}/ws?userId=${user.id}`);
-    ws.onmessage = (e) => {
-      const msg = JSON.parse(e.data);
-      if (msg.type === "follow-request") loadFollowRequests();
-      if (msg.type === "follow-approved" || msg.type === "follow-rejected") { loadUsers(); loadFollowers(); }
-      if (msg.type === "feed-update") loadFeed();
+    let ws, reconnectTimer, alive = true;
+    const connect = () => {
+      if (!alive) return;
+      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+      ws = new WebSocket(`${proto}//${window.location.host}/ws?userId=${user.id}`);
+      ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        if (msg.type === "follow-request") loadFollowRequests();
+        if (msg.type === "follow-approved" || msg.type === "follow-rejected") { loadUsers(); loadFollowers(); }
+        if (msg.type === "feed-update") loadFeed();
+      };
+      ws.onclose = () => { if (alive) reconnectTimer = setTimeout(connect, 2000); };
+      ws.onerror = () => ws.close();
     };
-    return () => ws.close();
+    connect();
+    const onVisibility = () => { if (document.visibilityState === "visible") loadFeed(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => { alive = false; clearTimeout(reconnectTimer); ws?.close(); document.removeEventListener("visibilitychange", onVisibility); };
   }, [user]);
 
   const loadFeed = () => {
@@ -3133,7 +3156,7 @@ function App() {
               <div {...postReactProps}>
                 {post.content && <PostContent>{renderText(post.og_preview ? post.content.replace(/https?:\/\/[^\s]+/g, "").trim() : post.content)}</PostContent>}
                 {post.mini_game && (
-                  <GameFrame srcDoc={post.mini_game} sandbox="allow-scripts allow-same-origin" title="Mini game" />
+                  <GameFrameWrap><GameFrameInner srcDoc={post.mini_game} sandbox="allow-scripts allow-same-origin" title="Mini game" /></GameFrameWrap>
                 )}
                 {hasMedia && (
                   <PostMediaContainer $count={post.media.length} style={{ ...(belowMedia ? { marginBottom: SMALL } : {}) }}>
@@ -3322,7 +3345,7 @@ function App() {
                         )}
                       </CommentRow>
                       {c.mini_game && (
-                        <GameFrame srcDoc={c.mini_game} sandbox="allow-scripts allow-same-origin" title="Mini game" style={{ marginTop: 8 }} />
+                        <GameFrameWrap style={{ marginTop: 8 }}><GameFrameInner srcDoc={c.mini_game} sandbox="allow-scripts allow-same-origin" title="Mini game" /></GameFrameWrap>
                       )}
                       </>
                     )}
