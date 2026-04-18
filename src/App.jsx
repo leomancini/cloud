@@ -2334,6 +2334,8 @@ function App() {
   const [listsSaving, setListsSaving] = useState(null);
   const [listsSaved, setListsSaved] = useState({});
   const [listsSavedLoaded, setListsSavedLoaded] = useState(false);
+  const [newListName, setNewListName] = useState("");
+  const [creatingList, setCreatingList] = useState(false);
   const [followers, setFollowers] = useState([]);
   const [followRequests, setFollowRequests] = useState([]);
   const initialProfileId = useRef(null);
@@ -2722,6 +2724,28 @@ function App() {
   };
 
   const pendingConnectPostId = useRef(null);
+
+  const handleCreateList = async (postId, placeId) => {
+    if (!newListName.trim()) return;
+    setCreatingList(true);
+    try {
+      const res = await fetch("/api/lists/create-page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: newListName.trim() }) });
+      if (res.ok) {
+        const page = await res.json();
+        const pageId = page._id || page.id;
+        setListsPages(prev => [...prev, { ...page, id: pageId, type: "locations" }]);
+        setNewListName("");
+        // Auto-save the place to the new list
+        const saveRes = await fetch(`/api/lists/save-place/${pageId}/${placeId}`, { method: "POST" });
+        if (saveRes.ok) {
+          const data = await saveRes.json();
+          setListsSaved(prev => ({ ...prev, [postId]: { ...(prev[postId] || {}), [pageId]: { pageTitle: newListName.trim(), itemId: data.item?.id } } }));
+          setSaveToListPostId(null);
+        }
+      }
+    } catch {}
+    setCreatingList(false);
+  };
 
   const connectLists = (postId) => {
     if (postId) pendingConnectPostId.current = postId;
@@ -3425,10 +3449,8 @@ function App() {
                     <SaveToListDropdown onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                       {listsLoading ? (
                         <SaveToListItem disabled><Spinner /> Loading lists...</SaveToListItem>
-                      ) : listsPages.filter(p => p.type === "locations").length === 0 ? (
-                        <SaveToListItem as="a" href="https://lists.fcc.lol" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>No location lists yet — create one</SaveToListItem>
-                      ) : (
-                        listsPages.filter(p => p.type === "locations").sort((a, b) => {
+                      ) : (<>
+                        {listsPages.filter(p => p.type === "locations").sort((a, b) => {
                           const saved = listsSaved[post.id] || {};
                           const aSaved = saved[a.id || a._id] ? 1 : 0;
                           const bSaved = saved[b.id || b._id] ? 1 : 0;
@@ -3447,8 +3469,20 @@ function App() {
                             <span style={{ flex: 1 }}>{page.title}</span>
                             {listsSaving === (page.id || page._id) ? <Spinner /> : listsSaved[post.id]?.[page.id || page._id] ? <i className="fa-solid fa-check" /> : null}
                           </SaveToListItem>
-                        ))
-                      )}
+                        ))}
+                        <SaveToListItem as="div" style={{ cursor: "default", gap: 0 }}>
+                          <i className="fa-solid fa-plus" style={{ marginRight: 8, flexShrink: 0 }} />
+                          <input
+                            value={newListName}
+                            onChange={(e) => setNewListName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleCreateList(post.id, post.place_id); }}
+                            placeholder="New list"
+                            disabled={creatingList}
+                            style={{ flex: 1, border: "none", background: "none", outline: "none", font: "inherit", fontWeight: "inherit", color: "inherit", padding: 0, minWidth: 0 }}
+                          />
+                          {creatingList && <Spinner />}
+                        </SaveToListItem>
+                      </>)}
                     </SaveToListDropdown>
                   )}
                 </>)}
