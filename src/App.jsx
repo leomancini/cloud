@@ -1554,6 +1554,8 @@ const SaveToListItem = styled.div`
   align-items: center;
   gap: 8px;
   padding: 12px;
+  min-height: 44px;
+  box-sizing: border-box;
   cursor: pointer;
   font-size: 16px;
   font-weight: 600;
@@ -3368,26 +3370,28 @@ function App() {
                   </LinkPreviewCard>
                 )}
                 {hasMap && (<>
-                  <PostLocation as="a" href={post.place_maps_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit", cursor: "pointer", marginTop: aboveMap ? 0 : 10 }}>
-                    <PostMapWrapper className="map-wrapper" style={aboveMap ? { borderRadius: `${SMALL} ${SMALL} 0 0` } : undefined}>
-                      <PostMap src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`} alt={post.place_name} />
-                      {post.place_id && (
-                        !listsConnected && saveToListPostId === post.id ? (
-                          <SaveToListButton onClick={(e) => { e.preventDefault(); e.stopPropagation(); connectLists(); }}>
-                            <img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 18, height: 18, borderRadius: 4 }} /> Connect Lists App account
-                          </SaveToListButton>
-                        ) : (
-                          <SaveToListButton onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (listsSavedLoaded) handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]} $loading={!listsSavedLoaded}>
-                            {!listsSavedLoaded ? <Spinner size="14px" /> : <><i className={listsSaved[post.id] ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"} />{(() => { const s = listsSaved[post.id]; if (!s) return "Save"; const names = Object.values(s).map(v => v.pageTitle); return names.length === 1 ? `Saved to ${names[0]}` : `Saved to ${names.length} lists`; })()}</>}
-                          </SaveToListButton>
-                        )
-                      )}
-                    </PostMapWrapper>
-                    <PostPlaceName className="place-name">
-                      <span>{post.place_name}</span>
-                      {post.place_address && <PostPlaceAddress>{shortAddress(post.place_address)}</PostPlaceAddress>}
-                    </PostPlaceName>
-                  </PostLocation>
+                  <div style={{ position: "relative", marginTop: aboveMap ? 0 : 10 }}>
+                    <PostLocation as="a" href={post.place_maps_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}>
+                      <PostMapWrapper className="map-wrapper" style={aboveMap ? { borderRadius: `${SMALL} ${SMALL} 0 0` } : undefined}>
+                        <PostMap src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`} alt={post.place_name} />
+                      </PostMapWrapper>
+                      <PostPlaceName className="place-name">
+                        <span>{post.place_name}</span>
+                        {post.place_address && <PostPlaceAddress>{shortAddress(post.place_address)}</PostPlaceAddress>}
+                      </PostPlaceName>
+                    </PostLocation>
+                    {post.place_id && (
+                      !listsConnected && saveToListPostId === post.id ? (
+                        <SaveToListButton onClick={() => connectLists()}>
+                          <img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 18, height: 18, borderRadius: 4 }} /> Connect Lists App account
+                        </SaveToListButton>
+                      ) : (
+                        <SaveToListButton onClick={() => { if (listsSavedLoaded) handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]} $loading={!listsSavedLoaded}>
+                          {!listsSavedLoaded ? <Spinner size="14px" /> : <><i className={listsSaved[post.id] ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"} />{(() => { const s = listsSaved[post.id]; if (!s) return "Save"; const names = Object.values(s).map(v => v.pageTitle); return names.length === 1 ? `Saved to ${names[0]}` : `Saved to ${names.length} lists`; })()}</>}
+                        </SaveToListButton>
+                      )
+                    )}
+                  </div>
                   {post.place_id && saveToListPostId === post.id && listsConnected && (
                     <SaveToListDropdown onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                       {listsLoading ? (
