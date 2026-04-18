@@ -3732,6 +3732,10 @@ function App() {
                 )}
               </PushSection>
             )}
+            <LogoutButton onClick={listsConnected ? () => { fetch("/api/lists/connect", { method: "DELETE" }).then(() => { setListsConnected(false); setListsSaved({}); savedPlacesRef.current = null; }); } : connectLists} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 18, height: 18, borderRadius: 4 }} />
+              {listsConnected ? "Disconnect Lists App" : "Connect Lists App"}
+            </LogoutButton>
             <LogoutButton onClick={handleLogout} disabled={isBusy("logout")}>{isBusy("logout") ? <Spinner /> : "Log out"}</LogoutButton>
           </ProfilePage>
         ) : tab === "feed" ? (
