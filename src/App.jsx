@@ -2760,6 +2760,7 @@ function App() {
         if (saveRes.ok) {
           const data = await saveRes.json();
           setListsSaved(prev => ({ ...prev, [postId]: { ...(prev[postId] || {}), [pageId]: { pageTitle: title, itemId: data.item?.id } } }));
+          setTimeout(() => setSaveToListPostId(null), 600);
         }
         setListsSaving(null);
       }
