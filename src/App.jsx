@@ -2316,6 +2316,7 @@ function App() {
   const [listsLoading, setListsLoading] = useState(false);
   const [listsSaving, setListsSaving] = useState(null);
   const [listsSaved, setListsSaved] = useState({});
+  const [listsSavedLoaded, setListsSavedLoaded] = useState(false);
   const [followers, setFollowers] = useState([]);
   const [followRequests, setFollowRequests] = useState([]);
   const initialProfileId = useRef(null);
@@ -2608,7 +2609,10 @@ function App() {
       if (d.connected) {
         fetch("/api/lists/saved-places").then(r => r.ok ? r.json() : null).then(data => {
           if (data) setSavedPlacesData(data);
-        }).catch(() => {});
+          setListsSavedLoaded(true);
+        }).catch(() => setListsSavedLoaded(true));
+      } else {
+        setListsSavedLoaded(true);
       }
     }).catch(() => {});
   }, [user]);
@@ -3370,9 +3374,8 @@ function App() {
                             <img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 18, height: 18, borderRadius: 4 }} /> Connect Lists App account
                           </SaveToListButton>
                         ) : (
-                          <SaveToListButton onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]}>
-                            <i className={listsSaved[post.id] ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"} />
-                            {(() => { const s = listsSaved[post.id]; if (!s) return "Save"; const names = Object.values(s).map(v => v.pageTitle); return names.length === 1 ? `Saved to ${names[0]}` : `Saved to ${names.length} lists`; })()}
+                          <SaveToListButton onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (listsSavedLoaded) handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]}>
+                            {!listsSavedLoaded ? <Spinner /> : <><i className={listsSaved[post.id] ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"} />{(() => { const s = listsSaved[post.id]; if (!s) return "Save"; const names = Object.values(s).map(v => v.pageTitle); return names.length === 1 ? `Saved to ${names[0]}` : `Saved to ${names.length} lists`; })()}</>}
                           </SaveToListButton>
                         )
                       )}
@@ -3730,7 +3733,7 @@ function App() {
               </PushSection>
             )}
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
-              <LogoutButton onClick={listsConnected ? () => { fetch("/api/lists/connect", { method: "DELETE" }).then(() => { setListsConnected(false); setListsSaved({}); setSavedPlacesData(null); }); } : connectLists} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <LogoutButton onClick={listsConnected ? () => { fetch("/api/lists/connect", { method: "DELETE" }).then(() => { setListsConnected(false); setListsSaved({}); setSavedPlacesData(null); setListsSavedLoaded(true); }); } : connectLists} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 <img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 18, height: 18, borderRadius: 4 }} />
                 {listsConnected ? "Disconnect Lists App account" : "Connect Lists App account"}
               </LogoutButton>
