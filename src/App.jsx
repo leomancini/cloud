@@ -982,7 +982,8 @@ const PostMenu = styled.div`
   box-shadow: 0 2px 12px ${(p) => p.theme.shadowMd};
   z-index: 10;
   overflow: hidden;
-  min-width: 120px;
+  min-width: 160px;
+  white-space: nowrap;
 `;
 
 const PostMenuItem = styled.button`
@@ -3396,15 +3397,9 @@ function App() {
                       </PostPlaceName>
                     </PostLocation>
                     {post.place_id && (
-                      !listsConnected && saveToListPostId === post.id ? (
-                        <SaveToListButton onClick={() => connectLists()}>
-                          <img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 18, height: 18, borderRadius: 4 }} /> Connect Lists App account
-                        </SaveToListButton>
-                      ) : (
-                        <SaveToListButton onClick={() => { if (listsSavedLoaded) handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]} $loading={!listsSavedLoaded}>
-                          {!listsSavedLoaded ? <Spinner size="14px" /> : <><img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 16, height: 16, borderRadius: 3 }} />{(() => { const s = listsSaved[post.id]; if (!s) return "Save on Lists App"; const names = Object.values(s).map(v => v.pageTitle); return names.length === 1 ? `Saved to ${names[0]}` : `Saved to ${names.length} lists`; })()}</>}
-                        </SaveToListButton>
-                      )
+                      <SaveToListButton onClick={() => { if (!listsConnected) { connectLists(); return; } if (listsSavedLoaded) handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]} $loading={!listsSavedLoaded}>
+                        {!listsSavedLoaded ? <Spinner size="14px" /> : <><img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 16, height: 16, borderRadius: 3 }} />{(() => { const s = listsSaved[post.id]; if (!s) return "Save on Lists App"; const names = Object.values(s).map(v => v.pageTitle); return names.length === 1 ? `Saved to ${names[0]}` : `Saved to ${names.length} lists`; })()}</>}
+                      </SaveToListButton>
                     )}
                   </div>
                   {post.place_id && saveToListPostId === post.id && listsConnected && (
