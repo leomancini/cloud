@@ -2651,7 +2651,14 @@ function App() {
             return fetch("/api/lists/pages");
           })
           .then(r => r.ok ? r.json() : [])
-          .then(data => { setListsPages(data); setListsLoading(false); });
+          .then(data => {
+            setListsPages(data);
+            setListsLoading(false);
+            if (pendingConnectPostId.current) {
+              setSaveToListPostId(pendingConnectPostId.current);
+              pendingConnectPostId.current = null;
+            }
+          });
       }
     };
     window.addEventListener("message", onMessage);
@@ -2705,7 +2712,10 @@ function App() {
     setListsSaving(null);
   };
 
-  const connectLists = () => {
+  const pendingConnectPostId = useRef(null);
+
+  const connectLists = (postId) => {
+    if (postId) pendingConnectPostId.current = postId;
     window.open("https://lists.fcc.lol/connect?app=Cloud", "lists-connect", "width=420,height=500,left=200,top=200");
   };
 
@@ -3397,7 +3407,7 @@ function App() {
                       </PostPlaceName>
                     </PostLocation>
                     {post.place_id && (
-                      <SaveToListButton onClick={() => { if (!listsConnected) { connectLists(); return; } if (listsSavedLoaded) handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]} $loading={!listsSavedLoaded}>
+                      <SaveToListButton onClick={() => { if (!listsConnected) { connectLists(post.id); return; } if (listsSavedLoaded) handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]} $loading={!listsSavedLoaded}>
                         {!listsSavedLoaded ? <Spinner size="14px" /> : <><img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 16, height: 16, borderRadius: 3 }} />{(() => { const s = listsSaved[post.id]; if (!s) return "Save on Lists App"; const names = Object.values(s).map(v => v.pageTitle); return names.length === 1 ? `Saved to ${names[0]}` : `Saved to ${names.length} lists`; })()}</>}
                       </SaveToListButton>
                     )}
