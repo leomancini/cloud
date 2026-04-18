@@ -2751,14 +2751,16 @@ function App() {
         const pageId = page._id || page.id;
         const title = page.title || newListName.trim();
         setListsPages(prev => [{ ...page, id: pageId, title, type: "locations", _new: Date.now() }, ...prev]);
-        if (!pageId) { setNewListName(""); setCreatingList(false); return; }
+        setNewListName("");
+        if (!pageId) { setCreatingList(false); return; }
         // Auto-save the place to the new list
+        setListsSaving(pageId);
         const saveRes = await fetch(`/api/lists/save-place/${pageId}/${placeId}`, { method: "POST" });
         if (saveRes.ok) {
           const data = await saveRes.json();
           setListsSaved(prev => ({ ...prev, [postId]: { ...(prev[postId] || {}), [pageId]: { pageTitle: title, itemId: data.item?.id } } }));
         }
-        setNewListName("");
+        setListsSaving(null);
       }
     } catch {}
     setCreatingList(false);
