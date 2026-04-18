@@ -2717,7 +2717,7 @@ function App() {
             if (Object.keys(next[postId]).length === 0) delete next[postId];
             return next;
           });
-          setSaveToListPostId(null);
+          setTimeout(() => setSaveToListPostId(null), 600);
         }
       } catch {}
       setListsSaving(null);
@@ -2732,7 +2732,7 @@ function App() {
           ...prev,
           [postId]: { ...(prev[postId] || {}), [pageId]: { pageTitle, itemId: data.item?.id } }
         }));
-        setSaveToListPostId(null);
+        setTimeout(() => setSaveToListPostId(null), 600);
       }
     } catch {}
     setListsSaving(null);
