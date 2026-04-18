@@ -1513,7 +1513,7 @@ const SaveToListButton = styled.button`
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 8px 12px 8px 8px;
   border: none;
   border-radius: 10px;
   font-size: 13px;
@@ -1543,6 +1543,7 @@ const SaveToListItem = styled.button`
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
+  min-height: 46px;
   border: none;
   background: none;
   width: 100%;
@@ -2630,12 +2631,12 @@ function App() {
     setListsLoading(false);
   };
 
-  const handleSavePlaceToList = async (pageId, placeId, postId) => {
+  const handleSavePlaceToList = async (pageId, placeId, postId, pageTitle) => {
     setListsSaving(pageId);
     try {
       const res = await fetch(`/api/lists/save-place/${pageId}/${placeId}`, { method: "POST" });
       if (res.ok) {
-        setListsSaved(prev => ({ ...prev, [postId]: pageId }));
+        setListsSaved(prev => ({ ...prev, [postId]: pageTitle }));
         setSaveToListPostId(null);
       }
     } catch {}
@@ -3316,12 +3317,12 @@ function App() {
                       {post.place_id && (
                         !listsConnected && saveToListPostId === post.id ? (
                           <SaveToListButton onClick={(e) => { e.preventDefault(); e.stopPropagation(); connectLists(); }}>
-                            <i className="fa-solid fa-link" /> Connect
+                            <img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 18, height: 18, borderRadius: 4 }} /> Connect Lists App account
                           </SaveToListButton>
                         ) : (
                           <SaveToListButton onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]}>
                             <i className={listsSaved[post.id] ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"} />
-                            {listsSaved[post.id] ? "Saved" : "Save"}
+                            {listsSaved[post.id] ? `Saved to ${listsSaved[post.id]}` : "Save"}
                           </SaveToListButton>
                         )
                       )}
@@ -3339,9 +3340,9 @@ function App() {
                           <SaveToListItem as="a" href="https://lists.fcc.lol" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>No location lists yet — create one</SaveToListItem>
                         ) : (
                           listsPages.filter(p => p.type === "locations").map(page => (
-                            <SaveToListItem key={page.id || page._id} disabled={listsSaving === (page.id || page._id)} onClick={() => handleSavePlaceToList(page.id || page._id, post.place_id, post.id)}>
+                            <SaveToListItem key={page.id || page._id} disabled={listsSaving === (page.id || page._id)} onClick={() => handleSavePlaceToList(page.id || page._id, post.place_id, post.id, page.title)}>
                               <i className="fa-solid fa-location-dot" />
-                              {page.title}
+                              <span style={{ flex: 1 }}>{page.title}</span>
                               {listsSaving === (page.id || page._id) && <Spinner />}
                             </SaveToListItem>
                           ))
