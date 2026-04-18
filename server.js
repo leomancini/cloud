@@ -314,7 +314,7 @@ app.get("/api/users/:id/profile", (req, res) => {
   const offset = parseInt(req.query.offset) || 0;
 
   const posts = db.prepare(
-    `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.place_maps_url, p.og_preview, p.mini_game,
+    `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.place_maps_url, p.place_id, p.og_preview, p.mini_game,
       COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
     FROM posts p
     JOIN users u ON p.user_id = u.id
@@ -508,6 +508,7 @@ try { db.exec("ALTER TABLE posts ADD COLUMN place_address TEXT"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN place_maps_url TEXT"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN og_preview TEXT"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN mini_game TEXT"); } catch {}
+try { db.exec("ALTER TABLE posts ADD COLUMN place_id TEXT"); } catch {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS sol_prs (
@@ -1051,10 +1052,10 @@ async function handleSolMention(postId, triggerText = null) {
 
 Respond to the most recent message directed at you (above). The post and comment thread are context, but focus on what was just said to you.
 
-${threadHasGame ? "IMPORTANT: This thread already contains a mini game you created. If the user is asking for changes, updates, tweaks, or modifications (e.g. \"make it simpler\", \"change the colors\", \"add a feature\", \"update it\"), use post_mini_game to update the game — NOT make_code_change. Only use make_code_change if they are explicitly asking about the Cloud app's source code, not the game.\n\n" : ""}Choose one action:
+${threadHasGame ? "IMPORTANT: This thread already contains a mini game you created. If the user is asking for ANY changes, updates, tweaks, or modifications, you MUST use post_mini_game — NOT make_code_change. Only use make_code_change if they explicitly say they want to change the Cloud app's source code itself.\n\n" : ""}Choose one action:
 - post_comment: Write a brief, natural comment. Be friendly and conversational. 1-2 sentences. No emojis. Always all lowercase. Use this for casual messages, greetings, questions, or anything that isn't explicitly asking for a code change or a game.
-- make_code_change: ONLY use this if the message directed at you is explicitly asking you to change, add, fix, or build something in the app's code.${threadHasGame ? " Do NOT use this for game updates — use post_mini_game instead." : ""} Do not use this for casual conversation even if the surrounding thread mentions code.${!process.env.GITHUB_TOKEN ? " (Currently unavailable — no GitHub token configured)" : ""}
-- post_mini_game: Use this when someone asks you to create a game, challenge, puzzle, or something interactive/playable.${threadHasGame ? " Also use this when updating or modifying the existing game in this thread." : ""}`;
+- make_code_change: ONLY use this if the user explicitly asks to modify the Cloud app's deployed source code (server.js, App.jsx, etc). Words like "build", "make", "create", "add", "change", "update" about a game or interactive thing mean post_mini_game, NOT this.${!process.env.GITHUB_TOKEN ? " (Currently unavailable — no GitHub token configured)" : ""}
+- post_mini_game: Use this whenever the user wants ANY kind of game, toy, interactive thing, challenge, puzzle, simulation, or playable experience. Also use this if they describe something visual/interactive to "build" or "make" — that is a game, not a code change. If in doubt between this and make_code_change, choose this.${threadHasGame ? " This thread already has a game — use this for any follow-up requests about it." : ""}`;
 
   content.push({ type: "text", text: textContext });
 
@@ -1146,7 +1147,7 @@ ${threadHasGame ? "IMPORTANT: This thread already contains a mini game you creat
 
 app.post("/api/posts", upload.array("media", 10), async (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
-  const { content, place_name, place_lat, place_lng, place_address, place_maps_url, og_preview } = req.body;
+  const { content, place_name, place_lat, place_lng, place_address, place_maps_url, place_id, og_preview } = req.body;
   if ((!content || !content.trim()) && (!req.files || req.files.length === 0) && !place_name)
     return res.status(400).json({ error: "Content, media, or location required" });
 
@@ -1163,7 +1164,7 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
 
   const result = db
     .prepare(
-      "INSERT INTO posts (user_id, content, place_name, place_lat, place_lng, place_address, place_maps_url, og_preview) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO posts (user_id, content, place_name, place_lat, place_lng, place_address, place_maps_url, place_id, og_preview) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     .run(
       req.user.id,
@@ -1173,6 +1174,7 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
       place_lng || null,
       place_address || null,
       place_maps_url || null,
+      place_id || null,
       ogPreviewJson
     );
 
@@ -1253,7 +1255,7 @@ app.get("/api/feed", (req, res) => {
 
   const posts = db
     .prepare(
-      `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.place_maps_url, p.og_preview, p.mini_game,
+      `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.place_maps_url, p.place_id, p.og_preview, p.mini_game,
         COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
       FROM posts p
       JOIN users u ON p.user_id = u.id
@@ -1737,6 +1739,7 @@ app.get("/api/places/search", async (req, res) => {
 
     const data = await response.json();
     const places = (data.places || []).map((p) => ({
+      id: p.id || null,
       name: p.displayName?.text,
       address: p.formattedAddress,
       lat: p.location?.latitude,
@@ -1748,6 +1751,42 @@ app.get("/api/places/search", async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+// One-time backfill: look up Google Place IDs for existing posts
+app.post("/api/admin/backfill-place-ids", async (req, res) => {
+  if (!req.user || req.user.email !== "leo@leomancinidesign.com") return res.status(403).json({ error: "Forbidden" });
+  const posts = db.prepare("SELECT id, place_name, place_lat, place_lng FROM posts WHERE place_name IS NOT NULL AND place_id IS NULL").all();
+  let updated = 0;
+  for (const post of posts) {
+    try {
+      const response = await fetch("https://places.googleapis.com/v1/places:searchText", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": process.env.GOOGLE_PLACES_API_KEY,
+          "X-Goog-FieldMask": "places.id",
+        },
+        body: JSON.stringify({
+          textQuery: post.place_name,
+          languageCode: "en",
+          maxResultCount: 1,
+          ...(post.place_lat && post.place_lng ? { locationBias: { circle: { center: { latitude: post.place_lat, longitude: post.place_lng }, radius: 1000 } } } : {}),
+        }),
+      });
+      const data = await response.json();
+      const placeId = data.places?.[0]?.id;
+      if (placeId) {
+        db.prepare("UPDATE posts SET place_id = ? WHERE id = ?").run(placeId, post.id);
+        updated++;
+        console.log(`[Backfill] Post ${post.id}: ${post.place_name} → ${placeId}`);
+      }
+      await new Promise(r => setTimeout(r, 200)); // rate limit
+    } catch (e) {
+      console.warn(`[Backfill] Failed for post ${post.id}:`, e.message);
+    }
+  }
+  res.json({ total: posts.length, updated });
 });
 
 // Static map cache

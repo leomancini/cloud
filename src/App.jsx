@@ -1505,6 +1505,27 @@ const PostPlaceAddress = styled.span`
   color: ${(p) => p.theme.textSecondary};
 `;
 
+const SaveToListBanner = styled.a`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-top: 4px;
+  border: 2px solid ${(p) => p.theme.border};
+  border-radius: ${RADIUS};
+  font-size: 14px;
+  font-weight: 600;
+  color: ${(p) => p.theme.textSecondary};
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  @media (hover: hover) {
+    &:hover { background: ${(p) => p.theme.bgHover}; border-color: rgba(0, 0, 0, 0.15); }
+  }
+  &:active { background: ${(p) => p.theme.bgHover}; }
+`;
+
 const UserList = styled.div`
   display: flex;
   flex-direction: column;
@@ -2904,6 +2925,7 @@ function App() {
       formData.append("place_lng", selectedLocation.lng);
       if (selectedLocation.address) formData.append("place_address", selectedLocation.address);
       if (selectedLocation.maps_url) formData.append("place_maps_url", selectedLocation.maps_url);
+      if (selectedLocation.id) formData.append("place_id", selectedLocation.id);
     }
     for (const file of mediaFiles) {
       formData.append("media", file);
@@ -3210,6 +3232,11 @@ function App() {
                       {post.place_address && <PostPlaceAddress>{shortAddress(post.place_address)}</PostPlaceAddress>}
                     </PostPlaceName>
                   </PostLocation>
+                  {post.place_id && (
+                    <SaveToListBanner href={`https://lists.fcc.lol/add?placeId=${post.place_id}`} target="_blank" rel="noopener noreferrer">
+                      <i className="fa-regular fa-bookmark" /> Save to list
+                    </SaveToListBanner>
+                  )}
                 )}
               </div>
             );
