@@ -1846,6 +1846,22 @@ app.post("/api/lists/save-place/:pageId/:placeId", async (req, res) => {
   }
 });
 
+app.get("/api/lists/saved-places", async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const user = db.prepare("SELECT lists_api_key FROM users WHERE id = ?").get(req.user.id);
+  if (!user?.lists_api_key) return res.status(403).json({ error: "Lists account not connected" });
+  try {
+    const response = await fetch(`${LISTS_API_URL}/pages/saved-places`, {
+      headers: { "X-Api-Key": user.lists_api_key },
+    });
+    if (!response.ok) return res.status(response.status).json({ error: "Failed to fetch saved places" });
+    const data = await response.json();
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.delete("/api/lists/remove-item/:pageId/:itemId", async (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
   const user = db.prepare("SELECT lists_api_key FROM users WHERE id = ?").get(req.user.id);

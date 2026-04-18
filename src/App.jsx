@@ -2598,9 +2598,40 @@ function App() {
   }, [user]);
 
   // Lists integration
+  const savedPlacesRef = useRef(null);
+
+  const applySavedPlaces = (savedPlaces, postList) => {
+    if (!savedPlaces) return;
+    const next = {};
+    for (const post of postList) {
+      if (post.place_id && savedPlaces[post.place_id]) {
+        const entries = {};
+        for (const s of savedPlaces[post.place_id]) {
+          entries[s.pageId] = { pageTitle: s.pageTitle, itemId: s.itemId };
+        }
+        next[post.id] = entries;
+      }
+    }
+    setListsSaved(prev => ({ ...next, ...prev }));
+  };
+
   useEffect(() => {
-    if (user) fetch("/api/lists/status").then(r => r.json()).then(d => setListsConnected(d.connected)).catch(() => {});
+    if (!user) return;
+    fetch("/api/lists/status").then(r => r.json()).then(d => {
+      setListsConnected(d.connected);
+      if (d.connected) {
+        fetch("/api/lists/saved-places").then(r => r.ok ? r.json() : null).then(data => {
+          savedPlacesRef.current = data;
+          if (data && posts.length) applySavedPlaces(data, posts);
+        }).catch(() => {});
+      }
+    }).catch(() => {});
   }, [user]);
+
+  // Re-apply when posts load/change (e.g. feed refresh)
+  useEffect(() => {
+    if (savedPlacesRef.current && posts.length) applySavedPlaces(savedPlacesRef.current, posts);
+  }, [posts]);
 
   useEffect(() => {
     const onMessage = (e) => {
