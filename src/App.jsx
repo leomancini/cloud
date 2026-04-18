@@ -3179,6 +3179,7 @@ function App() {
     ogFetchedUrl.current = null;
     setMentionQuery(null);
     setSelectedLocation(null);
+    setShowLocationSearch(false);
     mediaPreviews.forEach((p) => URL.revokeObjectURL(p.url));
     setMediaFiles([]);
     setMediaPreviews([]);
