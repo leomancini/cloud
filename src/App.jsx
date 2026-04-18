@@ -768,6 +768,7 @@ const GameFrameInner = styled.iframe`
   display: block;
 `;
 
+
 const shimmer = keyframes`
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
@@ -2315,6 +2316,7 @@ function App() {
   const [posts, setPosts] = useState([]);
   const [feedHasMore, setFeedHasMore] = useState(false);
   const [feedLoadingMore, setFeedLoadingMore] = useState(false);
+  const [gameAudioEnabled, setGameAudioEnabled] = useState({});
   const [listsConnected, setListsConnected] = useState(false);
   const [saveToListPostId, setSaveToListPostId] = useState(null);
   const [listsPages, setListsPages] = useState([]);
@@ -2704,6 +2706,19 @@ function App() {
 
   const connectLists = () => {
     window.open("https://lists.fcc.lol/connect?app=Cloud", "lists-connect", "width=420,height=500,left=200,top=200");
+  };
+
+  const muteScript = `<script>(function(){var m=true,g=null,aa=[];var O=window.AudioContext||window.webkitAudioContext;if(O){var R=O;window.AudioContext=window.webkitAudioContext=function(){var c=new R();g=c.createGain();g.gain.value=0;g.connect(c.destination);Object.defineProperty(c,'destination',{get:function(){return g}});return c}}var A=window.Audio;window.Audio=function(s){var a=new A(s);a.muted=true;aa.push(a);return a};window.addEventListener('message',function(e){if(e.data==='toggle-audio'){m=!m;if(g)g.gain.value=m?0:1;aa.forEach(function(a){a.muted=m})}})})();</script>`;
+
+  const getGameSrcDoc = (html, audioOn) => {
+    if (audioOn) return html;
+    return html.replace(/<head>/i, '<head>' + muteScript);
+  };
+
+  const toggleGameAudio = (id) => {
+    const iframe = document.querySelector(`iframe[data-game-id="${id}"]`);
+    if (iframe) iframe.contentWindow.postMessage('toggle-audio', '*');
+    setGameAudioEnabled(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   const loadFeed = () => {
@@ -3325,7 +3340,7 @@ function App() {
               <div {...postReactProps}>
                 {post.content && <PostContent>{renderText(post.og_preview ? post.content.replace(/https?:\/\/[^\s]+/g, "").trim() : post.content)}</PostContent>}
                 {post.mini_game && (
-                  <GameFrameWrap><GameFrameInner srcDoc={post.mini_game} sandbox="allow-scripts allow-same-origin" title="Mini game" /></GameFrameWrap>
+                  <GameFrameWrap><GameFrameInner data-game-id={`post-${post.id}`} srcDoc={getGameSrcDoc(post.mini_game, gameAudioEnabled[`post-${post.id}`])} sandbox="allow-scripts allow-same-origin" title="Mini game" /></GameFrameWrap>
                 )}
                 {hasMedia && (
                   <PostMediaContainer $count={post.media.length} style={{ ...(belowMedia ? { marginBottom: SMALL } : {}) }}>
@@ -3536,28 +3551,35 @@ function App() {
                             </>
                           )}
                         </CommentBody>
-                        {(c.user_id === user.id || (c.author_name === "Sol" && user.email === "leo@leomancinidesign.com")) && editingComment !== c.id && (
+                        {(c.user_id === user.id || (c.author_name === "Sol" && user.email === "leo@leomancinidesign.com") || c.mini_game) && editingComment !== c.id && (
                           <PostMenuWrapper onTouchStart={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
                             <PostMenuButton onClick={(e) => { e.stopPropagation(); setOpenCommentMenuId(openCommentMenuId === c.id ? null : c.id); }}>
                               <i className="fa-solid fa-ellipsis-vertical" />
                             </PostMenuButton>
                             {openCommentMenuId === c.id && (
                               <PostMenu onClick={(e) => e.stopPropagation()}>
+                                {c.mini_game && (
+                                  <PostMenuItem onClick={() => { toggleGameAudio(c.id); setOpenCommentMenuId(null); }}>
+                                    <i className={gameAudioEnabled[c.id] ? "fa-solid fa-volume-xmark" : "fa-solid fa-volume-high"} /> {gameAudioEnabled[c.id] ? "Disable audio" : "Enable audio"}
+                                  </PostMenuItem>
+                                )}
                                 {c.user_id === user.id && (
                                   <PostMenuItem onClick={() => { setOpenCommentMenuId(null); setEditingComment(c.id); setEditCommentText(c.content); }}>
                                     <i className="fa-solid fa-pen" /> Edit
                                   </PostMenuItem>
                                 )}
-                                <PostMenuItem $danger onClick={() => handleDeleteComment(c.id, post.id)}>
-                                  <i className="fa-solid fa-trash" /> Delete
-                                </PostMenuItem>
+                                {(c.user_id === user.id || (c.author_name === "Sol" && user.email === "leo@leomancinidesign.com")) && (
+                                  <PostMenuItem $danger onClick={() => handleDeleteComment(c.id, post.id)}>
+                                    <i className="fa-solid fa-trash" /> Delete
+                                  </PostMenuItem>
+                                )}
                               </PostMenu>
                             )}
                           </PostMenuWrapper>
                         )}
                       </CommentRow>
                       {c.mini_game && (
-                        <GameFrameWrap style={{ marginTop: 8 }}><GameFrameInner srcDoc={c.mini_game} sandbox="allow-scripts allow-same-origin" title="Mini game" /></GameFrameWrap>
+                        <GameFrameWrap style={{ marginTop: 8 }}><GameFrameInner data-game-id={c.id} srcDoc={getGameSrcDoc(c.mini_game, gameAudioEnabled[c.id])} sandbox="allow-scripts allow-same-origin" title="Mini game" /></GameFrameWrap>
                       )}
                       </>
                     )}
