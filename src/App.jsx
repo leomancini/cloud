@@ -2749,7 +2749,7 @@ function App() {
         const page = await res.json();
         const pageId = page._id || page.id;
         const title = page.title || newListName.trim();
-        setListsPages(prev => [{ ...page, id: pageId, title, type: "locations" }, ...prev]);
+        setListsPages(prev => [{ ...page, id: pageId, title, type: "locations", _new: true }, ...prev]);
         if (!pageId) { setNewListName(""); setCreatingList(false); return; }
         // Auto-save the place to the new list
         const saveRes = await fetch(`/api/lists/save-place/${pageId}/${placeId}`, { method: "POST" });
@@ -3480,6 +3480,8 @@ function App() {
                           {creatingList ? <Spinner /> : newListName.trim() && <button onClick={() => handleCreateList(post.id, post.place_id)} style={{ border: "none", background: resolvedTheme.btnPrimary, color: resolvedTheme.btnPrimaryText, borderRadius: 8, padding: "4px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>Done</button>}
                         </SaveToListItem>
                         {listsPages.filter(p => p.type === "locations").sort((a, b) => {
+                          if (a._new && !b._new) return -1;
+                          if (b._new && !a._new) return 1;
                           const saved = listsSaved[post.id] || {};
                           const aSaved = saved[a.id || a._id] ? 1 : 0;
                           const bSaved = saved[b.id || b._id] ? 1 : 0;
