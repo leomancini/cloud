@@ -2640,6 +2640,7 @@ function App() {
         const res = await fetch(`/api/lists/remove-item/${pageId}/${saved.itemId}`, { method: "DELETE" });
         if (res.ok) {
           setListsSaved(prev => { const next = { ...prev }; delete next[postId]; return next; });
+          setSaveToListPostId(null);
         }
       } catch {}
       setListsSaving(null);
@@ -2651,6 +2652,7 @@ function App() {
       if (res.ok) {
         const data = await res.json();
         setListsSaved(prev => ({ ...prev, [postId]: { pageId, pageTitle, itemId: data.item?.id } }));
+        setSaveToListPostId(null);
       }
     } catch {}
     setListsSaving(null);
@@ -3354,9 +3356,9 @@ function App() {
                         ) : (
                           listsPages.filter(p => p.type === "locations").map(page => (
                             <SaveToListItem key={page.id || page._id} disabled={listsSaving === (page.id || page._id)} onClick={() => handleSavePlaceToList(page.id || page._id, post.place_id, post.id, page.title)}>
-                              <i className={listsSaved[post.id]?.pageId === (page.id || page._id) ? "fa-solid fa-check" : "fa-solid fa-location-dot"} />
+                              <i className="fa-solid fa-location-dot" />
                               <span style={{ flex: 1 }}>{page.title}</span>
-                              {listsSaving === (page.id || page._id) && <Spinner />}
+                              {listsSaving === (page.id || page._id) ? <Spinner /> : listsSaved[post.id]?.pageId === (page.id || page._id) ? <i className="fa-solid fa-check" /> : null}
                             </SaveToListItem>
                           ))
                         )}
