@@ -1575,6 +1575,21 @@ const SaveToListItem = styled.div`
   &[disabled] { opacity: 0.5; cursor: default; pointer-events: none; }
 `;
 
+const ListItemIcon = styled.div`
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: ${(p) => p.theme.bgControl};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: ${(p) => p.theme.textSecondary};
+  flex-shrink: 0;
+  outline: 1px solid rgba(0, 0, 0, 0.1);
+  outline-offset: -1px;
+`;
+
 const UserList = styled.div`
   display: flex;
   flex-direction: column;
@@ -3451,7 +3466,7 @@ function App() {
                         <SaveToListItem disabled><Spinner /> Loading lists...</SaveToListItem>
                       ) : (<>
                         <SaveToListItem as="div" style={{ cursor: "default", gap: 0 }}>
-                          <i className="fa-solid fa-plus" style={{ width: 16, textAlign: "center", flexShrink: 0 }} />
+                          <ListItemIcon><i className="fa-solid fa-plus" /></ListItemIcon>
                           <input
                             value={newListName}
                             onChange={(e) => setNewListName(e.target.value)}
@@ -3477,7 +3492,7 @@ function App() {
                           return bScore - aScore;
                         }).map(page => (
                           <SaveToListItem key={page.id || page._id} disabled={listsSaving === (page.id || page._id)} onClick={() => handleSavePlaceToList(page.id || page._id, post.place_id, post.id, page.title)}>
-                            <i className="fa-solid fa-location-dot" style={{ width: 16, textAlign: "center", flexShrink: 0 }} />
+                            <ListItemIcon><i className="fa-solid fa-location-dot" /></ListItemIcon>
                             <span style={{ flex: 1 }}>{page.title}</span>
                             {listsSaving === (page.id || page._id) ? <Spinner /> : listsSaved[post.id]?.[page.id || page._id] ? <i className="fa-solid fa-check" /> : null}
                           </SaveToListItem>
