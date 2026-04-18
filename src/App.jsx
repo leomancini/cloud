@@ -2659,6 +2659,7 @@ function App() {
           ...prev,
           [postId]: { ...(prev[postId] || {}), [pageId]: { pageTitle, itemId: data.item?.id } }
         }));
+        setSaveToListPostId(null);
       }
     } catch {}
     setListsSaving(null);
