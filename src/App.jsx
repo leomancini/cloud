@@ -2748,8 +2748,10 @@ function App() {
       if (res.ok) {
         const page = await res.json();
         const pageId = page._id || page.id;
-        setListsPages(prev => [...prev, { ...page, id: pageId, type: "locations" }]);
+        const title = page.title || newListName.trim();
+        setListsPages(prev => [...prev, { ...page, id: pageId, title, type: "locations" }]);
         setNewListName("");
+        if (!pageId) { setCreatingList(false); return; }
         // Auto-save the place to the new list
         const saveRes = await fetch(`/api/lists/save-place/${pageId}/${placeId}`, { method: "POST" });
         if (saveRes.ok) {
@@ -3483,8 +3485,8 @@ function App() {
                           const bSaved = saved[b.id || b._id] ? 1 : 0;
                           if (aSaved !== bSaved) return bSaved - aSaved;
                           const addr = (post.place_address || post.place_name || "").toLowerCase();
-                          const aTitle = a.title.toLowerCase();
-                          const bTitle = b.title.toLowerCase();
+                          const aTitle = (a.title || "").toLowerCase();
+                          const bTitle = (b.title || "").toLowerCase();
                           const aWords = aTitle.split(/[\s\/]+/);
                           const bWords = bTitle.split(/[\s\/]+/);
                           const aScore = aWords.filter(w => w.length > 2 && addr.includes(w)).length;
