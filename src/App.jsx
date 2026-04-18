@@ -3465,7 +3465,7 @@ function App() {
                       {listsLoading ? (
                         <SaveToListItem disabled><Spinner /> Loading lists...</SaveToListItem>
                       ) : (<>
-                        <SaveToListItem as="div" style={{ cursor: "default", gap: 0 }}>
+                        <SaveToListItem as="div" style={{ cursor: "default" }}>
                           <ListItemIcon><i className="fa-solid fa-plus" /></ListItemIcon>
                           <input
                             value={newListName}
