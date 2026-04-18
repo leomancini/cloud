@@ -1536,29 +1536,26 @@ const SaveToListButton = styled.button`
 
 const SaveToListDropdown = styled.div`
   margin-top: 4px;
-  border: 2px solid ${(p) => p.theme.border};
+  background: ${(p) => p.theme.bgElevated};
   border-radius: ${RADIUS};
-  overflow: hidden;
+  box-shadow: 0 2px 12px ${(p) => p.theme.shadowMd};
+  max-height: 150px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  z-index: 10;
 `;
 
-const SaveToListItem = styled.button`
+const SaveToListItem = styled.div`
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  min-height: 46px;
-  border: none;
-  background: none;
-  width: 100%;
-  font-size: 14px;
-  font-weight: 500;
-  color: ${(p) => p.theme.text};
+  gap: 8px;
+  padding: 12px;
   cursor: pointer;
-  text-align: left;
-  &:not(:last-child) { border-bottom: 1px solid ${(p) => p.theme.border}; }
+  font-size: 16px;
+  font-weight: 600;
+  color: ${(p) => p.theme.text};
   @media (hover: hover) { &:hover { background: ${(p) => p.theme.bgHover}; } }
-  &:active { background: ${(p) => p.theme.bgHover}; }
-  &:disabled { opacity: 0.5; cursor: default; }
+  &[disabled] { opacity: 0.5; cursor: default; pointer-events: none; }
 `;
 
 const UserList = styled.div`
@@ -3381,6 +3378,7 @@ function App() {
                           </SaveToListButton>
                         )
                       )}
+                      )}
                     </PostMapWrapper>
                     <PostPlaceName className="place-name">
                       <span>{post.place_name}</span>
@@ -3388,21 +3386,26 @@ function App() {
                     </PostPlaceName>
                   </PostLocation>
                   {post.place_id && saveToListPostId === post.id && listsConnected && (
-                    <SaveToListDropdown>
-                        {listsLoading ? (
-                          <SaveToListItem disabled><Spinner /> Loading lists...</SaveToListItem>
-                        ) : listsPages.filter(p => p.type === "locations").length === 0 ? (
-                          <SaveToListItem as="a" href="https://lists.fcc.lol" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>No location lists yet — create one</SaveToListItem>
-                        ) : (
-                          listsPages.filter(p => p.type === "locations").map(page => (
-                            <SaveToListItem key={page.id || page._id} disabled={listsSaving === (page.id || page._id)} onClick={() => handleSavePlaceToList(page.id || page._id, post.place_id, post.id, page.title)}>
-                              <i className="fa-solid fa-location-dot" />
-                              <span style={{ flex: 1 }}>{page.title}</span>
-                              {listsSaving === (page.id || page._id) ? <Spinner /> : listsSaved[post.id]?.[page.id || page._id] ? <i className="fa-solid fa-check" /> : null}
-                            </SaveToListItem>
-                          ))
-                        )}
-                      </SaveToListDropdown>
+                    <SaveToListDropdown onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                      {listsLoading ? (
+                        <SaveToListItem disabled><Spinner /> Loading lists...</SaveToListItem>
+                      ) : listsPages.filter(p => p.type === "locations").length === 0 ? (
+                        <SaveToListItem as="a" href="https://lists.fcc.lol" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>No location lists yet — create one</SaveToListItem>
+                      ) : (
+                        listsPages.filter(p => p.type === "locations").sort((a, b) => {
+                          const addr = (post.place_address || post.place_name || "").toLowerCase();
+                          const aMatch = addr.includes(a.title.toLowerCase()) ? 1 : 0;
+                          const bMatch = addr.includes(b.title.toLowerCase()) ? 1 : 0;
+                          return bMatch - aMatch;
+                        }).map(page => (
+                          <SaveToListItem key={page.id || page._id} disabled={listsSaving === (page.id || page._id)} onClick={() => handleSavePlaceToList(page.id || page._id, post.place_id, post.id, page.title)}>
+                            <i className="fa-solid fa-location-dot" />
+                            <span style={{ flex: 1 }}>{page.title}</span>
+                            {listsSaving === (page.id || page._id) ? <Spinner /> : listsSaved[post.id]?.[page.id || page._id] ? <i className="fa-solid fa-check" /> : null}
+                          </SaveToListItem>
+                        ))
+                      )}
+                    </SaveToListDropdown>
                   )}
                 </>)}
               </div>
