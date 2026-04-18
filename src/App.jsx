@@ -3465,7 +3465,7 @@ function App() {
                   {post.place_id && saveToListPostId === post.id && listsConnected && (
                     <SaveToListDropdown onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                       {listsLoading ? (
-                        <SaveToListItem disabled><Spinner size="22px" /> Loading lists...</SaveToListItem>
+                        <SaveToListItem disabled><Spinner size="20px" /> Loading lists...</SaveToListItem>
                       ) : (<>
                         <SaveToListItem key="_new-list-input" as="div" style={{ cursor: "default" }}>
                           <ListItemIcon><i className="fa-solid fa-plus" /></ListItemIcon>
