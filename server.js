@@ -509,6 +509,7 @@ try { db.exec("ALTER TABLE posts ADD COLUMN place_maps_url TEXT"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN og_preview TEXT"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN mini_game TEXT"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN place_id TEXT"); } catch {}
+try { db.exec("ALTER TABLE users ADD COLUMN lists_api_key TEXT"); } catch {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS sol_prs (
@@ -1787,6 +1788,62 @@ app.post("/api/admin/backfill-place-ids", async (req, res) => {
     }
   }
   res.json({ total: posts.length, updated });
+});
+
+// Lists app integration
+const LISTS_API_URL = "https://page-builder-server.fcc.lol";
+
+app.post("/api/lists/connect", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const { apiKey } = req.body;
+  if (!apiKey) return res.status(400).json({ error: "API key required" });
+  db.prepare("UPDATE users SET lists_api_key = ? WHERE id = ?").run(apiKey, req.user.id);
+  res.json({ ok: true });
+});
+
+app.delete("/api/lists/connect", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  db.prepare("UPDATE users SET lists_api_key = NULL WHERE id = ?").run(req.user.id);
+  res.json({ ok: true });
+});
+
+app.get("/api/lists/status", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const user = db.prepare("SELECT lists_api_key FROM users WHERE id = ?").get(req.user.id);
+  res.json({ connected: !!user?.lists_api_key });
+});
+
+app.get("/api/lists/pages", async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const user = db.prepare("SELECT lists_api_key FROM users WHERE id = ?").get(req.user.id);
+  if (!user?.lists_api_key) return res.status(403).json({ error: "Lists account not connected" });
+  try {
+    const response = await fetch(`${LISTS_API_URL}/pages`, {
+      headers: { "X-Api-Key": user.lists_api_key },
+    });
+    if (!response.ok) return res.status(response.status).json({ error: "Failed to fetch lists" });
+    const data = await response.json();
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/api/lists/save-place/:pageId/:placeId", async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const user = db.prepare("SELECT lists_api_key FROM users WHERE id = ?").get(req.user.id);
+  if (!user?.lists_api_key) return res.status(403).json({ error: "Lists account not connected" });
+  try {
+    const response = await fetch(`${LISTS_API_URL}/pages/${req.params.pageId}/items/place/${req.params.placeId}`, {
+      method: "POST",
+      headers: { "X-Api-Key": user.lists_api_key, "Content-Type": "application/json" },
+    });
+    if (!response.ok) return res.status(response.status).json({ error: "Failed to save place" });
+    const data = await response.json();
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Static map cache

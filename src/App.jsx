@@ -1505,7 +1505,7 @@ const PostPlaceAddress = styled.span`
   color: ${(p) => p.theme.textSecondary};
 `;
 
-const SaveToListBanner = styled.a`
+const SaveToListButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1516,14 +1516,41 @@ const SaveToListBanner = styled.a`
   border-radius: ${RADIUS};
   font-size: 14px;
   font-weight: 600;
-  color: ${(p) => p.theme.textSecondary};
-  text-decoration: none;
+  color: ${(p) => p.$saved ? p.theme.btnPrimary : p.theme.textSecondary};
+  background: none;
   cursor: pointer;
+  width: 100%;
   transition: background 0.15s ease, border-color 0.15s ease;
   @media (hover: hover) {
     &:hover { background: ${(p) => p.theme.bgHover}; border-color: rgba(0, 0, 0, 0.15); }
   }
   &:active { background: ${(p) => p.theme.bgHover}; }
+`;
+
+const SaveToListDropdown = styled.div`
+  margin-top: 4px;
+  border: 2px solid ${(p) => p.theme.border};
+  border-radius: ${RADIUS};
+  overflow: hidden;
+`;
+
+const SaveToListItem = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: none;
+  background: none;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 500;
+  color: ${(p) => p.theme.text};
+  cursor: pointer;
+  text-align: left;
+  &:not(:last-child) { border-bottom: 1px solid ${(p) => p.theme.border}; }
+  @media (hover: hover) { &:hover { background: ${(p) => p.theme.bgHover}; } }
+  &:active { background: ${(p) => p.theme.bgHover}; }
+  &:disabled { opacity: 0.5; cursor: default; }
 `;
 
 const UserList = styled.div`
@@ -2277,6 +2304,12 @@ function App() {
   const [posts, setPosts] = useState([]);
   const [feedHasMore, setFeedHasMore] = useState(false);
   const [feedLoadingMore, setFeedLoadingMore] = useState(false);
+  const [listsConnected, setListsConnected] = useState(false);
+  const [saveToListPostId, setSaveToListPostId] = useState(null);
+  const [listsPages, setListsPages] = useState([]);
+  const [listsLoading, setListsLoading] = useState(false);
+  const [listsSaving, setListsSaving] = useState(null);
+  const [listsSaved, setListsSaved] = useState({});
   const [followers, setFollowers] = useState([]);
   const [followRequests, setFollowRequests] = useState([]);
   const initialProfileId = useRef(null);
@@ -2558,6 +2591,50 @@ function App() {
     document.addEventListener("visibilitychange", onVisibility);
     return () => { alive = false; clearTimeout(reconnectTimer); ws?.close(); document.removeEventListener("visibilitychange", onVisibility); };
   }, [user]);
+
+  // Lists integration
+  useEffect(() => {
+    if (user) fetch("/api/lists/status").then(r => r.json()).then(d => setListsConnected(d.connected)).catch(() => {});
+  }, [user]);
+
+  useEffect(() => {
+    const onMessage = (e) => {
+      if (e.data?.type === "lists-api-key" && e.data.apiKey) {
+        fetch("/api/lists/connect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ apiKey: e.data.apiKey }) })
+          .then(() => { setListsConnected(true); });
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  const handleSaveToList = async (postId) => {
+    if (saveToListPostId === postId) { setSaveToListPostId(null); return; }
+    setSaveToListPostId(postId);
+    if (!listsConnected) return;
+    setListsLoading(true);
+    try {
+      const res = await fetch("/api/lists/pages");
+      if (res.ok) { const data = await res.json(); setListsPages(data); }
+    } catch {}
+    setListsLoading(false);
+  };
+
+  const handleSavePlaceToList = async (pageId, placeId, postId) => {
+    setListsSaving(pageId);
+    try {
+      const res = await fetch(`/api/lists/save-place/${pageId}/${placeId}`, { method: "POST" });
+      if (res.ok) {
+        setListsSaved(prev => ({ ...prev, [postId]: pageId }));
+        setSaveToListPostId(null);
+      }
+    } catch {}
+    setListsSaving(null);
+  };
+
+  const connectLists = () => {
+    window.open("https://lists.fcc.lol/connect", "lists-connect", "width=420,height=500,left=200,top=200");
+  };
 
   const loadFeed = () => {
     fetch("/api/feed")
@@ -3232,11 +3309,33 @@ function App() {
                       {post.place_address && <PostPlaceAddress>{shortAddress(post.place_address)}</PostPlaceAddress>}
                     </PostPlaceName>
                   </PostLocation>
-                  {post.place_id && (
-                    <SaveToListBanner href={`https://lists.fcc.lol/add?placeId=${post.place_id}`} target="_blank" rel="noopener noreferrer">
-                      <i className="fa-regular fa-bookmark" /> Save to list
-                    </SaveToListBanner>
-                  )}
+                  {post.place_id && (<>
+                    <SaveToListButton onClick={() => handleSaveToList(post.id)} $saved={!!listsSaved[post.id]}>
+                      <i className={listsSaved[post.id] ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"} />
+                      {listsSaved[post.id] ? "Saved" : "Save to list"}
+                    </SaveToListButton>
+                    {saveToListPostId === post.id && (
+                      <SaveToListDropdown>
+                        {!listsConnected ? (
+                          <SaveToListItem onClick={connectLists}>
+                            <i className="fa-solid fa-link" /> Connect Lists account
+                          </SaveToListItem>
+                        ) : listsLoading ? (
+                          <SaveToListItem disabled><Spinner /> Loading lists...</SaveToListItem>
+                        ) : listsPages.length === 0 ? (
+                          <SaveToListItem disabled>No lists found</SaveToListItem>
+                        ) : (
+                          listsPages.filter(p => p.type === "locations").map(page => (
+                            <SaveToListItem key={page.id || page._id} disabled={listsSaving === (page.id || page._id)} onClick={() => handleSavePlaceToList(page.id || page._id, post.place_id, post.id)}>
+                              <i className="fa-solid fa-location-dot" />
+                              {page.title}
+                              {listsSaving === (page.id || page._id) && <Spinner />}
+                            </SaveToListItem>
+                          ))
+                        )}
+                      </SaveToListDropdown>
+                    )}
+                  </>)}
                 </>)}
               </div>
             );
