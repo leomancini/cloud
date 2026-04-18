@@ -3387,7 +3387,7 @@ function App() {
                         </SaveToListButton>
                       ) : (
                         <SaveToListButton onClick={() => { if (listsSavedLoaded) handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]} $loading={!listsSavedLoaded}>
-                          {!listsSavedLoaded ? <Spinner size="14px" /> : <><img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 16, height: 16, borderRadius: 3 }} />{(() => { const s = listsSaved[post.id]; if (!s) return "Save to Lists App"; const names = Object.values(s).map(v => v.pageTitle); return names.length === 1 ? `Saved to ${names[0]}` : `Saved to ${names.length} lists`; })()}</>}
+                          {!listsSavedLoaded ? <Spinner size="14px" /> : <><img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 16, height: 16, borderRadius: 3 }} />{(() => { const s = listsSaved[post.id]; if (!s) return "Save on Lists App"; const names = Object.values(s).map(v => v.pageTitle); return names.length === 1 ? `Saved to ${names[0]}` : `Saved to ${names.length} lists`; })()}</>}
                         </SaveToListButton>
                       )
                     )}
