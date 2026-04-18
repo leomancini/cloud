@@ -1515,8 +1515,8 @@ const SaveToListButton = styled.button`
   top: 0;
   right: 0;
   padding: 10px;
-  padding-left: ${(p) => p.$loading ? "10px" : "18px"};
-  padding-right: ${(p) => p.$loading ? "10px" : "22px"};
+  padding-left: 10px;
+  padding-right: 10px;
   border: none;
   background: none;
   cursor: pointer;
