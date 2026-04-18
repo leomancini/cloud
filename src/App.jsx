@@ -2599,22 +2599,7 @@ function App() {
   }, [user]);
 
   // Lists integration
-  const savedPlacesRef = useRef(null);
-
-  const applySavedPlaces = (savedPlaces, postList) => {
-    if (!savedPlaces) return;
-    const next = {};
-    for (const post of postList) {
-      if (post.place_id && savedPlaces[post.place_id]) {
-        const entries = {};
-        for (const s of savedPlaces[post.place_id]) {
-          entries[s.pageId] = { pageTitle: s.pageTitle, itemId: s.itemId };
-        }
-        next[post.id] = entries;
-      }
-    }
-    setListsSaved(prev => ({ ...next, ...prev }));
-  };
+  const [savedPlacesData, setSavedPlacesData] = useState(null);
 
   useEffect(() => {
     if (!user) return;
@@ -2622,17 +2607,27 @@ function App() {
       setListsConnected(d.connected);
       if (d.connected) {
         fetch("/api/lists/saved-places").then(r => r.ok ? r.json() : null).then(data => {
-          savedPlacesRef.current = data;
-          if (data && posts.length) applySavedPlaces(data, posts);
+          if (data) setSavedPlacesData(data);
         }).catch(() => {});
       }
     }).catch(() => {});
   }, [user]);
 
-  // Re-apply when posts load/change (e.g. feed refresh)
+  // Apply saved places whenever posts or saved data changes
   useEffect(() => {
-    if (savedPlacesRef.current && posts.length) applySavedPlaces(savedPlacesRef.current, posts);
-  }, [posts]);
+    if (!savedPlacesData || !posts.length) return;
+    const next = {};
+    for (const post of posts) {
+      if (post.place_id && savedPlacesData[post.place_id]) {
+        const entries = {};
+        for (const s of savedPlacesData[post.place_id]) {
+          entries[s.pageId] = { pageTitle: s.pageTitle, itemId: s.itemId };
+        }
+        next[post.id] = entries;
+      }
+    }
+    setListsSaved(prev => ({ ...next, ...prev }));
+  }, [posts, savedPlacesData]);
 
   useEffect(() => {
     const onMessage = (e) => {
@@ -2677,6 +2672,7 @@ function App() {
             if (Object.keys(next[postId]).length === 0) delete next[postId];
             return next;
           });
+          setSaveToListPostId(null);
         }
       } catch {}
       setListsSaving(null);
@@ -3734,7 +3730,7 @@ function App() {
               </PushSection>
             )}
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
-              <LogoutButton onClick={listsConnected ? () => { fetch("/api/lists/connect", { method: "DELETE" }).then(() => { setListsConnected(false); setListsSaved({}); savedPlacesRef.current = null; }); } : connectLists} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <LogoutButton onClick={listsConnected ? () => { fetch("/api/lists/connect", { method: "DELETE" }).then(() => { setListsConnected(false); setListsSaved({}); setSavedPlacesData(null); }); } : connectLists} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 <img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 18, height: 18, borderRadius: 4 }} />
                 {listsConnected ? "Disconnect Lists App account" : "Connect Lists App account"}
               </LogoutButton>
