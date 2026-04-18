@@ -2698,7 +2698,7 @@ function App() {
   };
 
   const connectLists = () => {
-    window.open("https://lists.fcc.lol/connect", "lists-connect", "width=420,height=500,left=200,top=200");
+    window.open("https://lists.fcc.lol/connect?app=Cloud", "lists-connect", "width=420,height=500,left=200,top=200");
   };
 
   const loadFeed = () => {
@@ -3736,7 +3736,7 @@ function App() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
               <LogoutButton onClick={listsConnected ? () => { fetch("/api/lists/connect", { method: "DELETE" }).then(() => { setListsConnected(false); setListsSaved({}); savedPlacesRef.current = null; }); } : connectLists} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 <img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 18, height: 18, borderRadius: 4 }} />
-                {listsConnected ? "Disconnect Lists App" : "Connect Lists App"}
+                {listsConnected ? "Disconnect Lists App account" : "Connect Lists App account"}
               </LogoutButton>
               <LogoutButton onClick={handleLogout} disabled={isBusy("logout")}>{isBusy("logout") ? <Spinner /> : "Log out"}</LogoutButton>
             </div>
