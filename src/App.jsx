@@ -1514,7 +1514,9 @@ const SaveToListButton = styled.button`
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px 12px 8px 8px;
+  height: 34px;
+  min-width: 34px;
+  padding: ${(p) => p.$loading ? "0" : "0 12px 0 8px"};
   border: none;
   border-radius: 10px;
   font-size: 13px;
@@ -3374,8 +3376,8 @@ function App() {
                             <img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 18, height: 18, borderRadius: 4 }} /> Connect Lists App account
                           </SaveToListButton>
                         ) : (
-                          <SaveToListButton onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (listsSavedLoaded) handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]}>
-                            {!listsSavedLoaded ? <Spinner /> : <><i className={listsSaved[post.id] ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"} />{(() => { const s = listsSaved[post.id]; if (!s) return "Save"; const names = Object.values(s).map(v => v.pageTitle); return names.length === 1 ? `Saved to ${names[0]}` : `Saved to ${names.length} lists`; })()}</>}
+                          <SaveToListButton onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (listsSavedLoaded) handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]} $loading={!listsSavedLoaded}>
+                            {!listsSavedLoaded ? <Spinner size="14px" /> : <><i className={listsSaved[post.id] ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"} />{(() => { const s = listsSaved[post.id]; if (!s) return "Save"; const names = Object.values(s).map(v => v.pageTitle); return names.length === 1 ? `Saved to ${names[0]}` : `Saved to ${names.length} lists`; })()}</>}
                           </SaveToListButton>
                         )
                       )}
