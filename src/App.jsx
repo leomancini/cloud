@@ -3476,7 +3476,7 @@ function App() {
                             disabled={creatingList}
                             style={{ flex: 1, border: "none", background: "none", outline: "none", font: "inherit", fontWeight: "inherit", color: "inherit", padding: 0, minWidth: 0 }}
                           />
-                          {creatingList ? <Spinner /> : newListName.trim() && <button onClick={() => handleCreateList(post.id, post.place_id)} style={{ border: "none", background: resolvedTheme.btnPrimary, color: resolvedTheme.btnPrimaryText, borderRadius: 12, padding: "6px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0, margin: "-4px -4px -4px 0" }}>Done</button>}
+                          {creatingList ? <Spinner /> : newListName.trim() && <button onClick={() => handleCreateList(post.id, post.place_id)} style={{ border: "none", background: resolvedTheme.btnPrimary, color: resolvedTheme.btnPrimaryText, borderRadius: 12, padding: "6px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0, margin: "-4px -4px -4px 0" }}>Add</button>}
                         </SaveToListItem>
                         {listsPages.filter(p => p.type === "locations").sort((a, b) => {
                           if (a._new && !b._new) return -1;
