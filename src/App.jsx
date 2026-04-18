@@ -3382,7 +3382,6 @@ function App() {
                           </SaveToListButton>
                         )
                       )}
-                      )}
                     </PostMapWrapper>
                     <PostPlaceName className="place-name">
                       <span>{post.place_name}</span>
