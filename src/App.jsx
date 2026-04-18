@@ -2632,15 +2632,19 @@ function App() {
   };
 
   const handleSavePlaceToList = async (pageId, placeId, postId, pageTitle) => {
-    const saved = listsSaved[postId];
+    const savedForPost = listsSaved[postId] || {};
     // If already saved to this list, remove it
-    if (saved && saved.pageId === pageId) {
+    if (savedForPost[pageId]) {
       setListsSaving(pageId);
       try {
-        const res = await fetch(`/api/lists/remove-item/${pageId}/${saved.itemId}`, { method: "DELETE" });
+        const res = await fetch(`/api/lists/remove-item/${pageId}/${savedForPost[pageId].itemId}`, { method: "DELETE" });
         if (res.ok) {
-          setListsSaved(prev => { const next = { ...prev }; delete next[postId]; return next; });
-          setSaveToListPostId(null);
+          setListsSaved(prev => {
+            const next = { ...prev, [postId]: { ...prev[postId] } };
+            delete next[postId][pageId];
+            if (Object.keys(next[postId]).length === 0) delete next[postId];
+            return next;
+          });
         }
       } catch {}
       setListsSaving(null);
@@ -2651,8 +2655,10 @@ function App() {
       const res = await fetch(`/api/lists/save-place/${pageId}/${placeId}`, { method: "POST" });
       if (res.ok) {
         const data = await res.json();
-        setListsSaved(prev => ({ ...prev, [postId]: { pageId, pageTitle, itemId: data.item?.id } }));
-        setSaveToListPostId(null);
+        setListsSaved(prev => ({
+          ...prev,
+          [postId]: { ...(prev[postId] || {}), [pageId]: { pageTitle, itemId: data.item?.id } }
+        }));
       }
     } catch {}
     setListsSaving(null);
@@ -3337,7 +3343,7 @@ function App() {
                         ) : (
                           <SaveToListButton onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]}>
                             <i className={listsSaved[post.id] ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"} />
-                            {listsSaved[post.id] ? `Saved to ${listsSaved[post.id].pageTitle}` : "Save"}
+                            {(() => { const s = listsSaved[post.id]; if (!s) return "Save"; const names = Object.values(s).map(v => v.pageTitle); return names.length === 1 ? `Saved to ${names[0]}` : `Saved to ${names.length} lists`; })()}
                           </SaveToListButton>
                         )
                       )}
@@ -3358,7 +3364,7 @@ function App() {
                             <SaveToListItem key={page.id || page._id} disabled={listsSaving === (page.id || page._id)} onClick={() => handleSavePlaceToList(page.id || page._id, post.place_id, post.id, page.title)}>
                               <i className="fa-solid fa-location-dot" />
                               <span style={{ flex: 1 }}>{page.title}</span>
-                              {listsSaving === (page.id || page._id) ? <Spinner /> : listsSaved[post.id]?.pageId === (page.id || page._id) ? <i className="fa-solid fa-check" /> : null}
+                              {listsSaving === (page.id || page._id) ? <Spinner /> : listsSaved[post.id]?.[page.id || page._id] ? <i className="fa-solid fa-check" /> : null}
                             </SaveToListItem>
                           ))
                         )}
