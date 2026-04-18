@@ -892,7 +892,8 @@ Requirements:
   - Keyboard: arrow keys / WASD / spacebar as appropriate for the game type
   - Always bind BOTH touch and mouse events (touchstart+mousedown, touchmove+mousemove, touchend+mouseup)
   - No hover-dependent mechanics
-- Simple, fun, and immediately playable — no instructions screen, just start playing
+- Always start with a start screen showing the game title and a tap/click to start prompt. The start screen should match the game's visual style
+- Simple, fun, and immediately playable after the start screen
 - Include score tracking visible in the game
 - Default to a pixel art visual style (blocky sprites, limited color palette, retro feel) unless the user's description specifies a different style
 - Use canvas for rendering. Size the canvas to fill the viewport and handle resize events
