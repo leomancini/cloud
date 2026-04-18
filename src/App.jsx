@@ -2342,6 +2342,7 @@ function App() {
   const [feedHasMore, setFeedHasMore] = useState(false);
   const [feedLoadingMore, setFeedLoadingMore] = useState(false);
   const [gameAudioEnabled, setGameAudioEnabled] = useState({});
+  const [frozenListsOrder, setFrozenListsOrder] = useState(null);
   const [listsConnected, setListsConnected] = useState(false);
   const [saveToListPostId, setSaveToListPostId] = useState(null);
   const [listsPages, setListsPages] = useState([]);
@@ -2692,8 +2693,9 @@ function App() {
   }, []);
 
   const handleSaveToList = async (postId) => {
-    if (saveToListPostId === postId) { setSaveToListPostId(null); return; }
+    if (saveToListPostId === postId) { setSaveToListPostId(null); setFrozenListsOrder(null); return; }
     setSaveToListPostId(postId);
+    setFrozenListsOrder(null);
     if (!listsConnected) return;
     setListsLoading(true);
     try {
@@ -2717,7 +2719,7 @@ function App() {
             if (Object.keys(next[postId]).length === 0) delete next[postId];
             return next;
           });
-          setTimeout(() => setSaveToListPostId(null), 600);
+          setTimeout(() => { setSaveToListPostId(null); setFrozenListsOrder(null); }, 600);
         }
       } catch {}
       setListsSaving(null);
@@ -2732,7 +2734,7 @@ function App() {
           ...prev,
           [postId]: { ...(prev[postId] || {}), [pageId]: { pageTitle, itemId: data.item?.id } }
         }));
-        setTimeout(() => setSaveToListPostId(null), 600);
+        setTimeout(() => { setSaveToListPostId(null); setFrozenListsOrder(null); }, 600);
       }
     } catch {}
     setListsSaving(null);
@@ -2760,7 +2762,7 @@ function App() {
         if (saveRes.ok) {
           const data = await saveRes.json();
           setListsSaved(prev => ({ ...prev, [postId]: { ...(prev[postId] || {}), [pageId]: { pageTitle: title, itemId: data.item?.id } } }));
-          setTimeout(() => setSaveToListPostId(null), 600);
+          setTimeout(() => { setSaveToListPostId(null); setFrozenListsOrder(null); }, 600);
         }
         setListsSaving(null);
       }
@@ -3483,22 +3485,27 @@ function App() {
                           />
                           {creatingList ? <Spinner /> : newListName.trim() && <button onClick={() => handleCreateList(post.id, post.place_id)} style={{ border: "none", background: resolvedTheme.btnPrimary, color: resolvedTheme.btnPrimaryText, borderRadius: 12, padding: "6px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0, margin: "-4px -4px -4px 0" }}>Add</button>}
                         </SaveToListItem>
-                        {listsPages.filter(p => p.type === "locations").sort((a, b) => {
-                          if (a._new && !b._new) return -1;
-                          if (b._new && !a._new) return 1;
-                          const saved = listsSaved[post.id] || {};
-                          const aSaved = saved[a.id || a._id] ? 1 : 0;
-                          const bSaved = saved[b.id || b._id] ? 1 : 0;
-                          if (aSaved !== bSaved) return bSaved - aSaved;
-                          const addr = (post.place_address || post.place_name || "").toLowerCase();
-                          const aTitle = (a.title || "").toLowerCase();
-                          const bTitle = (b.title || "").toLowerCase();
-                          const aWords = aTitle.split(/[\s\/]+/);
-                          const bWords = bTitle.split(/[\s\/]+/);
-                          const aScore = aWords.filter(w => w.length > 2 && addr.includes(w)).length;
-                          const bScore = bWords.filter(w => w.length > 2 && addr.includes(w)).length;
-                          return bScore - aScore;
-                        }).map(page => (
+                        {(() => {
+                          if (frozenListsOrder) return frozenListsOrder;
+                          const sorted = listsPages.filter(p => p.type === "locations").sort((a, b) => {
+                            if (a._new && !b._new) return -1;
+                            if (b._new && !a._new) return 1;
+                            const saved = listsSaved[post.id] || {};
+                            const aSaved = saved[a.id || a._id] ? 1 : 0;
+                            const bSaved = saved[b.id || b._id] ? 1 : 0;
+                            if (aSaved !== bSaved) return bSaved - aSaved;
+                            const addr = (post.place_address || post.place_name || "").toLowerCase();
+                            const aTitle = (a.title || "").toLowerCase();
+                            const bTitle = (b.title || "").toLowerCase();
+                            const aWords = aTitle.split(/[\s\/]+/);
+                            const bWords = bTitle.split(/[\s\/]+/);
+                            const aScore = aWords.filter(w => w.length > 2 && addr.includes(w)).length;
+                            const bScore = bWords.filter(w => w.length > 2 && addr.includes(w)).length;
+                            return bScore - aScore;
+                          });
+                          if (!frozenListsOrder) setFrozenListsOrder(sorted);
+                          return sorted;
+                        })().map(page => (
                           <SaveToListItem key={page.id || page._id} disabled={listsSaving === (page.id || page._id)} onClick={() => handleSavePlaceToList(page.id || page._id, post.place_id, post.id, page.title)}>
                             <ListItemIcon><i className="fa-solid fa-location-dot" /></ListItemIcon>
                             <span style={{ flex: 1 }}>{page.title}</span>
