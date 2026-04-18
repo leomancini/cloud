@@ -998,6 +998,7 @@ const PostMenuItem = styled.button`
   font-weight: 500;
   cursor: pointer;
   color: ${(p) => (p.$danger ? "#e53e3e" : p.theme.text)};
+  & > i { width: 16px; text-align: center; flex-shrink: 0; }
 
   @media (hover: hover) {
     &:hover {
