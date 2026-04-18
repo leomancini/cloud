@@ -3222,7 +3222,7 @@ function App() {
                     </LinkPreviewBody>
                   </LinkPreviewCard>
                 )}
-                {hasMap && (
+                {hasMap && (<>
                   <PostLocation as="a" href={post.place_maps_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit", cursor: "pointer", marginTop: aboveMap ? 0 : 10 }}>
                     <PostMapWrapper className="map-wrapper" style={aboveMap ? { borderRadius: `${SMALL} ${SMALL} 0 0` } : undefined}>
                       <PostMap src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`} alt={post.place_name} />
@@ -3237,7 +3237,7 @@ function App() {
                       <i className="fa-regular fa-bookmark" /> Save to list
                     </SaveToListBanner>
                   )}
-                )}
+                </>)}
               </div>
             );
           })()}
