@@ -3450,6 +3450,18 @@ function App() {
                       {listsLoading ? (
                         <SaveToListItem disabled><Spinner /> Loading lists...</SaveToListItem>
                       ) : (<>
+                        <SaveToListItem as="div" style={{ cursor: "default", gap: 0 }}>
+                          <i className="fa-solid fa-plus" style={{ width: 16, textAlign: "center", flexShrink: 0 }} />
+                          <input
+                            value={newListName}
+                            onChange={(e) => setNewListName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleCreateList(post.id, post.place_id); }}
+                            placeholder="New list"
+                            disabled={creatingList}
+                            style={{ flex: 1, border: "none", background: "none", outline: "none", font: "inherit", fontWeight: "inherit", color: "inherit", padding: 0, minWidth: 0 }}
+                          />
+                          {creatingList && <Spinner />}
+                        </SaveToListItem>
                         {listsPages.filter(p => p.type === "locations").sort((a, b) => {
                           const saved = listsSaved[post.id] || {};
                           const aSaved = saved[a.id || a._id] ? 1 : 0;
@@ -3465,23 +3477,11 @@ function App() {
                           return bScore - aScore;
                         }).map(page => (
                           <SaveToListItem key={page.id || page._id} disabled={listsSaving === (page.id || page._id)} onClick={() => handleSavePlaceToList(page.id || page._id, post.place_id, post.id, page.title)}>
-                            <i className="fa-solid fa-location-dot" />
+                            <i className="fa-solid fa-location-dot" style={{ width: 16, textAlign: "center", flexShrink: 0 }} />
                             <span style={{ flex: 1 }}>{page.title}</span>
                             {listsSaving === (page.id || page._id) ? <Spinner /> : listsSaved[post.id]?.[page.id || page._id] ? <i className="fa-solid fa-check" /> : null}
                           </SaveToListItem>
                         ))}
-                        <SaveToListItem as="div" style={{ cursor: "default", gap: 0 }}>
-                          <i className="fa-solid fa-plus" style={{ marginRight: 8, flexShrink: 0 }} />
-                          <input
-                            value={newListName}
-                            onChange={(e) => setNewListName(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter") handleCreateList(post.id, post.place_id); }}
-                            placeholder="New list"
-                            disabled={creatingList}
-                            style={{ flex: 1, border: "none", background: "none", outline: "none", font: "inherit", fontWeight: "inherit", color: "inherit", padding: 0, minWidth: 0 }}
-                          />
-                          {creatingList && <Spinner />}
-                        </SaveToListItem>
                       </>)}
                     </SaveToListDropdown>
                   )}
