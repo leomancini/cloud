@@ -3501,7 +3501,7 @@ function App() {
                           <SaveToListItem key={page.id || page._id} disabled={listsSaving === (page.id || page._id)} onClick={() => handleSavePlaceToList(page.id || page._id, post.place_id, post.id, page.title)}>
                             <ListItemIcon><i className="fa-solid fa-location-dot" /></ListItemIcon>
                             <span style={{ flex: 1 }}>{page.title}</span>
-                            {listsSaving === (page.id || page._id) ? <Spinner /> : listsSaved[post.id]?.[page.id || page._id] ? <i className="fa-solid fa-check" /> : null}
+                            {listsSaving === (page.id || page._id) ? <Spinner size="16px" /> : listsSaved[post.id]?.[page.id || page._id] ? <i className="fa-solid fa-check" style={{ width: 16, textAlign: "center" }} /> : null}
                           </SaveToListItem>
                         ))}
                       </>)}
