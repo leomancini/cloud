@@ -2632,12 +2632,25 @@ function App() {
   };
 
   const handleSavePlaceToList = async (pageId, placeId, postId, pageTitle) => {
+    const saved = listsSaved[postId];
+    // If already saved to this list, remove it
+    if (saved && saved.pageId === pageId) {
+      setListsSaving(pageId);
+      try {
+        const res = await fetch(`/api/lists/remove-item/${pageId}/${saved.itemId}`, { method: "DELETE" });
+        if (res.ok) {
+          setListsSaved(prev => { const next = { ...prev }; delete next[postId]; return next; });
+        }
+      } catch {}
+      setListsSaving(null);
+      return;
+    }
     setListsSaving(pageId);
     try {
       const res = await fetch(`/api/lists/save-place/${pageId}/${placeId}`, { method: "POST" });
       if (res.ok) {
-        setListsSaved(prev => ({ ...prev, [postId]: pageTitle }));
-        setSaveToListPostId(null);
+        const data = await res.json();
+        setListsSaved(prev => ({ ...prev, [postId]: { pageId, pageTitle, itemId: data.item?.id } }));
       }
     } catch {}
     setListsSaving(null);
@@ -3322,7 +3335,7 @@ function App() {
                         ) : (
                           <SaveToListButton onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]}>
                             <i className={listsSaved[post.id] ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"} />
-                            {listsSaved[post.id] ? `Saved to ${listsSaved[post.id]}` : "Save"}
+                            {listsSaved[post.id] ? `Saved to ${listsSaved[post.id].pageTitle}` : "Save"}
                           </SaveToListButton>
                         )
                       )}
@@ -3341,7 +3354,7 @@ function App() {
                         ) : (
                           listsPages.filter(p => p.type === "locations").map(page => (
                             <SaveToListItem key={page.id || page._id} disabled={listsSaving === (page.id || page._id)} onClick={() => handleSavePlaceToList(page.id || page._id, post.place_id, post.id, page.title)}>
-                              <i className="fa-solid fa-location-dot" />
+                              <i className={listsSaved[post.id]?.pageId === (page.id || page._id) ? "fa-solid fa-check" : "fa-solid fa-location-dot"} />
                               <span style={{ flex: 1 }}>{page.title}</span>
                               {listsSaving === (page.id || page._id) && <Spinner />}
                             </SaveToListItem>

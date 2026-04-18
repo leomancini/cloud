@@ -1846,6 +1846,22 @@ app.post("/api/lists/save-place/:pageId/:placeId", async (req, res) => {
   }
 });
 
+app.delete("/api/lists/remove-item/:pageId/:itemId", async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const user = db.prepare("SELECT lists_api_key FROM users WHERE id = ?").get(req.user.id);
+  if (!user?.lists_api_key) return res.status(403).json({ error: "Lists account not connected" });
+  try {
+    const response = await fetch(`${LISTS_API_URL}/pages/${req.params.pageId}/items/${req.params.itemId}`, {
+      method: "DELETE",
+      headers: { "X-Api-Key": user.lists_api_key },
+    });
+    if (!response.ok) return res.status(response.status).json({ error: "Failed to remove item" });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Static map cache
 const mapsDir = join(__dirname, "maps");
 if (!existsSync(mapsDir)) mkdirSync(mapsDir);
