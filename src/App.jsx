@@ -2750,15 +2750,14 @@ function App() {
         const pageId = page._id || page.id;
         const title = page.title || newListName.trim();
         setListsPages(prev => [...prev, { ...page, id: pageId, title, type: "locations" }]);
-        setNewListName("");
-        if (!pageId) { setCreatingList(false); return; }
+        if (!pageId) { setNewListName(""); setCreatingList(false); return; }
         // Auto-save the place to the new list
         const saveRes = await fetch(`/api/lists/save-place/${pageId}/${placeId}`, { method: "POST" });
         if (saveRes.ok) {
           const data = await saveRes.json();
-          setListsSaved(prev => ({ ...prev, [postId]: { ...(prev[postId] || {}), [pageId]: { pageTitle: newListName.trim(), itemId: data.item?.id } } }));
-          setSaveToListPostId(null);
+          setListsSaved(prev => ({ ...prev, [postId]: { ...(prev[postId] || {}), [pageId]: { pageTitle: title, itemId: data.item?.id } } }));
         }
+        setNewListName("");
       }
     } catch {}
     setCreatingList(false);
