@@ -1506,25 +1506,29 @@ const PostPlaceAddress = styled.span`
 `;
 
 const SaveToListButton = styled.button`
+  position: absolute;
+  top: 10px;
+  right: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 10px 12px;
-  margin-top: 4px;
-  border: 2px solid ${(p) => p.theme.border};
-  border-radius: ${RADIUS};
-  font-size: 14px;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
   font-weight: 600;
-  color: ${(p) => p.$saved ? p.theme.btnPrimary : p.theme.textSecondary};
-  background: none;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   cursor: pointer;
-  width: 100%;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   @media (hover: hover) {
-    &:hover { background: ${(p) => p.theme.bgHover}; border-color: rgba(0, 0, 0, 0.15); }
+    &:hover { background: rgba(0, 0, 0, 0.65); }
   }
-  &:active { background: ${(p) => p.theme.bgHover}; }
+  &:active { background: rgba(0, 0, 0, 0.7); }
 `;
 
 const SaveToListDropdown = styled.div`
@@ -3303,19 +3307,20 @@ function App() {
                   <PostLocation as="a" href={post.place_maps_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit", cursor: "pointer", marginTop: aboveMap ? 0 : 10 }}>
                     <PostMapWrapper className="map-wrapper" style={aboveMap ? { borderRadius: `${SMALL} ${SMALL} 0 0` } : undefined}>
                       <PostMap src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`} alt={post.place_name} />
+                      {post.place_id && (
+                        <SaveToListButton onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]}>
+                          <i className={listsSaved[post.id] ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"} />
+                          {listsSaved[post.id] ? "Saved" : "Save"}
+                        </SaveToListButton>
+                      )}
                     </PostMapWrapper>
                     <PostPlaceName className="place-name">
                       <span>{post.place_name}</span>
                       {post.place_address && <PostPlaceAddress>{shortAddress(post.place_address)}</PostPlaceAddress>}
                     </PostPlaceName>
                   </PostLocation>
-                  {post.place_id && (<>
-                    <SaveToListButton onClick={() => handleSaveToList(post.id)} $saved={!!listsSaved[post.id]}>
-                      <i className={listsSaved[post.id] ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"} />
-                      {listsSaved[post.id] ? "Saved" : "Save to list"}
-                    </SaveToListButton>
-                    {saveToListPostId === post.id && (
-                      <SaveToListDropdown>
+                  {post.place_id && saveToListPostId === post.id && (
+                    <SaveToListDropdown>
                         {!listsConnected ? (
                           <SaveToListItem onClick={connectLists}>
                             <i className="fa-solid fa-link" /> Connect Lists account
@@ -3334,8 +3339,7 @@ function App() {
                           ))
                         )}
                       </SaveToListDropdown>
-                    )}
-                  </>)}
+                  )}
                 </>)}
               </div>
             );
