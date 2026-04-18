@@ -3481,6 +3481,9 @@ function App() {
                             onKeyDown={(e) => { if (e.key === "Enter") handleCreateList(post.id, post.place_id); }}
                             placeholder="New list"
                             disabled={creatingList}
+                            autoComplete="off"
+                            data-1p-ignore
+                            data-lpignore="true"
                             style={{ flex: 1, border: "none", background: "none", outline: "none", font: "inherit", fontWeight: "inherit", color: "inherit", padding: 0, minWidth: 0 }}
                           />
                           {creatingList ? <Spinner /> : newListName.trim() && <button onClick={() => handleCreateList(post.id, post.place_id)} style={{ border: "none", background: resolvedTheme.btnPrimary, color: resolvedTheme.btnPrimaryText, borderRadius: 12, padding: "6px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0, margin: "-4px -4px -4px 0" }}>Add</button>}
