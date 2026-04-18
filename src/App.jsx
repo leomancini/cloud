@@ -3314,10 +3314,16 @@ function App() {
                     <PostMapWrapper className="map-wrapper" style={aboveMap ? { borderRadius: `${SMALL} ${SMALL} 0 0` } : undefined}>
                       <PostMap src={`/api/staticmap?lat=${post.place_lat}&lng=${post.place_lng}&v=4`} alt={post.place_name} />
                       {post.place_id && (
-                        <SaveToListButton onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]}>
-                          <i className={listsSaved[post.id] ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"} />
-                          {listsSaved[post.id] ? "Saved" : "Save"}
-                        </SaveToListButton>
+                        !listsConnected && saveToListPostId === post.id ? (
+                          <SaveToListButton onClick={(e) => { e.preventDefault(); e.stopPropagation(); connectLists(); }}>
+                            <i className="fa-solid fa-link" /> Connect
+                          </SaveToListButton>
+                        ) : (
+                          <SaveToListButton onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]}>
+                            <i className={listsSaved[post.id] ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"} />
+                            {listsSaved[post.id] ? "Saved" : "Save"}
+                          </SaveToListButton>
+                        )
                       )}
                     </PostMapWrapper>
                     <PostPlaceName className="place-name">
@@ -3325,13 +3331,9 @@ function App() {
                       {post.place_address && <PostPlaceAddress>{shortAddress(post.place_address)}</PostPlaceAddress>}
                     </PostPlaceName>
                   </PostLocation>
-                  {post.place_id && saveToListPostId === post.id && (
+                  {post.place_id && saveToListPostId === post.id && listsConnected && (
                     <SaveToListDropdown>
-                        {!listsConnected ? (
-                          <SaveToListItem onClick={connectLists}>
-                            <i className="fa-solid fa-link" /> Connect Lists account
-                          </SaveToListItem>
-                        ) : listsLoading ? (
+                        {listsLoading ? (
                           <SaveToListItem disabled><Spinner /> Loading lists...</SaveToListItem>
                         ) : listsPages.filter(p => p.type === "locations").length === 0 ? (
                           <SaveToListItem as="a" href="https://lists.fcc.lol" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>No location lists yet — create one</SaveToListItem>
