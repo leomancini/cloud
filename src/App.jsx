@@ -2752,7 +2752,8 @@ function App() {
         const title = page.title || newListName.trim();
         setListsPages(prev => [{ ...page, id: pageId, title, type: "locations", _new: Date.now() }, ...prev]);
         setNewListName("");
-        if (!pageId) { setCreatingList(false); return; }
+        setCreatingList(false);
+        if (!pageId) return;
         // Auto-save the place to the new list
         setListsSaving(pageId);
         const saveRes = await fetch(`/api/lists/save-place/${pageId}/${placeId}`, { method: "POST" });
