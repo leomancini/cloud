@@ -1584,7 +1584,7 @@ const ListItemIcon = styled.div`
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  color: ${(p) => p.theme.textSecondary};
+  color: ${(p) => p.theme.text};
   flex-shrink: 0;
   outline: 1px solid rgba(0, 0, 0, 0.1);
   outline-offset: -1px;
