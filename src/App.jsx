@@ -3396,10 +3396,18 @@ function App() {
                         <SaveToListItem as="a" href="https://lists.fcc.lol" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>No location lists yet — create one</SaveToListItem>
                       ) : (
                         listsPages.filter(p => p.type === "locations").sort((a, b) => {
+                          const saved = listsSaved[post.id] || {};
+                          const aSaved = saved[a.id || a._id] ? 1 : 0;
+                          const bSaved = saved[b.id || b._id] ? 1 : 0;
+                          if (aSaved !== bSaved) return bSaved - aSaved;
                           const addr = (post.place_address || post.place_name || "").toLowerCase();
-                          const aMatch = addr.includes(a.title.toLowerCase()) ? 1 : 0;
-                          const bMatch = addr.includes(b.title.toLowerCase()) ? 1 : 0;
-                          return bMatch - aMatch;
+                          const aTitle = a.title.toLowerCase();
+                          const bTitle = b.title.toLowerCase();
+                          const aWords = aTitle.split(/[\s\/]+/);
+                          const bWords = bTitle.split(/[\s\/]+/);
+                          const aScore = aWords.filter(w => w.length > 2 && addr.includes(w)).length;
+                          const bScore = bWords.filter(w => w.length > 2 && addr.includes(w)).length;
+                          return bScore - aScore;
                         }).map(page => (
                           <SaveToListItem key={page.id || page._id} disabled={listsSaving === (page.id || page._id)} onClick={() => handleSavePlaceToList(page.id || page._id, post.place_id, post.id, page.title)}>
                             <i className="fa-solid fa-location-dot" />
