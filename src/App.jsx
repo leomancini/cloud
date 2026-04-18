@@ -2746,10 +2746,11 @@ function App() {
     try {
       const res = await fetch("/api/lists/create-page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: newListName.trim() }) });
       if (res.ok) {
-        const page = await res.json();
+        const resData = await res.json();
+        const page = resData.page || resData;
         const pageId = page._id || page.id;
         const title = page.title || newListName.trim();
-        setListsPages(prev => [{ ...page, id: pageId, title, type: "locations", _new: true }, ...prev]);
+        setListsPages(prev => [{ ...page, id: pageId, title, type: "locations", _new: Date.now() }, ...prev]);
         if (!pageId) { setNewListName(""); setCreatingList(false); return; }
         // Auto-save the place to the new list
         const saveRes = await fetch(`/api/lists/save-place/${pageId}/${placeId}`, { method: "POST" });
@@ -3466,7 +3467,7 @@ function App() {
                       {listsLoading ? (
                         <SaveToListItem disabled><Spinner /> Loading lists...</SaveToListItem>
                       ) : (<>
-                        <SaveToListItem key="new-list" as="div" style={{ cursor: "default" }}>
+                        <SaveToListItem key="_new-list-input" as="div" style={{ cursor: "default" }}>
                           <ListItemIcon><i className="fa-solid fa-plus" /></ListItemIcon>
                           <input
                             value={newListName}
