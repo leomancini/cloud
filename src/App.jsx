@@ -3387,7 +3387,7 @@ function App() {
                         </SaveToListButton>
                       ) : (
                         <SaveToListButton onClick={() => { if (listsSavedLoaded) handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]} $loading={!listsSavedLoaded}>
-                          {!listsSavedLoaded ? <Spinner size="14px" /> : <><i className={listsSaved[post.id] ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"} />{(() => { const s = listsSaved[post.id]; if (!s) return "Save"; const names = Object.values(s).map(v => v.pageTitle); return names.length === 1 ? `Saved to ${names[0]}` : `Saved to ${names.length} lists`; })()}</>}
+                          {!listsSavedLoaded ? <Spinner size="14px" /> : (() => { const s = listsSaved[post.id]; if (!s) return "Save"; const names = Object.values(s).map(v => v.pageTitle); return names.length === 1 ? `Saved to ${names[0]}` : `Saved to ${names.length} lists`; })()}
                         </SaveToListButton>
                       )
                     )}
