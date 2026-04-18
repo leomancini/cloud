@@ -2758,6 +2758,7 @@ function App() {
           setListsSaved(prev => ({ ...prev, [postId]: { ...(prev[postId] || {}), [pageId]: { pageTitle: title, itemId: data.item?.id } } }));
         }
         setNewListName("");
+        setSaveToListPostId(null);
       }
     } catch {}
     setCreatingList(false);
