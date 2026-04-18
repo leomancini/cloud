@@ -2752,7 +2752,9 @@ function App() {
         const page = resData.page || resData;
         const pageId = page._id || page.id;
         const title = page.title || newListName.trim();
-        setListsPages(prev => [{ ...page, id: pageId, title, type: "locations", _new: Date.now() }, ...prev]);
+        const newPage = { ...page, id: pageId, title, type: "locations", _new: Date.now() };
+        setListsPages(prev => [newPage, ...prev]);
+        setFrozenListsOrder(prev => prev ? [newPage, ...prev] : [newPage]);
         setNewListName("");
         setCreatingList(false);
         if (!pageId) return;
