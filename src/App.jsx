@@ -2605,7 +2605,13 @@ function App() {
     const onMessage = (e) => {
       if (e.data?.type === "lists-api-key" && e.data.apiKey) {
         fetch("/api/lists/connect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ apiKey: e.data.apiKey }) })
-          .then(() => { setListsConnected(true); });
+          .then(() => {
+            setListsConnected(true);
+            setListsLoading(true);
+            return fetch("/api/lists/pages");
+          })
+          .then(r => r.ok ? r.json() : [])
+          .then(data => { setListsPages(data); setListsLoading(false); });
       }
     };
     window.addEventListener("message", onMessage);
@@ -3327,8 +3333,8 @@ function App() {
                           </SaveToListItem>
                         ) : listsLoading ? (
                           <SaveToListItem disabled><Spinner /> Loading lists...</SaveToListItem>
-                        ) : listsPages.length === 0 ? (
-                          <SaveToListItem disabled>No lists found</SaveToListItem>
+                        ) : listsPages.filter(p => p.type === "locations").length === 0 ? (
+                          <SaveToListItem as="a" href="https://lists.fcc.lol" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>No location lists yet — create one</SaveToListItem>
                         ) : (
                           listsPages.filter(p => p.type === "locations").map(page => (
                             <SaveToListItem key={page.id || page._id} disabled={listsSaving === (page.id || page._id)} onClick={() => handleSavePlaceToList(page.id || page._id, post.place_id, post.id)}>
