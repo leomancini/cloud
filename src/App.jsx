@@ -176,6 +176,8 @@ const MentionDropdown = styled.div`
   overflow-y: auto;
   overscroll-behavior: contain;
   z-index: 10;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
 `;
 
 const MentionOption = styled.div`
@@ -1543,6 +1545,8 @@ const SaveToListDropdown = styled.div`
   overflow-y: auto;
   overscroll-behavior: contain;
   z-index: 10;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
 `;
 
 const SaveToListItem = styled.div`
