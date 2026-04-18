@@ -1512,30 +1512,39 @@ const PostPlaceAddress = styled.span`
 
 const SaveToListButton = styled.button`
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 0;
+  right: 0;
+  padding: 10px;
+  padding-left: ${(p) => p.$loading ? "10px" : "18px"};
+  padding-right: ${(p) => p.$loading ? "10px" : "22px"};
+  border: none;
+  background: none;
+  cursor: pointer;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  height: 34px;
-  min-width: 34px;
-  padding: ${(p) => p.$loading ? "0" : "0 12px 0 8px"};
-  border: none;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  cursor: pointer;
-  z-index: 2;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  @media (hover: hover) {
-    &:hover { background: rgba(0, 0, 0, 0.65); }
+  & > span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 34px;
+    min-width: 34px;
+    padding: ${(p) => p.$loading ? "0" : "0 12px 0 8px"};
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   }
-  &:active { background: rgba(0, 0, 0, 0.7); }
+  @media (hover: hover) {
+    &:hover > span { background: rgba(0, 0, 0, 0.65); }
+  }
+  &:active > span { background: rgba(0, 0, 0, 0.7); }
 `;
 
 const SaveToListDropdown = styled.div`
@@ -3408,7 +3417,7 @@ function App() {
                     </PostLocation>
                     {post.place_id && (
                       <SaveToListButton onClick={() => { if (!listsConnected) { connectLists(post.id); return; } if (listsSavedLoaded) handleSaveToList(post.id); }} $saved={!!listsSaved[post.id]} $loading={!listsSavedLoaded}>
-                        {!listsSavedLoaded ? <Spinner size="14px" /> : <><img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 16, height: 16, borderRadius: 3 }} />{(() => { const s = listsSaved[post.id]; if (!s) return "Save on Lists App"; const names = Object.values(s).map(v => v.pageTitle); return names.length === 1 ? `Saved to ${names[0]}` : `Saved to ${names.length} lists`; })()}</>}
+                        <span>{!listsSavedLoaded ? <Spinner size="14px" /> : <><img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 16, height: 16, borderRadius: 3 }} />{(() => { const s = listsSaved[post.id]; if (!s) return "Save on Lists App"; const names = Object.values(s).map(v => v.pageTitle); return names.length === 1 ? `Saved to ${names[0]}` : `Saved to ${names.length} lists`; })()}</>}</span>
                       </SaveToListButton>
                     )}
                   </div>
