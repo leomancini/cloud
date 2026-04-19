@@ -2308,8 +2308,10 @@ function useReactionDoubleTap(onReact) {
 // passes the resulting event props down via a render-prop, so the hook's refs
 // are stable across re-renders (hooks can't be called inside .map() directly).
 function PostItemWithReaction({ post, getReactionEmojis, onReact, renderContent }) {
-  const handleReact = useCallback(() => {
-    onReact(post.id, getReactionEmojis("posts")[0]);
+  const handleReact = useCallback((e) => {
+    const touch = e?.changedTouches?.[0];
+    const syntheticEvent = { clientX: touch?.clientX || e?.clientX, clientY: touch?.clientY || e?.clientY, target: e?.target };
+    onReact(post.id, getReactionEmojis("posts")[0], syntheticEvent);
   }, [post.id, onReact, getReactionEmojis]);
 
   const reactProps = useReactionDoubleTap(handleReact);
@@ -2319,8 +2321,9 @@ function PostItemWithReaction({ post, getReactionEmojis, onReact, renderContent 
 // ─── CommentRowWithReaction ───────────────────────────────────────────────────
 // Same pattern for individual comment rows.
 function CommentRowWithReaction({ postId, commentId, onReact, renderContent }) {
-  const handleReact = useCallback(() => {
-    onReact(postId, commentId);
+  const handleReact = useCallback((e) => {
+    const touch = e?.changedTouches?.[0];
+    onReact(postId, commentId, { clientX: touch?.clientX || e?.clientX, clientY: touch?.clientY || e?.clientY, target: e?.target });
   }, [postId, commentId, onReact]);
 
   const reactProps = useReactionDoubleTap(handleReact);
@@ -3203,7 +3206,34 @@ function App() {
     setViewingProfile((prev) => prev ? { ...prev, posts: prev.posts.map(mapper) } : prev);
   };
 
-  const handleReact = async (postId, emoji) => {
+  const spawnEmojiConfetti = (emoji, x, y) => {
+    const count = 16;
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement("div");
+      el.textContent = emoji;
+      el.style.cssText = `position:fixed;left:${x}px;top:${y}px;font-size:${36 + Math.random() * 20}px;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);`;
+      document.body.appendChild(el);
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.6;
+      const dist = 100 + Math.random() * 200;
+      const dx = Math.cos(angle) * dist;
+      const dy = Math.sin(angle) * dist - 60;
+      const rot = (Math.random() - 0.5) * 180;
+      el.animate([
+        { transform: "translate(-50%,-50%) scale(0.5) rotate(0deg)", opacity: 1 },
+        { transform: `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(1.5) rotate(${rot}deg)`, opacity: 0 },
+      ], { duration: 800, easing: "cubic-bezier(0,.7,.3,1)" }).onfinish = () => el.remove();
+    }
+  };
+
+  const handleReact = async (postId, emoji, e) => {
+    const post = posts.find(p => p.id === postId);
+    const alreadyReacted = post?.reactions?.some(r => r.emoji === emoji && r.user_reacted);
+    if (e && !alreadyReacted) {
+      const rect = e.target?.getBoundingClientRect?.();
+      const x = e.clientX || (rect ? rect.left + rect.width / 2 : 0);
+      const y = e.clientY || (rect ? rect.top + rect.height / 2 : 0);
+      if (x && y) spawnEmojiConfetti(emoji, x, y);
+    }
     // Cancel any pending lightbox from first tap of double-tap
     const el = document.querySelector(`[data-post-id="${postId}"]`);
     if (el && el._lightboxTimer) { clearTimeout(el._lightboxTimer); el._lightboxTimer = null; }
@@ -3248,8 +3278,17 @@ function App() {
     });
   };
 
-  const handleCommentReact = async (postId, commentId) => {
+  const handleCommentReact = async (postId, commentId, e) => {
     const emoji = getReactionEmojis("posts")[0];
+    const post = posts.find(p => p.id === postId);
+    const comment = post?.comments?.find(c => c.id === commentId);
+    const alreadyReacted = comment?.comment_reactions?.some(r => r.emoji === emoji && r.user_reacted);
+    if (e && !alreadyReacted) {
+      const rect = e.target?.getBoundingClientRect?.();
+      const x = e.clientX || (rect ? rect.left + rect.width / 2 : 0);
+      const y = e.clientY || (rect ? rect.top + rect.height / 2 : 0);
+      if (x && y) spawnEmojiConfetti(emoji, x, y);
+    }
     const res = await fetch(`/api/comments/${commentId}/react`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -3572,7 +3611,7 @@ function App() {
                   const hasAnyReaction = (post.reactions || []).some((r) => r.user_reacted);
                   return getReactionEmojis("posts").map((emoji) => {
                     const userReacted = (post.reactions || []).some((r) => r.emoji === emoji && r.user_reacted);
-                    return <EmojiOption key={emoji} $dimmed={hasAnyReaction && !userReacted} onClick={(e) => { if (e.detail > 1) return; handleReact(post.id, emoji); }}>{emoji}</EmojiOption>;
+                    return <EmojiOption key={emoji} $dimmed={hasAnyReaction && !userReacted} onClick={(e) => { if (e.detail > 1) return; handleReact(post.id, emoji, e); }}>{emoji}</EmojiOption>;
                   });
                 })()}
                 <EmojiEditButton onClick={() => { setEmojiPickerPostId(post.id); setEmojiPickerSlot(null); setQuickReactPickerPostId(null); }}>
