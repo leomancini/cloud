@@ -911,7 +911,12 @@ Requirements:
 - Always start with a start screen showing the game title and a tap/click to start prompt. The start screen should match the game's visual style
 - Simple, fun, and immediately playable after the start screen
 - Include score tracking visible in the game
-- Report scores to the parent page by calling window.parent.postMessage({ type: 'game-score', score: NUMBER }, '*') whenever the game ends (game over / round complete). Only send the final score, not every frame
+- Leaderboard API (optional — use if the game tracks score):
+  - On game over, send the score: window.parent.postMessage({ type: 'game-score', score: NUMBER }, '*')
+  - The parent will respond with: { type: 'game-leaderboard', leaderboard: [{ rank, name, score, picture, user_id }], userId: NUMBER }
+  - Listen for this message and display the leaderboard in your game over screen (show rank, name, score)
+  - You can also request the leaderboard at any time: window.parent.postMessage({ type: 'request-leaderboard' }, '*')
+  - Design the leaderboard UI to match the game's visual style
 - Default to a pixel art visual style (blocky sprites, limited color palette, retro feel) unless the user's description specifies a different style
 - Use canvas for rendering. Size the canvas to fill the viewport and handle resize events
 - Keep it lightweight and performant

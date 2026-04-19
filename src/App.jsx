@@ -776,66 +776,6 @@ const GameFrameInner = styled.iframe`
 `;
 
 
-const LeaderboardWrap = styled.div`
-  margin-top: 8px;
-  border-radius: ${RADIUS};
-  overflow: hidden;
-  border: 2px solid ${(p) => p.theme.border};
-`;
-
-const LeaderboardRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  font-size: 14px;
-  &:not(:last-child) { border-bottom: 1px solid ${(p) => p.theme.border}; }
-`;
-
-const LeaderboardRank = styled.span`
-  font-size: 13px;
-  font-weight: 700;
-  width: 20px;
-  text-align: center;
-  flex-shrink: 0;
-  color: ${(p) =>
-    p.$rank === 1 ? "#F59E0B" :
-    p.$rank === 2 ? "#9CA3AF" :
-    p.$rank === 3 ? "#D97706" :
-    p.theme.textSecondary};
-`;
-
-const LeaderboardName = styled.span`
-  flex: 1;
-  font-weight: ${(p) => (p.$me ? 700 : 500)};
-  color: ${(p) => p.theme.text};
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const LeaderboardScore = styled.span`
-  font-weight: 700;
-  color: ${(p) => p.theme.text};
-  flex-shrink: 0;
-`;
-
-const LeaderboardToggle = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  padding: 8px;
-  margin-top: 6px;
-  border: none;
-  background: none;
-  font-size: 13px;
-  font-weight: 600;
-  color: ${(p) => p.theme.textSecondary};
-  cursor: pointer;
-`;
-
 const shimmer = keyframes`
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
@@ -2415,8 +2355,6 @@ function App() {
   const [feedHasMore, setFeedHasMore] = useState(false);
   const [feedLoadingMore, setFeedLoadingMore] = useState(false);
   const [gameAudioEnabled, setGameAudioEnabled] = useState({});
-  const [gameLeaderboards, setGameLeaderboards] = useState({});
-  const [gameLeaderboardOpen, setGameLeaderboardOpen] = useState({});
   const [gameLeaderboardOptOut, setGameLeaderboardOptOut] = useState(false);
   const [frozenListsOrder, setFrozenListsOrder] = useState(null);
   const [listsConnected, setListsConnected] = useState(false);
@@ -2858,41 +2796,47 @@ function App() {
     setGameAudioEnabled(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const fetchLeaderboard = (gameId) => {
-    fetch(`/api/games/${gameId}/leaderboard`).then(r => r.ok ? r.json() : null).then(data => {
-      if (data) setGameLeaderboards(prev => ({ ...prev, [gameId]: data.leaderboard }));
-    }).catch(() => {});
-  };
-
-  const toggleLeaderboard = (gameId) => {
-    const open = !gameLeaderboardOpen[gameId];
-    setGameLeaderboardOpen(prev => ({ ...prev, [gameId]: open }));
-    if (open) fetchLeaderboard(gameId);
-  };
-
-  // Listen for game score reports from iframes
+  // Listen for game score reports and leaderboard requests from iframes
   useEffect(() => {
     const onGameMessage = (e) => {
-      if (e.data?.type !== 'game-score' || typeof e.data.score !== 'number') return;
-      // Find which game iframe sent this
+      if (!e.data?.type) return;
       const iframes = document.querySelectorAll('iframe[data-game-id]');
+      let sourceIframe = null, gameId = null;
       for (const iframe of iframes) {
         if (iframe.contentWindow === e.source) {
-          const gameId = iframe.getAttribute('data-game-id');
-          fetch(`/api/games/${gameId}/score`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ score: e.data.score }),
-          }).then(r => r.ok ? r.json() : null).then(data => {
-            if (data?.updated && gameLeaderboardOpen[gameId]) fetchLeaderboard(gameId);
-          });
+          sourceIframe = iframe;
+          gameId = iframe.getAttribute('data-game-id');
           break;
         }
+      }
+      if (!gameId) return;
+
+      if (e.data.type === 'game-score' && typeof e.data.score === 'number') {
+        fetch(`/api/games/${gameId}/score`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ score: e.data.score }),
+        }).then(r => r.ok ? r.json() : null).then(() => {
+          // Send updated leaderboard back to the game
+          fetch(`/api/games/${gameId}/leaderboard`).then(r => r.ok ? r.json() : null).then(data => {
+            if (data && sourceIframe?.contentWindow) {
+              sourceIframe.contentWindow.postMessage({ type: 'game-leaderboard', leaderboard: data.leaderboard, userId: user?.id }, '*');
+            }
+          });
+        });
+      }
+
+      if (e.data.type === 'request-leaderboard') {
+        fetch(`/api/games/${gameId}/leaderboard`).then(r => r.ok ? r.json() : null).then(data => {
+          if (data && sourceIframe?.contentWindow) {
+            sourceIframe.contentWindow.postMessage({ type: 'game-leaderboard', leaderboard: data.leaderboard, userId: user?.id }, '*');
+          }
+        });
       }
     };
     window.addEventListener('message', onGameMessage);
     return () => window.removeEventListener('message', onGameMessage);
-  }, [gameLeaderboardOpen]);
+  }, [user]);
 
   // Sync opt-out from user
   useEffect(() => {
@@ -3807,26 +3751,9 @@ function App() {
                           </PostMenuWrapper>
                         )}
                       </CommentRow>
-                      {c.mini_game && (<>
+                      {c.mini_game && (
                         <GameFrameWrap style={{ marginTop: 8 }}><GameFrameInner data-game-id={c.id} srcDoc={getGameSrcDoc(c.mini_game, gameAudioEnabled[c.id])} sandbox="allow-scripts allow-same-origin" title="Mini game" /></GameFrameWrap>
-                        <LeaderboardToggle onClick={() => toggleLeaderboard(c.id)}>
-                          <i className="fa-solid fa-trophy" /> {gameLeaderboardOpen[c.id] ? "Hide leaderboard" : "Leaderboard"}
-                        </LeaderboardToggle>
-                        {gameLeaderboardOpen[c.id] && (
-                          <LeaderboardWrap>
-                            {(gameLeaderboards[c.id] || []).length === 0 ? (
-                              <LeaderboardRow style={{ justifyContent: "center", color: resolvedTheme.textSecondary }}>No scores yet — play to be first!</LeaderboardRow>
-                            ) : (gameLeaderboards[c.id] || []).map((entry) => (
-                              <LeaderboardRow key={entry.user_id}>
-                                <LeaderboardRank $rank={entry.rank}>{entry.rank}</LeaderboardRank>
-                                <div style={{ width: 24, height: 24, borderRadius: "50%", backgroundSize: "cover", backgroundPosition: "center", backgroundImage: `url(${entry.picture})`, flexShrink: 0, outline: "1px solid rgba(0,0,0,0.1)", outlineOffset: -1 }} />
-                                <LeaderboardName $me={entry.user_id === user.id}>{entry.name}</LeaderboardName>
-                                <LeaderboardScore>{entry.score}</LeaderboardScore>
-                              </LeaderboardRow>
-                            ))}
-                          </LeaderboardWrap>
-                        )}
-                      </>)}
+                      )}
                       </>
                     )}
                   />
