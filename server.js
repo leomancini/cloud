@@ -43,6 +43,8 @@ db.exec(`
 
 // Migration: add display_name column for existing DBs
 try { db.exec("ALTER TABLE users ADD COLUMN display_name TEXT"); } catch {}
+// Migration: add game_leaderboard_opt_out column for existing DBs
+try { db.exec("ALTER TABLE users ADD COLUMN game_leaderboard_opt_out INTEGER NOT NULL DEFAULT 0"); } catch {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS follows (
@@ -234,6 +236,7 @@ app.get("/api/auth/me", (req, res) => {
       google_name: fresh?.name || req.user.name,
       display_name: fresh?.display_name || null,
       picture: `/api/pictures/${req.user.id}.jpg`,
+      game_leaderboard_opt_out: !!fresh?.game_leaderboard_opt_out,
     },
   });
 });
@@ -242,6 +245,14 @@ app.post("/api/auth/logout", (req, res) => {
   req.logout(() => {
     res.json({ ok: true });
   });
+});
+
+app.put("/api/profile/game-prefs", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const { leaderboard_opt_out } = req.body || {};
+  const value = leaderboard_opt_out ? 1 : 0;
+  db.prepare("UPDATE users SET game_leaderboard_opt_out = ? WHERE id = ?").run(value, req.user.id);
+  res.json({ ok: true, leaderboard_opt_out: !!value });
 });
 
 app.put("/api/profile/name", (req, res) => {
@@ -1436,7 +1447,7 @@ app.get("/api/posts/:id/leaderboard", (req, res) => {
     SELECT gs.score, COALESCE(u.display_name, u.name) as name, '/api/pictures/' || u.id || '.jpg' as picture, u.id as user_id
     FROM game_scores gs
     JOIN users u ON u.id = gs.user_id
-    WHERE gs.post_id = ?
+    WHERE gs.post_id = ? AND (u.game_leaderboard_opt_out = 0 OR u.game_leaderboard_opt_out IS NULL)
     ORDER BY gs.score DESC
     LIMIT 100
   `).all(postId);

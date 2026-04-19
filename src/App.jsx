@@ -2641,6 +2641,23 @@ function App() {
     return DEFAULT_REACTION_EMOJIS;
   };
 
+  // Game preferences state
+  const [gameLeaderboardOptOut, setGameLeaderboardOptOut] = useState(() => false);
+
+  // Sync game opt-out from the user object once loaded
+  useEffect(() => {
+    if (user) setGameLeaderboardOptOut(!!user.game_leaderboard_opt_out);
+  }, [user]);
+
+  const updateGameLeaderboardOptOut = async (value) => {
+    setGameLeaderboardOptOut(value);
+    await fetch("/api/profile/game-prefs", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leaderboard_opt_out: value }),
+    });
+  };
+
   // Push notification state
   const [pushPrefs, setPushPrefs] = useState(null);
   const [pushSupported] = useState(() => "serviceWorker" in navigator && "PushManager" in window);
@@ -4008,6 +4025,13 @@ function App() {
                 )}
               </PushSection>
             )}
+            <PushSection>
+              <ThemeToggleLabel>Games</ThemeToggleLabel>
+              <PushRow onClick={(e) => { e.preventDefault(); updateGameLeaderboardOptOut(!gameLeaderboardOptOut); }}>
+                <PushRowLabel>Hide me from leaderboards</PushRowLabel>
+                <ToggleTrack $on={gameLeaderboardOptOut}><ToggleThumb $on={gameLeaderboardOptOut} /></ToggleTrack>
+              </PushRow>
+            </PushSection>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
               <LogoutButton onClick={listsConnected ? () => { fetch("/api/lists/connect", { method: "DELETE" }).then(() => { setListsConnected(false); setListsSaved({}); setSavedPlacesData(null); setListsSavedLoaded(true); }); } : connectLists} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 <img src="https://lists.fcc.lol/apple-touch-icon.png?v=2" alt="" style={{ width: 18, height: 18, borderRadius: 4 }} />
