@@ -380,6 +380,7 @@ const ComposeInput = styled.textarea`
   border-radius: ${RADIUS};
   padding: 14px;
   font-size: 16px;
+  line-height: 22px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   resize: none;
   outline: none;
@@ -405,7 +406,7 @@ const ComposeHighlight = styled.div`
   padding: 14px;
   font-size: 16px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  line-height: normal;
+  line-height: 22px;
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow: hidden;
