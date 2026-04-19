@@ -314,7 +314,7 @@ app.get("/api/users/:id/profile", (req, res) => {
   const offset = parseInt(req.query.offset) || 0;
 
   const posts = db.prepare(
-    `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.place_maps_url, p.place_id, p.og_preview, p.mini_game,
+    `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.place_maps_url, p.place_id, p.og_preview, p.mini_game, p.mini_game_leaderboard,
       COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
     FROM posts p
     JOIN users u ON p.user_id = u.id
@@ -510,6 +510,21 @@ try { db.exec("ALTER TABLE posts ADD COLUMN og_preview TEXT"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN mini_game TEXT"); } catch {}
 try { db.exec("ALTER TABLE posts ADD COLUMN place_id TEXT"); } catch {}
 try { db.exec("ALTER TABLE users ADD COLUMN lists_api_key TEXT"); } catch {}
+try { db.exec("ALTER TABLE posts ADD COLUMN mini_game_leaderboard INTEGER NOT NULL DEFAULT 0"); } catch {}
+
+// Game scores table — one row per (post, user), updated on each new submission
+db.exec(`
+  CREATE TABLE IF NOT EXISTS game_scores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    score INTEGER NOT NULL DEFAULT 0,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(post_id, user_id)
+  )
+`);
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS sol_prs (
@@ -1256,7 +1271,7 @@ app.get("/api/feed", (req, res) => {
 
   const posts = db
     .prepare(
-      `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.place_maps_url, p.place_id, p.og_preview, p.mini_game,
+      `SELECT p.id, p.user_id, p.content, p.created_at, p.place_name, p.place_lat, p.place_lng, p.place_address, p.place_maps_url, p.place_id, p.og_preview, p.mini_game, p.mini_game_leaderboard,
         COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
       FROM posts p
       JOIN users u ON p.user_id = u.id
@@ -1385,12 +1400,89 @@ app.delete("/api/posts/:id", (req, res) => {
   if (post.user_id !== req.user.id)
     return res.status(403).json({ error: "Not your post" });
 
+  db.prepare("DELETE FROM game_scores WHERE post_id = ?").run(post.id);
   db.prepare("DELETE FROM reactions WHERE post_id = ?").run(post.id);
   db.prepare("DELETE FROM comments WHERE post_id = ?").run(post.id);
   db.prepare("DELETE FROM post_media WHERE post_id = ?").run(post.id);
   db.prepare("DELETE FROM posts WHERE id = ?").run(post.id);
   res.json({ ok: true });
 });
+
+// ── Game leaderboard routes ───────────────────────────────────────────────────
+
+// Toggle leaderboard on/off for a game post (creator only)
+app.patch("/api/posts/:id/leaderboard/toggle", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const postId = Number(req.params.id);
+  const post = db.prepare("SELECT * FROM posts WHERE id = ?").get(postId);
+  if (!post) return res.status(404).json({ error: "Post not found" });
+  if (post.user_id !== req.user.id) return res.status(403).json({ error: "Not your post" });
+  if (!post.mini_game) return res.status(400).json({ error: "Post has no game" });
+
+  const newValue = post.mini_game_leaderboard ? 0 : 1;
+  db.prepare("UPDATE posts SET mini_game_leaderboard = ? WHERE id = ?").run(newValue, postId);
+  res.json({ ok: true, mini_game_leaderboard: newValue });
+});
+
+// Get leaderboard for a game post
+app.get("/api/posts/:id/leaderboard", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const postId = Number(req.params.id);
+  const post = db.prepare("SELECT mini_game_leaderboard FROM posts WHERE id = ?").get(postId);
+  if (!post) return res.status(404).json({ error: "Post not found" });
+  if (!post.mini_game_leaderboard) return res.status(403).json({ error: "Leaderboard not enabled" });
+
+  const rows = db.prepare(`
+    SELECT gs.score, COALESCE(u.display_name, u.name) as name, '/api/pictures/' || u.id || '.jpg' as picture, u.id as user_id
+    FROM game_scores gs
+    JOIN users u ON u.id = gs.user_id
+    WHERE gs.post_id = ?
+    ORDER BY gs.score DESC
+    LIMIT 100
+  `).all(postId);
+
+  res.json({ leaderboard: rows.map((r, i) => ({ rank: i + 1, ...r })) });
+});
+
+// Submit / update a score for a game post
+app.post("/api/posts/:id/leaderboard", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const postId = Number(req.params.id);
+  const post = db.prepare("SELECT mini_game_leaderboard FROM posts WHERE id = ?").get(postId);
+  if (!post) return res.status(404).json({ error: "Post not found" });
+  if (!post.mini_game_leaderboard) return res.status(403).json({ error: "Leaderboard not enabled" });
+
+  const score = parseInt(req.body.score);
+  if (isNaN(score)) return res.status(400).json({ error: "score must be a number" });
+
+  // Only update if the new score is higher than the existing one
+  const existing = db.prepare("SELECT score FROM game_scores WHERE post_id = ? AND user_id = ?").get(postId, req.user.id);
+  if (existing && existing.score >= score) {
+    return res.json({ ok: true, updated: false, best: existing.score });
+  }
+
+  db.prepare(`
+    INSERT INTO game_scores (post_id, user_id, score, updated_at)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(post_id, user_id) DO UPDATE SET score = excluded.score, updated_at = CURRENT_TIMESTAMP
+  `).run(postId, req.user.id, score);
+
+  res.json({ ok: true, updated: true, best: score });
+});
+
+// Clear all scores for a game post (creator only)
+app.delete("/api/posts/:id/leaderboard", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const postId = Number(req.params.id);
+  const post = db.prepare("SELECT user_id FROM posts WHERE id = ?").get(postId);
+  if (!post) return res.status(404).json({ error: "Post not found" });
+  if (post.user_id !== req.user.id) return res.status(403).json({ error: "Not your post" });
+
+  db.prepare("DELETE FROM game_scores WHERE post_id = ?").run(postId);
+  res.json({ ok: true });
+});
+
+// ── End game leaderboard routes ───────────────────────────────────────────────
 
 // Reactions
 app.post("/api/posts/:id/react", (req, res) => {

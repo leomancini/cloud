@@ -768,6 +768,113 @@ const GameFrameInner = styled.iframe`
   display: block;
 `;
 
+const GameTabsRow = styled.div`
+  display: flex;
+  margin-top: 6px;
+  background: ${(p) => p.theme.bgControl};
+  border-radius: ${RADIUS};
+  padding: 3px;
+  gap: 2px;
+`;
+
+const GameTab = styled.button`
+  flex: 1;
+  padding: 6px 12px;
+  border-radius: ${RADIUS_SM};
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: ${(p) => (p.$active ? p.theme.bgElevated : "transparent")};
+  color: ${(p) => (p.$active ? p.theme.text : p.theme.textMuted)};
+  box-shadow: ${(p) => (p.$active ? `0 1px 3px ${p.theme.shadow}` : "none")};
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+`;
+
+const LeaderboardWrap = styled.div`
+  margin-top: 6px;
+  border-radius: ${RADIUS};
+  overflow: hidden;
+  border: 2px solid ${(p) => p.theme.border};
+`;
+
+const LeaderboardHeader = styled.div`
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: ${(p) => p.theme.textMuted};
+  background: ${(p) => p.theme.bgSecondary};
+  border-bottom: 2px solid ${(p) => p.theme.border};
+`;
+
+const LeaderboardRow = styled.div`
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  align-items: center;
+  padding: 10px 12px;
+  font-size: 14px;
+  border-bottom: 1px solid ${(p) => p.theme.border};
+  background: ${(p) => p.$isCurrentUser ? (p.theme === p.theme ? `${p.theme.bgSecondary}` : "transparent") : "transparent"};
+  &:last-child { border-bottom: none; }
+`;
+
+const LeaderboardRank = styled.span`
+  font-size: 13px;
+  font-weight: 700;
+  color: ${(p) =>
+    p.$rank === 1 ? "#F59E0B" :
+    p.$rank === 2 ? "#9CA3AF" :
+    p.$rank === 3 ? "#D97706" :
+    p.theme.textMuted};
+`;
+
+const LeaderboardPlayer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+`;
+
+const LeaderboardPlayerName = styled.span`
+  font-size: 14px;
+  font-weight: ${(p) => (p.$isCurrentUser ? 700 : 500)};
+  color: ${(p) => p.theme.text};
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const LeaderboardScore = styled.span`
+  font-size: 14px;
+  font-weight: 700;
+  color: ${(p) => p.theme.text};
+  text-align: right;
+`;
+
+const LeaderboardEmpty = styled.div`
+  padding: 24px 12px;
+  text-align: center;
+  font-size: 14px;
+  color: ${(p) => p.theme.textSecondary};
+`;
+
+const LeaderboardAvatar = styled.div`
+  width: 24px;
+  height: 24px;
+  ${avatarBase}
+  outline: 1px solid rgba(0,0,0,0.1);
+  outline-offset: -1px;
+  flex-shrink: 0;
+`;
+
 
 const shimmer = keyframes`
   0% { background-position: -200% center; }
@@ -2346,6 +2453,9 @@ function App() {
   const [feedHasMore, setFeedHasMore] = useState(false);
   const [feedLoadingMore, setFeedLoadingMore] = useState(false);
   const [gameAudioEnabled, setGameAudioEnabled] = useState({});
+  const [gameActiveTab, setGameActiveTab] = useState({}); // gameKey -> "play" | "leaderboard"
+  const [gameLeaderboards, setGameLeaderboards] = useState({}); // postId -> { loading, rows }
+  const [gameLeaderboardToggles, setGameLeaderboardToggles] = useState({}); // postId -> bool (optimistic)
   const [frozenListsOrder, setFrozenListsOrder] = useState(null);
   const [listsConnected, setListsConnected] = useState(false);
   const [saveToListPostId, setSaveToListPostId] = useState(null);
