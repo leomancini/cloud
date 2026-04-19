@@ -234,6 +234,7 @@ app.get("/api/auth/me", (req, res) => {
       google_name: fresh?.name || req.user.name,
       display_name: fresh?.display_name || null,
       picture: `/api/pictures/${req.user.id}.jpg`,
+      game_leaderboard_opt_out: !!fresh?.game_leaderboard_opt_out,
     },
   });
 });
@@ -549,6 +550,19 @@ db.exec(`
   )
 `);
 try { db.exec("ALTER TABLE comments ADD COLUMN mini_game TEXT"); } catch {}
+try { db.exec("ALTER TABLE users ADD COLUMN game_leaderboard_opt_out INTEGER NOT NULL DEFAULT 0"); } catch {}
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS game_scores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    score INTEGER NOT NULL DEFAULT 0,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(game_id, user_id)
+  )
+`);
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS reactions (
@@ -897,6 +911,7 @@ Requirements:
 - Always start with a start screen showing the game title and a tap/click to start prompt. The start screen should match the game's visual style
 - Simple, fun, and immediately playable after the start screen
 - Include score tracking visible in the game
+- Report scores to the parent page by calling window.parent.postMessage({ type: 'game-score', score: NUMBER }, '*') whenever the game ends (game over / round complete). Only send the final score, not every frame
 - Default to a pixel art visual style (blocky sprites, limited color palette, retro feel) unless the user's description specifies a different style
 - Use canvas for rendering. Size the canvas to fill the viewport and handle resize events
 - Keep it lightweight and performant
@@ -1389,6 +1404,39 @@ app.delete("/api/posts/:id", (req, res) => {
   db.prepare("DELETE FROM comments WHERE post_id = ?").run(post.id);
   db.prepare("DELETE FROM post_media WHERE post_id = ?").run(post.id);
   db.prepare("DELETE FROM posts WHERE id = ?").run(post.id);
+  res.json({ ok: true });
+});
+
+// Game leaderboard
+app.post("/api/games/:gameId/score", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const score = parseInt(req.body.score);
+  if (isNaN(score)) return res.status(400).json({ error: "score must be a number" });
+  const { gameId } = req.params;
+  const existing = db.prepare("SELECT score FROM game_scores WHERE game_id = ? AND user_id = ?").get(gameId, req.user.id);
+  if (existing && existing.score >= score) return res.json({ ok: true, updated: false, best: existing.score });
+  db.prepare(`
+    INSERT INTO game_scores (game_id, user_id, score, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(game_id, user_id) DO UPDATE SET score = excluded.score, updated_at = CURRENT_TIMESTAMP
+  `).run(gameId, req.user.id, score);
+  res.json({ ok: true, updated: true, best: score });
+});
+
+app.get("/api/games/:gameId/leaderboard", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const rows = db.prepare(`
+    SELECT gs.score, COALESCE(u.display_name, u.name) as name, '/api/pictures/' || u.id || '.jpg' as picture, u.id as user_id
+    FROM game_scores gs JOIN users u ON u.id = gs.user_id
+    WHERE gs.game_id = ? AND (u.game_leaderboard_opt_out = 0 OR u.game_leaderboard_opt_out IS NULL)
+    ORDER BY gs.score DESC LIMIT 50
+  `).all(req.params.gameId);
+  res.json({ leaderboard: rows.map((r, i) => ({ rank: i + 1, ...r })) });
+});
+
+app.put("/api/profile/game-prefs", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  const value = req.body.leaderboard_opt_out ? 1 : 0;
+  db.prepare("UPDATE users SET game_leaderboard_opt_out = ? WHERE id = ?").run(value, req.user.id);
   res.json({ ok: true });
 });
 
