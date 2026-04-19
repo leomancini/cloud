@@ -374,17 +374,28 @@ const ComposeWrapper = styled.div`
   width: 100%;
 `;
 
+const composeFieldBase = `
+  font-size: 16px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 22px;
+  letter-spacing: normal;
+  word-spacing: normal;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  -webkit-text-size-adjust: 100%;
+  padding: 14px;
+  border: 2px solid transparent;
+  border-radius: ${RADIUS};
+  box-sizing: border-box;
+`;
+
 const ComposeInput = styled.textarea`
   width: 100%;
-  border: 2px solid ${(p) => p.theme.border};
-  border-radius: ${RADIUS};
-  padding: 14px;
-  font-size: 16px;
-  line-height: 22px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  ${composeFieldBase}
+  border-color: ${(p) => p.theme.border};
   resize: none;
   outline: none;
-  box-sizing: border-box;
   color: transparent;
   caret-color: ${(p) => p.theme.text};
   position: relative;
@@ -403,18 +414,10 @@ const ComposeHighlight = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 14px;
-  font-size: 16px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  line-height: 22px;
-  white-space: pre-wrap;
-  word-wrap: break-word;
+  ${composeFieldBase}
   overflow: hidden;
   color: ${(p) => p.theme.text};
   pointer-events: none;
-  border: 2px solid transparent;
-  border-radius: ${RADIUS};
-  box-sizing: border-box;
 `;
 
 const ComposeActions = styled.div`
@@ -1426,14 +1429,27 @@ const CommentInputWrapper = styled.div`
   min-width: 0;
 `;
 
+const commentFieldBase = `
+  font-size: 16px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 22px;
+  letter-spacing: normal;
+  word-spacing: normal;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  -webkit-text-size-adjust: 100%;
+  padding: 7px 12px;
+  border: 2px solid transparent;
+  border-radius: ${RADIUS};
+  box-sizing: border-box;
+`;
+
 const CommentInput = styled.textarea`
   width: 100%;
   min-height: 40px;
-  border: 2px solid ${(p) => p.theme.border};
-  border-radius: ${RADIUS};
-  padding: 7px 12px;
-  font-size: 16px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  ${commentFieldBase}
+  border-color: ${(p) => p.theme.border};
   outline: none;
   min-width: 0;
   color: transparent;
@@ -1441,12 +1457,9 @@ const CommentInput = styled.textarea`
   position: relative;
   z-index: 1;
   background: transparent;
-  box-sizing: border-box;
   resize: none;
   overflow: hidden;
-  line-height: 22px;
   display: block;
-  vertical-align: top;
 
   &:focus {
     border-color: #ccc;
@@ -1459,18 +1472,10 @@ const CommentHighlight = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 7px 12px;
-  font-size: 16px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  line-height: 22px;
-  white-space: pre-wrap;
-  word-wrap: break-word;
+  ${commentFieldBase}
   overflow: hidden;
   color: ${(p) => p.theme.text};
   pointer-events: none;
-  border: 2px solid transparent;
-  border-radius: ${RADIUS};
-  box-sizing: border-box;
 `;
 
 const CommentPostButton = styled.button`
@@ -3843,7 +3848,7 @@ function App() {
                     rows={1}
                     value={commentInputs[post.id] || ""}
                     onFocus={(e) => { e.target.style.height = e.target.scrollHeight + "px"; }}
-                    onChange={(e) => { setCommentInputs((prev) => ({ ...prev, [post.id]: e.target.value })); handleMentionInput(e.target.value, post.id); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+                    onChange={(e) => { setCommentInputs((prev) => ({ ...prev, [post.id]: e.target.value })); handleMentionInput(e.target.value, post.id); e.target.style.height = "0"; e.target.style.height = e.target.scrollHeight + "px"; e.target.scrollTop = 0; }}
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleComment(post.id); } }}
                   />
                 </CommentInputWrapper>
