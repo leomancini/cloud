@@ -3529,6 +3529,12 @@ function App() {
                           <MosaicBadge href="https://mosaic.fcc.lol" target="_blank" rel="noopener noreferrer"><MosaicBadgeBg />Made with Mosaic <span style={{ opacity: 0.75, fontWeight: 400 }}>Try it <i className="fa-solid fa-arrow-right" style={{ fontSize: 11 }} /></span></MosaicBadge>
                         </MediaWrapper>
                       );
+                      if (m.source === "zap") return (
+                        <MediaWrapper key={i} style={radiusStyle}>
+                          {img}
+                          <MosaicBadge href="https://zap.fcc.lol" target="_blank" rel="noopener noreferrer"><MosaicBadgeBg />Made with Zap <span style={{ opacity: 0.75, fontWeight: 400 }}>Try it <i className="fa-solid fa-arrow-right" style={{ fontSize: 11 }} /></span></MosaicBadge>
+                        </MediaWrapper>
+                      );
                       return <React.Fragment key={i}>{img}</React.Fragment>;
                     })}
                   </PostMediaContainer>
@@ -4002,6 +4008,7 @@ function App() {
                         <PostImage src={preview.url} $single={mediaPreviews.length === 1} />
                       )}
                       {mediaSources[i] === "mosaic" && <MosaicBadge href="https://mosaic.fcc.lol" target="_blank" rel="noopener noreferrer"><MosaicBadgeBg />Made with Mosaic <span style={{ opacity: 0.75, fontWeight: 400 }}>Try it <i className="fa-solid fa-arrow-right" style={{ fontSize: 11 }} /></span></MosaicBadge>}
+                      {mediaSources[i] === "zap" && <MosaicBadge href="https://zap.fcc.lol" target="_blank" rel="noopener noreferrer"><MosaicBadgeBg />Made with Zap <span style={{ opacity: 0.75, fontWeight: 400 }}>Try it <i className="fa-solid fa-arrow-right" style={{ fontSize: 11 }} /></span></MosaicBadge>}
                       <RemoveMedia onClick={() => removeMedia(i)}><i className="fa-solid fa-xmark" /></RemoveMedia>
                     </MediaPreview>
                   ))}
