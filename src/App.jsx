@@ -3213,16 +3213,15 @@ function App() {
       el.textContent = emoji;
       el.style.cssText = `position:fixed;left:${x}px;top:${y}px;font-size:${36 + Math.random() * 20}px;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);`;
       document.body.appendChild(el);
-      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.6;
-      const dist = 120 + Math.random() * 250;
+      const angle = -Math.PI / 2 + (Math.random() - 0.5) * 2.2;
+      const dist = 150 + Math.random() * 300;
       const dx = Math.cos(angle) * dist;
-      const dy = Math.sin(angle) * dist - 80;
+      const dy = Math.sin(angle) * dist;
       const rot = (Math.random() - 0.5) * 360;
       el.animate([
-        { transform: "translate(-50%,-50%) scale(0) rotate(0deg)", opacity: 1, offset: 0 },
-        { transform: `translate(calc(-50% + ${dx * 0.6}px),calc(-50% + ${dy * 0.4}px)) scale(1.8) rotate(${rot * 0.5}deg)`, opacity: 1, offset: 0.3 },
-        { transform: `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(0.8) rotate(${rot}deg)`, opacity: 0, offset: 1 },
-      ], { duration: 900, easing: "cubic-bezier(.15,.9,.3,1)" }).onfinish = () => el.remove();
+        { transform: "translate(-50%,-50%) scale(0.8) rotate(0deg)", opacity: 1 },
+        { transform: `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(1.3) rotate(${rot}deg)`, opacity: 0 },
+      ], { duration: 1200, easing: "cubic-bezier(.2,.8,.3,1)" }).onfinish = () => el.remove();
     }
   };
 
