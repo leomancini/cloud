@@ -3835,7 +3835,24 @@ function App() {
     />
   );
 
-  if (loading) return null;
+  if (loading) {
+    if (prefillLoading) return (
+      <ThemePrefContext.Provider value={{ preference: themePref, setPreference: updateThemePref }}>
+        <ThemeProvider theme={resolvedTheme}>
+          <GlobalStyle />
+          <Page>
+            <ComposeBox>
+              <div style={{ borderRadius: RADIUS, background: resolvedTheme.bgControl, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, color: resolvedTheme.textSecondary, fontSize: 14, fontWeight: 500, width: "100%", aspectRatio: (prefillLoading.width && prefillLoading.height) ? `${prefillLoading.width} / ${prefillLoading.height}` : "1", overflow: "hidden", outline: "2px solid rgba(0, 0, 0, 0.1)", outlineOffset: "-2px", boxSizing: "border-box" }}>
+                <Spinner size="28px" />
+                {prefillLoading.source ? `Loading content from ${prefillLoading.source}...` : "Loading content..."}
+              </div>
+            </ComposeBox>
+          </Page>
+        </ThemeProvider>
+      </ThemePrefContext.Provider>
+    );
+    return null;
+  }
 
   if (!user) {
     return (
