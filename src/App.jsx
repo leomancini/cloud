@@ -2622,8 +2622,7 @@ function App() {
               fetch(`/api/uploads/${prefillFile}`)
                 .then((r) => { if (r.ok) return r.blob(); })
                 .then((blob) => {
-                  setPrefillLoading(null);
-                  if (!blob) return;
+                  if (!blob) { setPrefillLoading(null); return; }
                   const file = new File([blob], prefillFile, { type: blob.type });
                   setMediaFiles([file]);
                   setMediaPreviews([{ url: URL.createObjectURL(blob), type: "image" }]);
@@ -3258,6 +3257,7 @@ function App() {
     setMentionQuery(null);
     setSelectedLocation(null);
     setShowLocationSearch(false);
+    setPrefillLoading(null);
     mediaPreviews.forEach((p) => URL.revokeObjectURL(p.url));
     setMediaFiles([]);
     setMediaPreviews([]);
@@ -4024,7 +4024,7 @@ function App() {
                   );
                 })()}
               </ComposeWrapper>
-              {prefillLoading && (
+              {prefillLoading && mediaPreviews.length === 0 && (
                 <div style={{ marginTop: 8, borderRadius: RADIUS, background: resolvedTheme.bgControl, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, color: resolvedTheme.textSecondary, fontSize: 14, fontWeight: 500, width: "100%", aspectRatio: (prefillLoading?.width && prefillLoading?.height) ? `${prefillLoading.width} / ${prefillLoading.height}` : "1", overflow: "hidden", outline: "2px solid rgba(0, 0, 0, 0.1)", outlineOffset: "-2px", boxSizing: "border-box" }}>
                   <Spinner size="28px" />
                   {prefillLoading?.source ? `Loading content from ${prefillLoading.source}...` : "Loading content..."}
