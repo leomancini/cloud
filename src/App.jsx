@@ -2605,7 +2605,9 @@ function App() {
         setUser(data.user);
         setLoading(false);
         if (data.user) {
-          loadFeed();
+          const hasPrefill = !!localStorage.getItem("pendingPrefill");
+          if (hasPrefill) requestAnimationFrame(() => requestAnimationFrame(() => loadFeed()));
+          else loadFeed();
           loadUsers();
           loadFollowers();
           loadFollowRequests();
