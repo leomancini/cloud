@@ -2425,7 +2425,14 @@ function App() {
   const [mediaFiles, setMediaFiles] = useState([]);
   const [mediaPreviews, setMediaPreviews] = useState([]);
   const [mediaSources, setMediaSources] = useState([]);
-  const [prefillLoading, setPrefillLoading] = useState(null); // { source, width, height } or null
+  const [prefillLoading, setPrefillLoading] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const file = params.get("compose");
+    const pending = file ? { source: params.get("source"), width: parseInt(params.get("width")) || null, height: parseInt(params.get("height")) || null } : (() => { try { const p = JSON.parse(localStorage.getItem("pendingPrefill")); return p ? p : null; } catch { return null; } })();
+    if (!pending) return null;
+    const name = pending.source ? pending.source.charAt(0).toUpperCase() + pending.source.slice(1) : null;
+    return { source: name, width: pending.width, height: pending.height };
+  });
   const fileInputRef = useRef(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [commentInputs, setCommentInputs] = useState({});
@@ -4018,8 +4025,9 @@ function App() {
                 })()}
               </ComposeWrapper>
               {prefillLoading && (
-                <div style={{ marginTop: 8, borderRadius: RADIUS, background: resolvedTheme.bgControl, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: resolvedTheme.textSecondary, fontSize: 14, fontWeight: 500, aspectRatio: prefillLoading.width && prefillLoading.height ? `${prefillLoading.width}/${prefillLoading.height}` : "1", overflow: "hidden" }}>
-                  <Spinner /> {prefillLoading.source ? `Loading content from ${prefillLoading.source}` : "Loading content..."}
+                <div style={{ marginTop: 8, borderRadius: RADIUS, background: resolvedTheme.bgControl, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, color: resolvedTheme.textSecondary, fontSize: 14, fontWeight: 500, width: "100%", aspectRatio: (prefillLoading?.width && prefillLoading?.height) ? `${prefillLoading.width} / ${prefillLoading.height}` : "1", overflow: "hidden", outline: "2px solid rgba(0, 0, 0, 0.1)", outlineOffset: "-2px", boxSizing: "border-box" }}>
+                  <Spinner size="28px" />
+                  {prefillLoading?.source ? `Loading content from ${prefillLoading.source}...` : "Loading content..."}
                 </div>
               )}
               {mediaPreviews.length > 0 && (
