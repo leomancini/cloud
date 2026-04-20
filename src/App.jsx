@@ -2425,6 +2425,7 @@ function App() {
   const [mediaFiles, setMediaFiles] = useState([]);
   const [mediaPreviews, setMediaPreviews] = useState([]);
   const [mediaSources, setMediaSources] = useState([]);
+  const [prefillImageLoaded, setPrefillImageLoaded] = useState(false);
   const [prefillLoading, setPrefillLoading] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const file = params.get("compose");
@@ -2624,9 +2625,16 @@ function App() {
                 .then((blob) => {
                   if (!blob) { setPrefillLoading(null); return; }
                   const file = new File([blob], prefillFile, { type: blob.type });
-                  setMediaFiles([file]);
-                  setMediaPreviews([{ url: URL.createObjectURL(blob), type: "image" }]);
-                  setMediaSources([prefillSource]);
+                  const url = URL.createObjectURL(blob);
+                  // Preload the image before showing preview
+                  const img = new Image();
+                  img.onload = () => {
+                    setMediaFiles([file]);
+                    setMediaPreviews([{ url, type: "image" }]);
+                    setMediaSources([prefillSource]);
+                    setPrefillImageLoaded(true);
+                  };
+                  img.src = url;
                 })
                 .catch(() => setPrefillLoading(null));
             } catch { setPrefillLoading(null); }
@@ -3258,6 +3266,7 @@ function App() {
     setSelectedLocation(null);
     setShowLocationSearch(false);
     setPrefillLoading(null);
+    setPrefillImageLoaded(false);
     mediaPreviews.forEach((p) => URL.revokeObjectURL(p.url));
     setMediaFiles([]);
     setMediaPreviews([]);
@@ -4041,13 +4050,13 @@ function App() {
                   );
                 })()}
               </ComposeWrapper>
-              {prefillLoading && mediaPreviews.length === 0 && (
+              {prefillLoading && !prefillImageLoaded && (
                 <div style={{ marginTop: 8, borderRadius: RADIUS, background: resolvedTheme.bgControl, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, color: resolvedTheme.textSecondary, fontSize: 14, fontWeight: 500, width: "100%", aspectRatio: (prefillLoading?.width && prefillLoading?.height) ? `${prefillLoading.width} / ${prefillLoading.height}` : "1", overflow: "hidden", outline: "2px solid rgba(0, 0, 0, 0.1)", outlineOffset: "-2px", boxSizing: "border-box" }}>
                   <Spinner size="28px" />
                   {prefillLoading?.source ? `Loading content from ${prefillLoading.source}...` : "Loading content..."}
                 </div>
               )}
-              {mediaPreviews.length > 0 && (
+              {mediaPreviews.length > 0 && (!prefillLoading || prefillImageLoaded) && (
                 <PostMediaContainer $count={mediaPreviews.length} style={{ marginTop: 8 }}>
                   {mediaPreviews.map((preview, i) => (
                     <MediaPreview key={i}>
