@@ -2426,7 +2426,15 @@ function App() {
   const [mediaPreviews, setMediaPreviews] = useState([]);
   const [mediaSources, setMediaSources] = useState([]);
   const [prefillImageLoaded, setPrefillImageLoaded] = useState(false);
-  const [prefillLoading, setPrefillLoading] = useState(null);
+  const [prefillLoading, setPrefillLoading] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const file = params.get("compose");
+    const raw = file ? { source: params.get("source"), width: parseInt(params.get("width")) || null, height: parseInt(params.get("height")) || null }
+      : (() => { try { return JSON.parse(localStorage.getItem("pendingPrefill")); } catch { return null; } })();
+    if (!raw?.source && !file) return null;
+    const name = (raw.source || "").charAt(0).toUpperCase() + (raw.source || "").slice(1) || null;
+    return { source: name, width: raw.width, height: raw.height };
+  });
   const fileInputRef = useRef(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [commentInputs, setCommentInputs] = useState({});
@@ -2611,8 +2619,6 @@ function App() {
             localStorage.removeItem("pendingPrefill");
             try {
               const { file: prefillFile, source: prefillSource, width: prefillWidth, height: prefillHeight } = JSON.parse(pendingRaw);
-              const sourceName = prefillSource ? prefillSource.charAt(0).toUpperCase() + prefillSource.slice(1) : null;
-              setPrefillLoading({ source: sourceName, width: prefillWidth, height: prefillHeight });
               fetch(`/api/uploads/${prefillFile}`)
                 .then((r) => { if (r.ok) return r.blob(); })
                 .then((blob) => {
