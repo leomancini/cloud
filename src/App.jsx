@@ -3868,14 +3868,14 @@ function App() {
         <GlobalStyle />
         <Page>
       {lightboxSrc && <PhotoLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
-      {user && <Header>
+      <Header>
         {tab === "profile" || tab === "user-profile" ? (
           <BackButton onClick={() => window.history.back()}><i className="fa-solid fa-arrow-left" /> Back</BackButton>
         ) : (
           <>
             <HeaderProfile onClick={() => setTab("profile")}>
-              <SmallAvatar style={{ backgroundImage: `url(${user.picture})`, '--tilt': randomTilt() }} />
-              <HeaderName>{user.name}</HeaderName>
+              <SmallAvatar style={{ backgroundImage: user ? `url(${user.picture})` : "none", '--tilt': randomTilt() }} />
+              <HeaderName>{user?.name || ""}</HeaderName>
             </HeaderProfile>
             <SegmentedControl>
               <Segment $active={tab === "feed"} onClick={() => setTab("feed")} style={{ minWidth: 90 }}>
@@ -3887,7 +3887,7 @@ function App() {
             </SegmentedControl>
           </>
         )}
-      </Header>}
+      </Header>
       <Content>
         {isMobile && !isStandalone && !installBannerDismissed && tab === "feed" && (
           <Banner>
