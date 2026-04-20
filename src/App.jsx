@@ -2427,6 +2427,7 @@ function App() {
   const [mediaSources, setMediaSources] = useState([]);
   const [prefillImageLoaded, setPrefillImageLoaded] = useState(false);
   const hasPrefillRef = useRef(false);
+  const prefillReceivedRef = useRef(false);
   const [prefillLoading, setPrefillLoading] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const file = params.get("compose");
@@ -2716,7 +2717,9 @@ function App() {
 
   useEffect(() => {
     const onMessage = (e) => {
-      if (e.data?.type === "prefill-ready" && e.data.filename) {
+      if (e.data?.type === "prefill-ready" && e.data.filename && !prefillReceivedRef.current) {
+        prefillReceivedRef.current = true;
+        if (e.source) e.source.postMessage({ type: "prefill-ack" }, "*");
         const source = prefillLoading?.source || null;
         fetch(`/api/uploads/${e.data.filename}`)
           .then((r) => { if (r.ok) return r.blob(); })
