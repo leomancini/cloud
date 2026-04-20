@@ -3843,9 +3843,9 @@ function App() {
     />
   );
 
-  if (loading) return null;
+  if (loading && !prefillLoading) return null;
 
-  if (!user) {
+  if (!user && !loading) {
     return (
       <ThemePrefContext.Provider value={{ preference: themePref, setPreference: updateThemePref }}>
         <ThemeProvider theme={resolvedTheme}>
@@ -3868,7 +3868,7 @@ function App() {
         <GlobalStyle />
         <Page>
       {lightboxSrc && <PhotoLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
-      <Header>
+      {user && <Header>
         {tab === "profile" || tab === "user-profile" ? (
           <BackButton onClick={() => window.history.back()}><i className="fa-solid fa-arrow-left" /> Back</BackButton>
         ) : (
@@ -3887,7 +3887,7 @@ function App() {
             </SegmentedControl>
           </>
         )}
-      </Header>
+      </Header>}
       <Content>
         {isMobile && !isStandalone && !installBannerDismissed && tab === "feed" && (
           <Banner>
