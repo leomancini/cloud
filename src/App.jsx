@@ -3264,6 +3264,30 @@ function App() {
     if (posting) return;
     if (!compose.trim() && mediaFiles.length === 0 && !selectedLocation) return;
     setPosting(true);
+
+    // Build optimistic post
+    const optimisticId = `optimistic-${Date.now()}`;
+    const optimisticPost = {
+      id: optimisticId,
+      user_id: user.id,
+      content: compose,
+      created_at: null,
+      _uploading: true,
+      author_name: user.name,
+      author_picture: user.picture,
+      media: mediaPreviews.map((p, i) => ({ url: p.url, type: p.type, source: mediaSources[i] || null })),
+      comments: [],
+      reactions: [],
+      og_preview: ogPreview || null,
+      place_name: selectedLocation?.name || null,
+      place_lat: selectedLocation?.lat || null,
+      place_lng: selectedLocation?.lng || null,
+      place_address: selectedLocation?.address || null,
+      place_maps_url: selectedLocation?.maps_url || null,
+      place_id: selectedLocation?.id || null,
+    };
+    setPosts(prev => [optimisticPost, ...prev]);
+
     const formData = new FormData();
     formData.append("content", compose);
     if (selectedLocation) {
@@ -3285,10 +3309,8 @@ function App() {
     if (ogPreview) {
       formData.append("og_preview", JSON.stringify(ogPreview));
     }
-    await fetch("/api/posts", {
-      method: "POST",
-      body: formData,
-    });
+
+    // Clear compose immediately
     setCompose("");
     setOgPreview(null);
     ogFetchedUrl.current = null;
@@ -3297,11 +3319,13 @@ function App() {
     setShowLocationSearch(false);
     setPrefillLoading(null);
     setPrefillImageLoaded(false);
-    mediaPreviews.forEach((p) => URL.revokeObjectURL(p.url));
     setMediaFiles([]);
     setMediaPreviews([]);
     setMediaSources([]);
     setPosting(false);
+
+    await fetch("/api/posts", { method: "POST", body: formData });
+    // Don't revoke blob URLs until feed replaces optimistic post
     loadFeed();
   };
 
@@ -3531,9 +3555,9 @@ function App() {
               <PostAuthor>{post.author_name}</PostAuthor>
             </PostHeaderLink>
             <PostHeaderText>
-              <PostTime>{timeAgo(post.created_at)}</PostTime>
+              <PostTime>{post._uploading ? "uploading..." : timeAgo(post.created_at)}</PostTime>
             </PostHeaderText>
-            {post.user_id === user.id && (
+            {post.user_id === user.id && !post._uploading && (
               <PostHeaderRight>
                 <PostMenuWrapper>
                   <PostMenuButton onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === post.id ? null : post.id); }}>
