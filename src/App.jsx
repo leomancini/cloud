@@ -2425,6 +2425,7 @@ function App() {
   const [mediaFiles, setMediaFiles] = useState([]);
   const [mediaPreviews, setMediaPreviews] = useState([]);
   const [mediaSources, setMediaSources] = useState([]);
+  const [prefillLoading, setPrefillLoading] = useState(null); // { source, width, height } or null
   const fileInputRef = useRef(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [commentInputs, setCommentInputs] = useState({});
@@ -2579,9 +2580,11 @@ function App() {
     const composeFile = params.get("compose");
     if (composeFile) {
       const composeSource = params.get("source") || null;
+      const composeWidth = parseInt(params.get("width")) || null;
+      const composeHeight = parseInt(params.get("height")) || null;
       localStorage.setItem(
         "pendingPrefill",
-        JSON.stringify({ file: composeFile, source: composeSource })
+        JSON.stringify({ file: composeFile, source: composeSource, width: composeWidth, height: composeHeight })
       );
       window.history.replaceState(null, "", "/");
     }
@@ -2606,17 +2609,21 @@ function App() {
           if (pendingRaw) {
             localStorage.removeItem("pendingPrefill");
             try {
-              const { file: prefillFile, source: prefillSource } = JSON.parse(pendingRaw);
+              const { file: prefillFile, source: prefillSource, width: prefillWidth, height: prefillHeight } = JSON.parse(pendingRaw);
+              const sourceName = prefillSource ? prefillSource.charAt(0).toUpperCase() + prefillSource.slice(1) : null;
+              setPrefillLoading({ source: sourceName, width: prefillWidth, height: prefillHeight });
               fetch(`/api/uploads/${prefillFile}`)
                 .then((r) => { if (r.ok) return r.blob(); })
                 .then((blob) => {
+                  setPrefillLoading(null);
                   if (!blob) return;
                   const file = new File([blob], prefillFile, { type: blob.type });
                   setMediaFiles([file]);
                   setMediaPreviews([{ url: URL.createObjectURL(blob), type: "image" }]);
                   setMediaSources([prefillSource]);
-                });
-            } catch {}
+                })
+                .catch(() => setPrefillLoading(null));
+            } catch { setPrefillLoading(null); }
           }
         }
       })
@@ -4010,6 +4017,11 @@ function App() {
                   );
                 })()}
               </ComposeWrapper>
+              {prefillLoading && (
+                <div style={{ marginTop: 8, borderRadius: RADIUS, background: resolvedTheme.bgControl, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: resolvedTheme.textSecondary, fontSize: 14, fontWeight: 500, aspectRatio: prefillLoading.width && prefillLoading.height ? `${prefillLoading.width}/${prefillLoading.height}` : "1", overflow: "hidden" }}>
+                  <Spinner /> {prefillLoading.source ? `Loading content from ${prefillLoading.source}` : "Loading content..."}
+                </div>
+              )}
               {mediaPreviews.length > 0 && (
                 <PostMediaContainer $count={mediaPreviews.length} style={{ marginTop: 8 }}>
                   {mediaPreviews.map((preview, i) => (
