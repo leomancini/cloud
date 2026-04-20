@@ -3843,9 +3843,9 @@ function App() {
     />
   );
 
-  if (loading && !prefillLoading) return null;
+  if (loading) return null;
 
-  if (!user && !loading) {
+  if (!user) {
     return (
       <ThemePrefContext.Provider value={{ preference: themePref, setPreference: updateThemePref }}>
         <ThemeProvider theme={resolvedTheme}>
@@ -3874,8 +3874,8 @@ function App() {
         ) : (
           <>
             <HeaderProfile onClick={() => setTab("profile")}>
-              <SmallAvatar style={{ backgroundImage: user ? `url(${user.picture})` : "none", '--tilt': randomTilt() }} />
-              <HeaderName>{user?.name || ""}</HeaderName>
+              <SmallAvatar style={{ backgroundImage: `url(${user.picture})`, '--tilt': randomTilt() }} />
+              <HeaderName>{user.name}</HeaderName>
             </HeaderProfile>
             <SegmentedControl>
               <Segment $active={tab === "feed"} onClick={() => setTab("feed")} style={{ minWidth: 90 }}>
