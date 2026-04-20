@@ -2430,6 +2430,12 @@ function App() {
   const [prefillLoading, setPrefillLoading] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const file = params.get("compose");
+    const awaitContent = params.get("awaitContent");
+    if (awaitContent) {
+      hasPrefillRef.current = true;
+      const name = awaitContent.charAt(0).toUpperCase() + awaitContent.slice(1);
+      return { source: name, width: parseInt(params.get("width")) || null, height: parseInt(params.get("height")) || null, awaiting: true };
+    }
     const raw = file ? { source: params.get("source"), width: parseInt(params.get("width")) || null, height: parseInt(params.get("height")) || null }
       : (() => { try { return JSON.parse(localStorage.getItem("pendingPrefill")); } catch { return null; } })();
     if (!raw?.source && !file) return null;
@@ -2710,6 +2716,26 @@ function App() {
 
   useEffect(() => {
     const onMessage = (e) => {
+      if (e.data?.type === "prefill-ready" && e.data.filename) {
+        const source = prefillLoading?.source || null;
+        fetch(`/api/uploads/${e.data.filename}`)
+          .then((r) => { if (r.ok) return r.blob(); })
+          .then((blob) => {
+            if (!blob) { setPrefillLoading(null); return; }
+            const file = new File([blob], e.data.filename, { type: blob.type });
+            const url = URL.createObjectURL(blob);
+            const img = new Image();
+            img.onload = () => {
+              setMediaFiles([file]);
+              setMediaPreviews([{ url, type: "image" }]);
+              setMediaSources([source?.toLowerCase() || null]);
+              setPrefillImageLoaded(true);
+            };
+            img.src = url;
+          })
+          .catch(() => setPrefillLoading(null));
+        window.history.replaceState(null, "", "/");
+      }
       if (e.data?.type === "lists-api-key" && e.data.apiKey) {
         fetch("/api/lists/connect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ apiKey: e.data.apiKey }) })
           .then(() => {
