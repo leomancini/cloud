@@ -2426,14 +2426,7 @@ function App() {
   const [mediaPreviews, setMediaPreviews] = useState([]);
   const [mediaSources, setMediaSources] = useState([]);
   const [prefillImageLoaded, setPrefillImageLoaded] = useState(false);
-  const [prefillLoading, setPrefillLoading] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    const file = params.get("compose");
-    const pending = file ? { source: params.get("source"), width: parseInt(params.get("width")) || null, height: parseInt(params.get("height")) || null } : (() => { try { const p = JSON.parse(localStorage.getItem("pendingPrefill")); return p ? p : null; } catch { return null; } })();
-    if (!pending) return null;
-    const name = pending.source ? pending.source.charAt(0).toUpperCase() + pending.source.slice(1) : null;
-    return { source: name, width: pending.width, height: pending.height };
-  });
+  const [prefillLoading, setPrefillLoading] = useState(null);
   const fileInputRef = useRef(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [commentInputs, setCommentInputs] = useState({});
