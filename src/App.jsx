@@ -2426,12 +2426,14 @@ function App() {
   const [mediaPreviews, setMediaPreviews] = useState([]);
   const [mediaSources, setMediaSources] = useState([]);
   const [prefillImageLoaded, setPrefillImageLoaded] = useState(false);
+  const hasPrefillRef = useRef(false);
   const [prefillLoading, setPrefillLoading] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const file = params.get("compose");
     const raw = file ? { source: params.get("source"), width: parseInt(params.get("width")) || null, height: parseInt(params.get("height")) || null }
       : (() => { try { return JSON.parse(localStorage.getItem("pendingPrefill")); } catch { return null; } })();
     if (!raw?.source && !file) return null;
+    hasPrefillRef.current = true;
     const name = (raw.source || "").charAt(0).toUpperCase() + (raw.source || "").slice(1) || null;
     return { source: name, width: raw.width, height: raw.height };
   });
@@ -2605,9 +2607,9 @@ function App() {
         setUser(data.user);
         setLoading(false);
         if (data.user) {
-          const hasPrefill = !!localStorage.getItem("pendingPrefill");
-          if (hasPrefill) requestAnimationFrame(() => requestAnimationFrame(() => loadFeed()));
-          else loadFeed();
+          if (hasPrefillRef.current) {
+            requestAnimationFrame(() => requestAnimationFrame(() => loadFeed()));
+          } else loadFeed();
           loadUsers();
           loadFollowers();
           loadFollowRequests();
