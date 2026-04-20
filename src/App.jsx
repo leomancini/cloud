@@ -2607,7 +2607,7 @@ function App() {
         setUser(data.user);
         setLoading(false);
         if (data.user) {
-          if (!hasPrefillRef.current) loadFeed();
+          loadFeed();
           loadUsers();
           loadFollowers();
           loadFollowRequests();
@@ -2672,11 +2672,6 @@ function App() {
     const onVisibility = () => { if (document.visibilityState === "visible") loadFeed(); };
     document.addEventListener("visibilitychange", onVisibility);
     return () => { alive = false; clearTimeout(reconnectTimer); ws?.close(); document.removeEventListener("visibilitychange", onVisibility); };
-  }, [user]);
-
-  // Load feed after paint when prefill is pending (ensures placeholder renders first)
-  useEffect(() => {
-    if (user && hasPrefillRef.current) loadFeed();
   }, [user]);
 
   // Lists integration
