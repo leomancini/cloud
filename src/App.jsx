@@ -2574,6 +2574,18 @@ function App() {
   const loadMoreRef = useRef(null);
 
   useEffect(() => {
+    // Stash ?compose=filename&source= in localStorage so it survives a login round-trip
+    const params = new URLSearchParams(window.location.search);
+    const composeFile = params.get("compose");
+    if (composeFile) {
+      const composeSource = params.get("source") || null;
+      localStorage.setItem(
+        "pendingPrefill",
+        JSON.stringify({ file: composeFile, source: composeSource })
+      );
+      window.history.replaceState(null, "", "/");
+    }
+
     fetch("/api/auth/me")
       .then((res) => { if (res.ok) return res.json(); })
       .then((data) => {
@@ -2590,21 +2602,21 @@ function App() {
             loadUserProfile(initialProfileId.current, true);
             initialProfileId.current = null;
           }
-          // Prefill composer from ?compose=filename&source=mosaic
-          const params = new URLSearchParams(window.location.search);
-          const prefillFile = params.get("compose");
-          if (prefillFile) {
-            const prefillSource = params.get("source") || null;
-            window.history.replaceState(null, "", "/");
-            fetch(`/api/uploads/${prefillFile}`)
-              .then((r) => { if (r.ok) return r.blob(); })
-              .then((blob) => {
-                if (!blob) return;
-                const file = new File([blob], prefillFile, { type: blob.type });
-                setMediaFiles([file]);
-                setMediaPreviews([{ url: URL.createObjectURL(blob), type: "image" }]);
-                setMediaSources([prefillSource]);
-              });
+          const pendingRaw = localStorage.getItem("pendingPrefill");
+          if (pendingRaw) {
+            localStorage.removeItem("pendingPrefill");
+            try {
+              const { file: prefillFile, source: prefillSource } = JSON.parse(pendingRaw);
+              fetch(`/api/uploads/${prefillFile}`)
+                .then((r) => { if (r.ok) return r.blob(); })
+                .then((blob) => {
+                  if (!blob) return;
+                  const file = new File([blob], prefillFile, { type: blob.type });
+                  setMediaFiles([file]);
+                  setMediaPreviews([{ url: URL.createObjectURL(blob), type: "image" }]);
+                  setMediaSources([prefillSource]);
+                });
+            } catch {}
           }
         }
       })
