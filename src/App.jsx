@@ -2681,6 +2681,47 @@ function App() {
     return () => { alive = false; clearTimeout(reconnectTimer); ws?.close(); document.removeEventListener("visibilitychange", onVisibility); };
   }, [user]);
 
+  // Scroll to post from notification tap
+  const scrollToPost = useCallback((postId) => {
+    setTab("feed");
+    const tryScroll = () => {
+      const el = document.querySelector(`[data-post-id="${postId}"]`);
+      if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); return true; }
+      return false;
+    };
+    if (!tryScroll()) {
+      // Post might not be rendered yet — wait for feed to load
+      const observer = new MutationObserver(() => { if (tryScroll()) observer.disconnect(); });
+      observer.observe(document.body, { childList: true, subtree: true });
+      setTimeout(() => observer.disconnect(), 5000);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Handle ?post= URL param (from notification open)
+    const params = new URLSearchParams(window.location.search);
+    const postId = params.get("post");
+    if (postId) {
+      window.history.replaceState(null, "", "/");
+      // Wait for feed to be populated
+      const wait = setInterval(() => {
+        if (posts.length) { clearInterval(wait); scrollToPost(postId); }
+      }, 100);
+      setTimeout(() => clearInterval(wait), 10000);
+    }
+
+    // Handle message from service worker (PWA already open)
+    const onSwMessage = (e) => {
+      if (e.data?.type === "scroll-to-post" && e.data.url) {
+        const p = new URLSearchParams(e.data.url.split("?")[1] || "");
+        const id = p.get("post");
+        if (id) { loadFeed(); setTimeout(() => scrollToPost(id), 500); }
+      }
+    };
+    navigator.serviceWorker?.addEventListener("message", onSwMessage);
+    return () => navigator.serviceWorker?.removeEventListener("message", onSwMessage);
+  }, [posts.length > 0]);
+
   // Lists integration
   const [savedPlacesData, setSavedPlacesData] = useState(null);
 

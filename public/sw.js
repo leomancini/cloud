@@ -17,6 +17,7 @@ self.addEventListener("notificationclick", (event) => {
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       for (const client of list) {
         if (client.url.includes(self.location.origin) && "focus" in client) {
+          client.postMessage({ type: "scroll-to-post", url });
           return client.focus();
         }
       }

@@ -1239,7 +1239,7 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
       title: `${getUserDisplayName(req.user.id)} posted`,
       body: (content || "").trim().slice(0, 100) || mediaDesc || "New post",
       tag: `new-post-${postId}`,
-      url: "/",
+      url: `/?post=${postId}`,
     });
   }
 
@@ -1255,7 +1255,7 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
           title: `${getUserDisplayName(req.user.id)} mentioned you`,
           body: postText.slice(0, 100),
           tag: `mention-post-${postId}`,
-          url: "/",
+          url: `/?post=${postId}`,
         });
       }
     }
@@ -1476,7 +1476,7 @@ app.post("/api/posts/:id/react", (req, res) => {
       title: `${getUserDisplayName(req.user.id)} reacted ${emoji}`,
       body: "on your post",
       tag: `reaction-${postId}-${req.user.id}`,
-      url: "/",
+      url: `/?post=${postId}`,
     });
   }
 });
@@ -1500,7 +1500,7 @@ app.post("/api/posts/:id/comments", (req, res) => {
       title: `${getUserDisplayName(req.user.id)} commented`,
       body: content.trim().slice(0, 100),
       tag: `comment-${post.id}-${req.user.id}`,
-      url: "/",
+      url: `/?post=${post.id}`,
     });
   }
 
@@ -1514,7 +1514,7 @@ app.post("/api/posts/:id/comments", (req, res) => {
       title: `${getUserDisplayName(req.user.id)} also commented`,
       body: content.trim().slice(0, 100),
       tag: `thread-${post.id}-${req.user.id}`,
-      url: "/",
+      url: `/?post=${post.id}`,
     });
   }
 
