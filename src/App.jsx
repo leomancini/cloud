@@ -1348,7 +1348,7 @@ const DoubleTapPickerPopover = styled.div`
   overflow-x: auto;
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }
-  box-shadow: 0 4px 24px ${(p) => p.theme.shadowMd}, 0 0 0 1.5px ${(p) => p.theme.border};
+  box-shadow: 0 2px 12px ${(p) => p.theme.shadowMd};
   animation: ${popIn} 0.2s ease forwards;
 `;
 
