@@ -1338,11 +1338,14 @@ const DoubleTapPickerBackdrop = styled.div`
 const DoubleTapPickerOuter = styled.div`
   position: fixed;
   z-index: 2001;
-  border-radius: 999px;
   max-width: calc(100vw - 40px);
   width: fit-content;
-  box-shadow: 0 2px 12px ${(p) => p.theme.shadowMd};
+  filter: drop-shadow(0 2px 8px ${(p) => p.theme.shadowMd});
   animation: ${popIn} 0.2s ease forwards;
+`;
+
+const DoubleTapPickerMask = styled.div`
+  border-radius: 999px;
   -webkit-mask-image: linear-gradient(to right, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%);
   mask-image: linear-gradient(to right, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%);
 `;
@@ -4054,6 +4057,7 @@ function App() {
           <>
             <DoubleTapPickerBackdrop onClick={() => { if (Date.now() - commentDoubleTapPicker.openedAt > 300) setCommentDoubleTapPicker(null); }} />
             <DoubleTapPickerOuter style={{ left, top, transform: "translate(-50%, 0)" }}>
+            <DoubleTapPickerMask>
             <DoubleTapPickerPopover ref={pickerPopoverRef}>
               {(() => {
                 const post = posts.find(p => p.id === commentDoubleTapPicker.postId);
@@ -4075,6 +4079,7 @@ function App() {
               ));
               })()}
             </DoubleTapPickerPopover>
+            </DoubleTapPickerMask>
             </DoubleTapPickerOuter>
           </>
         );
