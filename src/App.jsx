@@ -2337,6 +2337,7 @@ function useReactionDoubleTap(onReact) {
     if (lastTapTime.current && now - lastTapTime.current < TAP_WINDOW) {
       lastTapTime.current = 0;
       e.preventDefault();
+      e.stopPropagation();
       onReact(e);
     } else {
       lastTapTime.current = now;
