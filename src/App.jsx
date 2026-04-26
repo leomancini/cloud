@@ -1358,11 +1358,15 @@ const DoubleTapPickerPopover = styled.div`
   &::before {
     left: 0;
     background: linear-gradient(to right, ${(p) => p.theme.bgElevated}, transparent);
+    opacity: ${(p) => p.$scrollLeft ? 1 : 0};
+    transition: opacity 0.15s;
   }
   &::after {
     right: 0;
     width: 32px;
     background: linear-gradient(to left, ${(p) => p.theme.bgElevated}, transparent);
+    opacity: ${(p) => p.$scrollRight ? 1 : 0};
+    transition: opacity 0.15s;
   }
 `;
 
@@ -1370,7 +1374,7 @@ const DoubleTapPickerScroll = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 16px;
+  padding: 10px 16px 10px 12px;
   overflow-x: auto;
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }
@@ -2610,6 +2614,14 @@ function App() {
   const [quickReactPickerPostId, setQuickReactPickerPostId] = useState(null); // post id for quick one-off reaction
   const [commentDoubleTapPicker, setCommentDoubleTapPicker] = useState(null); // { postId, commentId, x, y } — shown on double-tap
   const pickerPopoverRef = useRef(null);
+  const pickerScrollRef = useRef(null);
+  const [pickerScroll, setPickerScroll] = useState({ left: false, right: false });
+  useEffect(() => {
+    if (commentDoubleTapPicker && pickerScrollRef.current) {
+      const el = pickerScrollRef.current;
+      setPickerScroll({ left: false, right: el.scrollWidth > el.clientWidth });
+    }
+  }, [!!commentDoubleTapPicker]);
   useEffect(() => {
     if (!commentDoubleTapPicker) return;
     const dismiss = (e) => {
@@ -4069,8 +4081,11 @@ function App() {
         return (
           <>
             <DoubleTapPickerBackdrop onClick={() => { if (Date.now() - commentDoubleTapPicker.openedAt > 300) setCommentDoubleTapPicker(null); }} />
-            <DoubleTapPickerPopover ref={pickerPopoverRef} style={{ left, top, transform: "translate(-50%, 0)" }}>
-              <DoubleTapPickerScroll>{(() => {
+            <DoubleTapPickerPopover ref={pickerPopoverRef} $scrollLeft={pickerScroll.left} $scrollRight={pickerScroll.right} style={{ left, top, transform: "translate(-50%, 0)" }}>
+              <DoubleTapPickerScroll ref={pickerScrollRef} onScroll={(e) => {
+                const el = e.target;
+                setPickerScroll({ left: el.scrollLeft > 2, right: el.scrollLeft < el.scrollWidth - el.clientWidth - 2 });
+              }}>{(() => {
                 const post = posts.find(p => p.id === commentDoubleTapPicker.postId);
                 const comment = post?.comments?.find(c => c.id === commentDoubleTapPicker.commentId);
                 const userReactedEmoji = comment?.comment_reactions?.find(r => r.user_reacted)?.emoji;
