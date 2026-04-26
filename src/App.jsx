@@ -2585,6 +2585,12 @@ function App() {
   const [commentReactionPicker, setCommentReactionPicker] = useState(null); // { postId, commentId }
   const [quickReactPickerPostId, setQuickReactPickerPostId] = useState(null); // post id for quick one-off reaction
   const [commentDoubleTapPicker, setCommentDoubleTapPicker] = useState(null); // { postId, commentId, x, y } — shown on double-tap
+  useEffect(() => {
+    if (!commentDoubleTapPicker) return;
+    const dismiss = () => setCommentDoubleTapPicker(null);
+    window.addEventListener("scroll", dismiss, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", dismiss, { capture: true });
+  }, [!!commentDoubleTapPicker]);
 
   // User profile page state
   const [viewingProfile, setViewingProfile] = useState(null); // { profile, posts, canViewPosts, hasMore }
