@@ -1335,22 +1335,11 @@ const DoubleTapPickerBackdrop = styled.div`
   z-index: 2000;
 `;
 
-const DoubleTapPickerOuter = styled.div`
+const DoubleTapPickerPopover = styled.div`
   position: fixed;
   z-index: 2001;
   max-width: calc(100vw - 40px);
   width: fit-content;
-  filter: drop-shadow(0 2px 8px ${(p) => p.theme.shadowMd});
-  animation: ${popIn} 0.2s ease forwards;
-`;
-
-const DoubleTapPickerMask = styled.div`
-  border-radius: 999px;
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%);
-  mask-image: linear-gradient(to right, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%);
-`;
-
-const DoubleTapPickerPopover = styled.div`
   background: ${(p) => p.theme.bgElevated};
   border-radius: 999px;
   padding: 10px 16px;
@@ -1361,6 +1350,28 @@ const DoubleTapPickerPopover = styled.div`
   overflow-x: auto;
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }
+  box-shadow: 0 2px 12px ${(p) => p.theme.shadowMd};
+  animation: ${popIn} 0.2s ease forwards;
+  &::before, &::after {
+    content: "";
+    position: sticky;
+    top: 0;
+    bottom: 0;
+    min-width: 16px;
+    flex-shrink: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+  &::before {
+    left: 0;
+    background: linear-gradient(to right, ${(p) => p.theme.bgElevated}, transparent);
+    margin-right: -16px;
+  }
+  &::after {
+    right: 0;
+    background: linear-gradient(to left, ${(p) => p.theme.bgElevated}, transparent);
+    margin-left: -16px;
+  }
 `;
 
 const DoubleTapPickerEmoji = styled.button`
@@ -4056,9 +4067,7 @@ function App() {
         return (
           <>
             <DoubleTapPickerBackdrop onClick={() => { if (Date.now() - commentDoubleTapPicker.openedAt > 300) setCommentDoubleTapPicker(null); }} />
-            <DoubleTapPickerOuter style={{ left, top, transform: "translate(-50%, 0)" }}>
-            <DoubleTapPickerMask>
-            <DoubleTapPickerPopover ref={pickerPopoverRef}>
+            <DoubleTapPickerPopover ref={pickerPopoverRef} style={{ left, top, transform: "translate(-50%, 0)" }}>
               {(() => {
                 const post = posts.find(p => p.id === commentDoubleTapPicker.postId);
                 const comment = post?.comments?.find(c => c.id === commentDoubleTapPicker.commentId);
@@ -4079,8 +4088,6 @@ function App() {
               ));
               })()}
             </DoubleTapPickerPopover>
-            </DoubleTapPickerMask>
-            </DoubleTapPickerOuter>
           </>
         );
       })()}
