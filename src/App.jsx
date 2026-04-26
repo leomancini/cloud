@@ -1344,9 +1344,12 @@ const DoubleTapPickerPopover = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
+  max-width: calc(100vw - 24px);
+  overflow-x: auto;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
   box-shadow: 0 4px 24px ${(p) => p.theme.shadowMd}, 0 0 0 1.5px ${(p) => p.theme.border};
   animation: ${popIn} 0.2s ease forwards;
-  /* Positioned by inline style via JS */
 `;
 
 const DoubleTapPickerEmoji = styled.button`
