@@ -1361,6 +1361,7 @@ const DoubleTapPickerPopover = styled.div`
   }
   &::after {
     right: 0;
+    width: 32px;
     background: linear-gradient(to left, ${(p) => p.theme.bgElevated}, transparent);
   }
 `;
