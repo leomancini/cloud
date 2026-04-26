@@ -3511,7 +3511,7 @@ function App() {
       const rect = e?.target?.getBoundingClientRect?.();
       const x = e?.clientX || (rect ? rect.left + rect.width / 2 : window.innerWidth / 2);
       const y = e?.clientY || (rect ? rect.top + rect.height / 2 : window.innerHeight / 2);
-      setCommentDoubleTapPicker({ postId, commentId, x, y });
+      setCommentDoubleTapPicker({ postId, commentId, x, y, openedAt: Date.now() });
       return;
     }
     const post = posts.find(p => p.id === postId);
@@ -4031,7 +4031,7 @@ function App() {
         top  = top < 12 ? commentDoubleTapPicker.y + 20 : top;
         return (
           <>
-            <DoubleTapPickerBackdrop onClick={() => setCommentDoubleTapPicker(null)} />
+            <DoubleTapPickerBackdrop onClick={() => { if (Date.now() - commentDoubleTapPicker.openedAt > 300) setCommentDoubleTapPicker(null); }} />
             <DoubleTapPickerPopover style={{ left, top, transform: "translate(-50%, 0)" }}>
               {getReactionEmojis("comments").map((emoji) => (
                 <DoubleTapPickerEmoji
