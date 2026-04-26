@@ -4037,15 +4037,15 @@ function App() {
         const PICKER_H = 60;
         const vpW = window.innerWidth;
         const vpH = window.innerHeight;
-        // Centre over tap, but clamp to viewport with 12px margin
-        let left = commentDoubleTapPicker.x;
+        const isMobileView = vpW < 600;
+        let left = isMobileView ? vpW / 2 : commentDoubleTapPicker.x;
         let top  = commentDoubleTapPicker.y - PICKER_H - 16;
-        left = Math.max(PICKER_W / 2 + 12, Math.min(left, vpW - PICKER_W / 2 - 12));
+        if (!isMobileView) left = Math.max(PICKER_W / 2 + 12, Math.min(left, vpW - PICKER_W / 2 - 12));
         top  = top < 12 ? commentDoubleTapPicker.y + 20 : top;
         return (
           <>
             <DoubleTapPickerBackdrop onClick={() => { if (Date.now() - commentDoubleTapPicker.openedAt > 300) setCommentDoubleTapPicker(null); }} />
-            <DoubleTapPickerPopover ref={pickerPopoverRef} style={{ left, top, transform: "translate(-50%, 0)" }}>
+            <DoubleTapPickerPopover ref={pickerPopoverRef} style={{ left, top, transform: "translate(-50%, 0)", ...(isMobileView ? { maxWidth: "calc(100vw - 32px)" } : {}) }}>
               {getReactionEmojis("comments").map((emoji) => (
                 <DoubleTapPickerEmoji
                   key={emoji}
