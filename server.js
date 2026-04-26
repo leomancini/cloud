@@ -1583,7 +1583,15 @@ app.post("/api/comments/:id/react", (req, res) => {
       db.prepare("DELETE FROM comment_reactions WHERE id = ?").run(otherReaction.id);
     }
     db.prepare("INSERT INTO comment_reactions (comment_id, user_id, emoji) VALUES (?, ?, ?)").run(commentId, req.user.id, emoji);
-    if (comment.user_id !== req.user.id) notifyUser(comment.user_id, "feed-update");
+    if (comment.user_id !== req.user.id) {
+      notifyUser(comment.user_id, "feed-update");
+      sendPushNotification(comment.user_id, "reactions", {
+        title: `${getUserDisplayName(req.user.id)} reacted ${emoji}`,
+        body: "on your comment",
+        tag: `comment-react-${commentId}-${req.user.id}`,
+        url: `/?post=${comment.post_id}`,
+      });
+    }
   }
   const allReactions = db.prepare("SELECT cr.emoji, COALESCE(u.display_name, u.name) as name, cr.user_id FROM comment_reactions cr JOIN users u ON u.id = cr.user_id WHERE cr.comment_id = ?").all(commentId);
   const grouped = {};
