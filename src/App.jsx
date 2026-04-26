@@ -1342,36 +1342,37 @@ const DoubleTapPickerPopover = styled.div`
   width: fit-content;
   background: ${(p) => p.theme.bgElevated};
   border-radius: 999px;
-  padding: 10px 16px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
   box-sizing: border-box;
-  overflow-x: auto;
-  scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
   box-shadow: 0 2px 12px ${(p) => p.theme.shadowMd};
   animation: ${popIn} 0.2s ease forwards;
+  overflow: hidden;
   &::before, &::after {
     content: "";
-    position: sticky;
+    position: absolute;
     top: 0;
     bottom: 0;
-    min-width: 16px;
-    flex-shrink: 0;
-    z-index: 1;
+    width: 20px;
+    z-index: 2;
     pointer-events: none;
   }
   &::before {
     left: 0;
     background: linear-gradient(to right, ${(p) => p.theme.bgElevated}, transparent);
-    margin-right: -16px;
   }
   &::after {
     right: 0;
     background: linear-gradient(to left, ${(p) => p.theme.bgElevated}, transparent);
-    margin-left: -16px;
   }
+`;
+
+const DoubleTapPickerScroll = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
 `;
 
 const DoubleTapPickerEmoji = styled.button`
@@ -4068,7 +4069,7 @@ function App() {
           <>
             <DoubleTapPickerBackdrop onClick={() => { if (Date.now() - commentDoubleTapPicker.openedAt > 300) setCommentDoubleTapPicker(null); }} />
             <DoubleTapPickerPopover ref={pickerPopoverRef} style={{ left, top, transform: "translate(-50%, 0)" }}>
-              {(() => {
+              <DoubleTapPickerScroll>{(() => {
                 const post = posts.find(p => p.id === commentDoubleTapPicker.postId);
                 const comment = post?.comments?.find(c => c.id === commentDoubleTapPicker.commentId);
                 const userReactedEmoji = comment?.comment_reactions?.find(r => r.user_reacted)?.emoji;
@@ -4086,7 +4087,7 @@ function App() {
                   {emoji}
                 </DoubleTapPickerEmoji>
               ));
-              })()}
+              })()}</DoubleTapPickerScroll>
             </DoubleTapPickerPopover>
           </>
         );
