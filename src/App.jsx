@@ -1344,7 +1344,7 @@ const DoubleTapPickerPopover = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  max-width: min(320px, calc(100vw - 24px));
+  max-width: min(240px, calc(100vw - 24px));
   overflow-x: auto;
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }
@@ -2585,9 +2585,13 @@ function App() {
   const [commentReactionPicker, setCommentReactionPicker] = useState(null); // { postId, commentId }
   const [quickReactPickerPostId, setQuickReactPickerPostId] = useState(null); // post id for quick one-off reaction
   const [commentDoubleTapPicker, setCommentDoubleTapPicker] = useState(null); // { postId, commentId, x, y } — shown on double-tap
+  const pickerPopoverRef = useRef(null);
   useEffect(() => {
     if (!commentDoubleTapPicker) return;
-    const dismiss = () => setCommentDoubleTapPicker(null);
+    const dismiss = (e) => {
+      if (pickerPopoverRef.current?.contains(e.target)) return;
+      setCommentDoubleTapPicker(null);
+    };
     window.addEventListener("scroll", dismiss, { capture: true, passive: true });
     return () => window.removeEventListener("scroll", dismiss, { capture: true });
   }, [!!commentDoubleTapPicker]);
@@ -4041,7 +4045,7 @@ function App() {
         return (
           <>
             <DoubleTapPickerBackdrop onClick={() => { if (Date.now() - commentDoubleTapPicker.openedAt > 300) setCommentDoubleTapPicker(null); }} />
-            <DoubleTapPickerPopover style={{ left, top, transform: "translate(-50%, 0)" }}>
+            <DoubleTapPickerPopover ref={pickerPopoverRef} style={{ left, top, transform: "translate(-50%, 0)" }}>
               {getReactionEmojis("comments").map((emoji) => (
                 <DoubleTapPickerEmoji
                   key={emoji}
