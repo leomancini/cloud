@@ -1344,7 +1344,7 @@ const DoubleTapPickerPopover = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  max-width: min(240px, calc(100vw - 24px));
+  max-width: min(500px, calc(100vw - 32px));
   overflow-x: auto;
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }
@@ -4045,7 +4045,7 @@ function App() {
         return (
           <>
             <DoubleTapPickerBackdrop onClick={() => { if (Date.now() - commentDoubleTapPicker.openedAt > 300) setCommentDoubleTapPicker(null); }} />
-            <DoubleTapPickerPopover ref={pickerPopoverRef} style={{ left, top, transform: "translate(-50%, 0)", ...(isMobileView ? { maxWidth: "calc(100vw - 32px)" } : {}) }}>
+            <DoubleTapPickerPopover ref={pickerPopoverRef} style={{ left, top, transform: "translate(-50%, 0)" }}>
               {(() => {
                 const post = posts.find(p => p.id === commentDoubleTapPicker.postId);
                 const comment = post?.comments?.find(c => c.id === commentDoubleTapPicker.commentId);
