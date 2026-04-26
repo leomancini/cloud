@@ -1323,6 +1323,50 @@ const ThumbsUpEmoji = styled.span`
   animation: ${(p) => (p.$animate ? css`${thumbsUpPop} 0.35s ease forwards` : "none")};
 `;
 
+const popIn = keyframes`
+  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  70%  { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+`;
+
+const DoubleTapPickerBackdrop = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+`;
+
+const DoubleTapPickerPopover = styled.div`
+  position: fixed;
+  z-index: 2001;
+  background: ${(p) => p.theme.bgElevated};
+  border-radius: 999px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 24px ${(p) => p.theme.shadowMd}, 0 0 0 1.5px ${(p) => p.theme.border};
+  animation: ${popIn} 0.2s ease forwards;
+  /* Positioned by inline style via JS */
+`;
+
+const DoubleTapPickerEmoji = styled.button`
+  font-size: 28px;
+  line-height: 1;
+  border: none;
+  background: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s ease, background 0.1s ease;
+  &:active { transform: scale(0.8); }
+  @media (hover: hover) {
+    &:hover { background: ${(p) => p.theme.bgHover}; transform: scale(1.2); }
+  }
+`;
+
 const CommentAvatar = styled.div`
   width: 24px;
   height: 24px;
@@ -2329,10 +2373,12 @@ function PostItemWithReaction({ post, getReactionEmojis, onReact, renderContent 
 
 // ─── CommentRowWithReaction ───────────────────────────────────────────────────
 // Same pattern for individual comment rows.
+// Double-tap fires onReact with no emoji — the caller will open the picker.
 function CommentRowWithReaction({ postId, commentId, onReact, renderContent }) {
   const handleReact = useCallback((e) => {
     const touch = e?.changedTouches?.[0];
-    onReact(postId, commentId, { clientX: touch?.clientX || e?.clientX, clientY: touch?.clientY || e?.clientY, target: e?.target });
+    // Pass no emoji so the handler opens the picker instead of reacting immediately
+    onReact(postId, commentId, { clientX: touch?.clientX || e?.clientX, clientY: touch?.clientY || e?.clientY, target: e?.target }, null);
   }, [postId, commentId, onReact]);
 
   const reactProps = useReactionDoubleTap(handleReact);
@@ -2534,6 +2580,7 @@ function App() {
   const [emojiPickerSlot, setEmojiPickerSlot] = useState(null); // slot index being replaced
   const [commentReactionPicker, setCommentReactionPicker] = useState(null); // { postId, commentId }
   const [quickReactPickerPostId, setQuickReactPickerPostId] = useState(null); // post id for quick one-off reaction
+  const [commentDoubleTapPicker, setCommentDoubleTapPicker] = useState(null); // { postId, commentId, x, y } — shown on double-tap
 
   // User profile page state
   const [viewingProfile, setViewingProfile] = useState(null); // { profile, posts, canViewPosts, hasMore }
@@ -3457,8 +3504,15 @@ function App() {
     });
   };
 
-  const handleCommentReact = async (postId, commentId, e) => {
-    const emoji = getReactionEmojis("posts")[0];
+  const handleCommentReact = async (postId, commentId, e, emoji) => {
+    // If no emoji supplied, show the reaction picker at the tap position
+    if (!emoji) {
+      const rect = e?.target?.getBoundingClientRect?.();
+      const x = e?.clientX || (rect ? rect.left + rect.width / 2 : window.innerWidth / 2);
+      const y = e?.clientY || (rect ? rect.top + rect.height / 2 : window.innerHeight / 2);
+      setCommentDoubleTapPicker({ postId, commentId, x, y });
+      return;
+    }
     const post = posts.find(p => p.id === postId);
     const comment = post?.comments?.find(c => c.id === commentId);
     const alreadyReacted = comment?.comment_reactions?.some(r => r.emoji === emoji && r.user_reacted);
@@ -3964,6 +4018,37 @@ function App() {
         <GlobalStyle />
         <Page>
       {lightboxSrc && <PhotoLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+      {commentDoubleTapPicker && (() => {
+        const PICKER_W = 56 * getReactionEmojis("comments").length + 24; // approx width
+        const PICKER_H = 60;
+        const vpW = window.innerWidth;
+        const vpH = window.innerHeight;
+        // Centre over tap, but clamp to viewport with 12px margin
+        let left = commentDoubleTapPicker.x;
+        let top  = commentDoubleTapPicker.y - PICKER_H - 16;
+        left = Math.max(PICKER_W / 2 + 12, Math.min(left, vpW - PICKER_W / 2 - 12));
+        top  = top < 12 ? commentDoubleTapPicker.y + 20 : top;
+        return (
+          <>
+            <DoubleTapPickerBackdrop onClick={() => setCommentDoubleTapPicker(null)} />
+            <DoubleTapPickerPopover style={{ left, top, transform: "translate(-50%, 0)" }}>
+              {getReactionEmojis("comments").map((emoji) => (
+                <DoubleTapPickerEmoji
+                  key={emoji}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const { postId, commentId } = commentDoubleTapPicker;
+                    setCommentDoubleTapPicker(null);
+                    handleCommentReact(postId, commentId, { clientX: commentDoubleTapPicker.x, clientY: commentDoubleTapPicker.y, target: e.target }, emoji);
+                  }}
+                >
+                  {emoji}
+                </DoubleTapPickerEmoji>
+              ))}
+            </DoubleTapPickerPopover>
+          </>
+        );
+      })()}
       <Header>
         {tab === "profile" || tab === "user-profile" ? (
           <BackButton onClick={() => window.history.back()}><i className="fa-solid fa-arrow-left" /> Back</BackButton>
