@@ -4046,9 +4046,14 @@ function App() {
           <>
             <DoubleTapPickerBackdrop onClick={() => { if (Date.now() - commentDoubleTapPicker.openedAt > 300) setCommentDoubleTapPicker(null); }} />
             <DoubleTapPickerPopover ref={pickerPopoverRef} style={{ left, top, transform: "translate(-50%, 0)", ...(isMobileView ? { maxWidth: "calc(100vw - 32px)" } : {}) }}>
-              {getReactionEmojis("comments").map((emoji) => (
+              {(() => {
+                const post = posts.find(p => p.id === commentDoubleTapPicker.postId);
+                const comment = post?.comments?.find(c => c.id === commentDoubleTapPicker.commentId);
+                const userReactedEmoji = comment?.comment_reactions?.find(r => r.user_reacted)?.emoji;
+                return getReactionEmojis("comments").map((emoji) => (
                 <DoubleTapPickerEmoji
                   key={emoji}
+                  style={{ opacity: userReactedEmoji && userReactedEmoji !== emoji ? 0.35 : 1 }}
                   onClick={(e) => {
                     e.stopPropagation();
                     const { postId, commentId } = commentDoubleTapPicker;
@@ -4058,7 +4063,8 @@ function App() {
                 >
                   {emoji}
                 </DoubleTapPickerEmoji>
-              ))}
+              ));
+              })()}
             </DoubleTapPickerPopover>
           </>
         );
