@@ -1344,7 +1344,7 @@ const DoubleTapPickerPopover = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  max-width: calc(100vw - 24px);
+  max-width: min(320px, calc(100vw - 24px));
   overflow-x: auto;
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }
