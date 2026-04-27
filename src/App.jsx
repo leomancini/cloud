@@ -2779,15 +2779,16 @@ function App() {
   }, [user]);
 
   // Scroll to post from notification tap
-  const scrollToPost = useCallback((postId) => {
+  const scrollToPost = useCallback((postId, commentId) => {
     setTab("feed");
     const tryScroll = () => {
-      const el = document.querySelector(`[data-post-id="${postId}"]`);
-      if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); return true; }
+      const target = commentId
+        ? document.querySelector(`[data-comment-id="${commentId}"]`)
+        : document.querySelector(`[data-post-id="${postId}"]`);
+      if (target) { target.scrollIntoView({ behavior: "smooth", block: "center" }); return true; }
       return false;
     };
     if (!tryScroll()) {
-      // Post might not be rendered yet — wait for feed to load
       const observer = new MutationObserver(() => { if (tryScroll()) observer.disconnect(); });
       observer.observe(document.body, { childList: true, subtree: true });
       setTimeout(() => observer.disconnect(), 5000);
@@ -2798,11 +2799,11 @@ function App() {
     // Handle ?post= URL param (from notification open)
     const params = new URLSearchParams(window.location.search);
     const postId = params.get("post");
+    const commentId = params.get("comment");
     if (postId) {
       window.history.replaceState(null, "", "/");
-      // Wait for feed to be populated
       const wait = setInterval(() => {
-        if (posts.length) { clearInterval(wait); scrollToPost(postId); }
+        if (posts.length) { clearInterval(wait); scrollToPost(postId, commentId); }
       }, 100);
       setTimeout(() => clearInterval(wait), 10000);
     }
@@ -2812,7 +2813,8 @@ function App() {
       if (e.data?.type === "scroll-to-post" && e.data.url) {
         const p = new URLSearchParams(e.data.url.split("?")[1] || "");
         const id = p.get("post");
-        if (id) { loadFeed(); setTimeout(() => scrollToPost(id), 500); }
+        const cId = p.get("comment");
+        if (id) { loadFeed(); setTimeout(() => scrollToPost(id, cId), 500); }
       }
     };
     navigator.serviceWorker?.addEventListener("message", onSwMessage);
@@ -3923,7 +3925,7 @@ function App() {
                 {post.comments.map((c) => (
                   <CommentRowWithReaction key={c.id} postId={post.id} commentId={c.id} onReact={handleCommentReact}
                     renderContent={(commentReactProps) => (
-                      <><CommentRow {...commentReactProps}>
+                      <><CommentRow data-comment-id={c.id} {...commentReactProps}>
                         <CommentAvatar style={{ backgroundImage: `url(${c.author_picture})`, '--tilt': randomTilt() }} />
                         <CommentBody>
                           <CommentAuthor>{c.author_name}</CommentAuthor>

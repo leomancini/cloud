@@ -1500,7 +1500,7 @@ app.post("/api/posts/:id/comments", (req, res) => {
       title: `${getUserDisplayName(req.user.id)} commented`,
       body: content.trim().slice(0, 100),
       tag: `comment-${post.id}-${req.user.id}`,
-      url: `/?post=${post.id}`,
+      url: `/?post=${post.id}&comment=${result.lastInsertRowid}`,
     });
   }
 
@@ -1514,7 +1514,7 @@ app.post("/api/posts/:id/comments", (req, res) => {
       title: `${getUserDisplayName(req.user.id)} also commented`,
       body: content.trim().slice(0, 100),
       tag: `thread-${post.id}-${req.user.id}`,
-      url: `/?post=${post.id}`,
+      url: `/?post=${post.id}&comment=${result.lastInsertRowid}`,
     });
   }
 
@@ -1589,7 +1589,7 @@ app.post("/api/comments/:id/react", (req, res) => {
         title: `${getUserDisplayName(req.user.id)} reacted ${emoji}`,
         body: "on your comment",
         tag: `comment-react-${commentId}-${req.user.id}`,
-        url: `/?post=${comment.post_id}`,
+        url: `/?post=${comment.post_id}&comment=${commentId}`,
       });
     }
   }
