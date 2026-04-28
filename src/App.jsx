@@ -2549,7 +2549,7 @@ function App() {
   const renderHighlight = (text) => {
     const parts = parseText(text, users);
     return parts.map((p, i) =>
-      p.type === "mention" ? <MentionHighlight key={i}>{p.rawText || `@${p.content}`}</MentionHighlight> : <React.Fragment key={i}>{p.content}</React.Fragment>
+      p.type === "mention" ? <MentionHighlight key={i}>@{p.content}</MentionHighlight> : <React.Fragment key={i}>{p.content}</React.Fragment>
     );
   };
 
@@ -2567,6 +2567,15 @@ function App() {
     const query = before.slice(atIdx + 1);
     if (/\s/.test(query) && query.length > 0) return setMentionQuery(null);
     setMentionQuery({ field, query: query.toLowerCase() });
+  };
+
+  const fixMentionCasing = (text) => {
+    const parts = parseText(text, users);
+    let result = "";
+    for (const p of parts) {
+      result += p.type === "mention" ? `@${p.content}` : p.content;
+    }
+    return result;
   };
 
   const insertMention = (userName, field) => {
@@ -4012,7 +4021,7 @@ function App() {
                     rows={1}
                     value={commentInputs[post.id] || ""}
                     onFocus={(e) => { e.target.style.height = e.target.scrollHeight + "px"; }}
-                    onChange={(e) => { setCommentInputs((prev) => ({ ...prev, [post.id]: e.target.value })); handleMentionInput(e.target.value, post.id); e.target.style.height = "0"; e.target.style.height = e.target.scrollHeight + "px"; e.target.scrollTop = 0; }}
+                    onChange={(e) => { const v = e.target.value; const fixed = fixMentionCasing(v); if (fixed !== v) { const pos = e.target.selectionStart + (fixed.length - v.length); e.target.value = fixed; e.target.setSelectionRange(pos, pos); } setCommentInputs((prev) => ({ ...prev, [post.id]: fixed })); handleMentionInput(fixed, post.id); e.target.style.height = "0"; e.target.style.height = e.target.scrollHeight + "px"; e.target.scrollTop = 0; }}
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleComment(post.id); } }}
                   />
                 </CommentInputWrapper>
@@ -4254,7 +4263,7 @@ function App() {
                   rows={3}
                   placeholder="What's on your mind?"
                   value={compose}
-                  onChange={(e) => { setCompose(e.target.value); handleMentionInput(e.target.value, "compose"); fetchOgPreview(e.target.value); }}
+                  onChange={(e) => { const v = e.target.value; const fixed = fixMentionCasing(v); if (fixed !== v) { const pos = e.target.selectionStart + (fixed.length - v.length); e.target.value = fixed; e.target.setSelectionRange(pos, pos); } setCompose(fixed); handleMentionInput(fixed, "compose"); fetchOgPreview(fixed); }}
                   onScroll={(e) => { if (composeHighlightRef.current) composeHighlightRef.current.scrollTop = e.target.scrollTop; }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && e.metaKey) handlePost();
