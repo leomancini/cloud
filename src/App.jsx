@@ -157,6 +157,8 @@ const parseText = (text, users = []) => {
 
 const MentionSpan = styled.span`
   font-weight: 600;
+  cursor: pointer;
+  &:active { opacity: 0.6; }
 `;
 
 const MentionHighlight = styled.span`
@@ -2548,7 +2550,7 @@ function App() {
   const renderText = (text) => {
     const parts = parseText(text, users);
     return parts.map((p, i) =>
-      p.type === "mention" ? <MentionSpan key={i}>@{p.content}</MentionSpan> : <span key={i}>{renderTextPart(p.content, i)}</span>
+      p.type === "mention" ? <MentionSpan key={i} onClick={() => { if (p.userId === user.id) setTab("profile"); else if (p.userId) loadUserProfile(p.userId); }}>@{p.content}</MentionSpan> : <span key={i}>{renderTextPart(p.content, i)}</span>
     );
   };
 
