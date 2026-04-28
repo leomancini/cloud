@@ -137,7 +137,7 @@ const parseText = (text, users = []) => {
       if (after.toLowerCase().startsWith(u.name.toLowerCase())) {
         const ch = after[u.name.length];
         if (!ch || /[^a-zA-Z0-9]/.test(ch)) {
-          mentions.push({ start: m.index, end: m.index + 1 + u.name.length, name: u.name, userId: u.id });
+          mentions.push({ start: m.index, end: m.index + 1 + u.name.length, name: u.name, rawText: text.slice(m.index, m.index + 1 + u.name.length), userId: u.id });
           break;
         }
       }
@@ -148,7 +148,7 @@ const parseText = (text, users = []) => {
   for (const mn of mentions) {
     if (mn.start < last) continue;
     if (mn.start > last) parts.push({ type: "text", content: text.slice(last, mn.start) });
-    parts.push({ type: "mention", content: mn.name, userId: mn.userId });
+    parts.push({ type: "mention", content: mn.name, rawText: mn.rawText, userId: mn.userId });
     last = mn.end;
   }
   if (last < text.length) parts.push({ type: "text", content: text.slice(last) });
@@ -2549,7 +2549,7 @@ function App() {
   const renderHighlight = (text) => {
     const parts = parseText(text, users);
     return parts.map((p, i) =>
-      p.type === "mention" ? <MentionHighlight key={i}>@{p.content}</MentionHighlight> : <React.Fragment key={i}>{p.content}</React.Fragment>
+      p.type === "mention" ? <MentionHighlight key={i}>{p.rawText || `@${p.content}`}</MentionHighlight> : <React.Fragment key={i}>{p.content}</React.Fragment>
     );
   };
 
