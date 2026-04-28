@@ -4032,11 +4032,24 @@ function App() {
                 )}
               </CommentInputRow>
               {mentionQuery && mentionQuery.field === post.id && (() => {
-                const threadUserIds = new Set([post.user_id, ...(post.comments || []).map((c) => c.user_id)]);
-                threadUserIds.delete(user.id);
+                const comments = post.comments || [];
+                const commenterLastIndex = {};
+                comments.forEach((c, i) => { commenterLastIndex[c.user_id] = i; });
+                const reactorNames = new Set((post.reactions || []).flatMap(r => r.names || []));
                 const filtered = mentionUsers.filter((u) => u.name.toLowerCase().includes(mentionQuery.query));
                 if (!filtered.length) return null;
-                const sorted = [...filtered].sort((a, b) => (threadUserIds.has(a.id) ? 0 : 1) - (threadUserIds.has(b.id) ? 0 : 1));
+                const sorted = [...filtered].sort((a, b) => {
+                  const aComment = commenterLastIndex[a.id] !== undefined;
+                  const bComment = commenterLastIndex[b.id] !== undefined;
+                  if (aComment && !bComment) return -1;
+                  if (!aComment && bComment) return 1;
+                  if (aComment && bComment) return commenterLastIndex[b.id] - commenterLastIndex[a.id];
+                  const aReact = reactorNames.has(a.name);
+                  const bReact = reactorNames.has(b.name);
+                  if (aReact && !bReact) return -1;
+                  if (!aReact && bReact) return 1;
+                  return 0;
+                });
                 return (
                   <MentionDropdown>
                     {sorted.map((u) => (
