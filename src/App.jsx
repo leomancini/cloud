@@ -617,10 +617,12 @@ const LinkPreviewCard = styled.a`
   text-decoration: none;
   color: inherit;
   -webkit-tap-highlight-color: transparent;
-  @media (hover: hover) {
-    &:hover .link-body { border-color: rgba(0, 0, 0, 0.15); }
-  }
-  &:active .link-body { border-color: rgba(0, 0, 0, 0.2); }
+  ${(p) => !p.$static && `
+    @media (hover: hover) {
+      &:hover .link-body { border-color: rgba(0, 0, 0, 0.15); }
+    }
+    &:active .link-body { border-color: rgba(0, 0, 0, 0.2); }
+  `}
 `;
 
 const LinkPreviewImageWrap = styled.div`
@@ -4319,7 +4321,7 @@ function App() {
                 </PostMediaContainer>
               )}
               {ogPreview && (
-                <LinkPreviewCard as="div" style={{ cursor: "default", position: "relative" }}>
+                <LinkPreviewCard as="div" $static style={{ cursor: "default", position: "relative" }}>
                   {ogPreview.image && <LinkPreviewImageWrap className="link-image-wrap"><LinkPreviewImage src={ogPreview.image} /></LinkPreviewImageWrap>}
                   <LinkPreviewBody className="link-body" $hasImage={!!ogPreview.image}>
                     {ogPreview.title && <LinkPreviewTitle>{ogPreview.title}</LinkPreviewTitle>}
