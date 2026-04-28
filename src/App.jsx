@@ -621,7 +621,7 @@ const LinkPreviewCard = styled.a`
     @media (hover: hover) {
       &:hover .link-body { border-color: rgba(0, 0, 0, 0.15); }
     }
-    &:active .link-body { border-color: rgba(0, 0, 0, 0.2); }
+    &:active .link-body { border-color: rgba(0, 0, 0, 0.18); }
   `}
 `;
 
@@ -658,8 +658,8 @@ const LinkPreviewImage = styled.img`
 
 const LinkPreviewBody = styled.div`
   padding: 12px;
-  border: 2px solid ${(p) => p.theme.border};
-  border-top: ${(p) => p.$hasImage ? "none" : `2px solid ${p.theme.border}`};
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-top: ${(p) => p.$hasImage ? "none" : "2px solid rgba(0, 0, 0, 0.1)"};
   border-radius: ${(p) => p.$hasImage ? `0 0 ${RADIUS} ${RADIUS}` : RADIUS};
   transition: border-color 0.15s ease;
 `;
