@@ -4040,7 +4040,7 @@ function App() {
                 return (
                   <MentionDropdown>
                     {sorted.map((u) => (
-                      <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, post.id); }} onTouchEnd={(e) => { e.preventDefault(); insertMention(u.name, post.id); }}>
+                      <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, post.id); }} onTouchStart={(e) => { e.target._touchY = e.touches[0].clientY; }} onTouchEnd={(e) => { if (Math.abs((e.changedTouches[0]?.clientY || 0) - (e.target._touchY || 0)) < 10) { e.preventDefault(); insertMention(u.name, post.id); } }}>
                         <MentionAvatar style={{ backgroundImage: `url(${u.picture})` }} /> {u.name}
                       </MentionOption>
                     ))}
@@ -4275,7 +4275,7 @@ function App() {
                   return (
                     <MentionDropdown>
                       {filtered.map((u) => (
-                        <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, "compose"); }} onTouchEnd={(e) => { e.preventDefault(); insertMention(u.name, "compose"); }}>
+                        <MentionOption key={u.id} onMouseDown={(e) => { e.preventDefault(); insertMention(u.name, "compose"); }} onTouchStart={(e) => { e.target._touchY = e.touches[0].clientY; }} onTouchEnd={(e) => { if (Math.abs((e.changedTouches[0]?.clientY || 0) - (e.target._touchY || 0)) < 10) { e.preventDefault(); insertMention(u.name, "compose"); } }}>
                           <MentionAvatar style={{ backgroundImage: `url(${u.picture})` }} /> {u.name}
                         </MentionOption>
                       ))}
