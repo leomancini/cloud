@@ -638,9 +638,8 @@ const LinkPreviewImageWrap = styled.div`
     right: 0;
     bottom: 0;
     border-radius: inherit;
-    box-shadow: inset 0 0 0 2px ${(p) => p.theme.border};
+    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.1);
     pointer-events: none;
-    transition: box-shadow 0.15s ease;
   }
   a:hover &::after {
     box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.15);
