@@ -929,6 +929,7 @@ const PostHeaderLink = styled.div`
     &:hover > div { transform: rotate(calc(var(--tilt) * 1deg)); }
   }
   &:active > div { transform: rotate(calc(var(--tilt) * 1deg)); }
+  ${(p) => p.$clickable && `&:active { opacity: 0.6; }`}
 `;
 
 const PostHeaderText = styled.div`
