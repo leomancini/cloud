@@ -1545,7 +1545,7 @@ const PostLocation = styled.div`
   @media (hover: hover) {
     &[href]:hover .place-name { border-color: rgba(0, 0, 0, 0.15); }
   }
-  &[href]:active .place-name { border-color: rgba(0, 0, 0, 0.2); }
+  &[href]:active .place-name { border-color: rgba(0, 0, 0, 0.18); }
 `;
 
 const PostMapWrapper = styled.div`
@@ -1561,15 +1561,17 @@ const PostMapWrapper = styled.div`
     right: 0;
     bottom: 0;
     border-radius: inherit;
-    box-shadow: inset 0 0 0 2px ${(p) => p.theme.shadow};
+    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.1);
     pointer-events: none;
     transition: box-shadow 0.15s ease;
   }
-  a:hover &::after {
-    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.15);
+  @media (hover: hover) {
+    a:hover &::after {
+      box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.15);
+    }
   }
   a:active &::after {
-    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.2);
+    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.18);
   }
 `;
 
@@ -1585,13 +1587,13 @@ const PostPlaceName = styled.div`
   font-size: 16px;
   font-weight: 500;
   color: ${(p) => p.theme.text};
-  border: 2px solid ${(p) => p.theme.border};
+  border: 2px solid rgba(0, 0, 0, 0.1);
   border-top: none;
   border-radius: 0 0 ${RADIUS} ${RADIUS};
   display: flex;
   align-items: center;
   justify-content: space-between;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: border-color 0.15s ease;
 `;
 
 const PostPlaceAddress = styled.span`
