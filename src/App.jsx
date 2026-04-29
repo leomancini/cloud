@@ -769,10 +769,6 @@ const VideoWrap = styled.div`
     z-index: 1;
   }
   & > video { border-radius: 0; width: 100%; display: block; }
-  ${(p) => p.$ratio && `
-    aspect-ratio: ${p.$ratio};
-    & > video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
-  `}
 `;
 
 const GameFrameWrap = styled.div`
@@ -4343,7 +4339,7 @@ function App() {
                   {mediaPreviews.map((preview, i) => (
                     <MediaPreview key={i}>
                       {preview.type === "video" ? (
-                        <VideoWrap $ratio={preview.width && preview.height ? `${preview.width} / ${preview.height}` : null}><PostVideo src={preview.url} autoPlay loop muted playsInline /></VideoWrap>
+                        <VideoWrap><PostVideo src={preview.url} autoPlay loop muted playsInline style={preview.width && preview.height ? { aspectRatio: `${preview.width} / ${preview.height}` } : undefined} /></VideoWrap>
                       ) : (
                         <PostImage src={preview.url} $single={mediaPreviews.length === 1} />
                       )}
