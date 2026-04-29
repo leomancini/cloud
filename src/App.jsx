@@ -759,6 +759,7 @@ const VideoWrap = styled.div`
   position: relative;
   border-radius: ${RADIUS};
   overflow: hidden;
+  background: ${(p) => p.theme.bgControl};
   &::after {
     content: "";
     position: absolute;
@@ -767,7 +768,7 @@ const VideoWrap = styled.div`
     box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.1);
     pointer-events: none;
   }
-  & > video { border-radius: 0; }
+  & > video { border-radius: 0; width: 100%; display: block; }
 `;
 
 const GameFrameWrap = styled.div`
@@ -3391,9 +3392,17 @@ function App() {
     const files = Array.from(e.target.files);
     const processed = await Promise.all(files.map((f) => compressImage(f)));
     setMediaFiles((prev) => [...prev, ...processed]);
-    const newPreviews = processed.map((file) => ({
-      url: URL.createObjectURL(file),
-      type: file.type.startsWith("video/") ? "video" : "image",
+    const newPreviews = await Promise.all(processed.map((file) => {
+      const url = URL.createObjectURL(file);
+      const isVideo = file.type.startsWith("video/");
+      if (!isVideo) return { url, type: "image" };
+      return new Promise((resolve) => {
+        const vid = document.createElement("video");
+        vid.preload = "metadata";
+        vid.onloadedmetadata = () => { resolve({ url, type: "video", width: vid.videoWidth, height: vid.videoHeight }); };
+        vid.onerror = () => resolve({ url, type: "video" });
+        vid.src = url;
+      });
     }));
     setMediaPreviews((prev) => [...prev, ...newPreviews]);
     setMediaSources((prev) => [...prev, ...processed.map(() => null)]);
@@ -4330,7 +4339,7 @@ function App() {
                   {mediaPreviews.map((preview, i) => (
                     <MediaPreview key={i}>
                       {preview.type === "video" ? (
-                        <VideoWrap><PostVideo src={preview.url} autoPlay loop muted playsInline $single={mediaPreviews.length === 1} /></VideoWrap>
+                        <VideoWrap style={preview.width && preview.height ? { aspectRatio: `${preview.width} / ${preview.height}` } : undefined}><PostVideo src={preview.url} autoPlay loop muted playsInline $single={mediaPreviews.length === 1} /></VideoWrap>
                       ) : (
                         <PostImage src={preview.url} $single={mediaPreviews.length === 1} />
                       )}
