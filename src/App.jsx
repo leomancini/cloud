@@ -3392,17 +3392,9 @@ function App() {
     const files = Array.from(e.target.files);
     const processed = await Promise.all(files.map((f) => compressImage(f)));
     setMediaFiles((prev) => [...prev, ...processed]);
-    const newPreviews = await Promise.all(processed.map((file) => {
-      const url = URL.createObjectURL(file);
-      const isVideo = file.type.startsWith("video/");
-      if (!isVideo) return { url, type: "image" };
-      return new Promise((resolve) => {
-        const vid = document.createElement("video");
-        vid.preload = "metadata";
-        vid.onloadedmetadata = () => { resolve({ url, type: "video", width: vid.videoWidth, height: vid.videoHeight }); };
-        vid.onerror = () => resolve({ url, type: "video" });
-        vid.src = url;
-      });
+    const newPreviews = processed.map((file) => ({
+      url: URL.createObjectURL(file),
+      type: file.type.startsWith("video/") ? "video" : "image",
     }));
     setMediaPreviews((prev) => [...prev, ...newPreviews]);
     setMediaSources((prev) => [...prev, ...processed.map(() => null)]);
@@ -3783,7 +3775,7 @@ function App() {
                     {post.media.map((m, i) => {
                       const radiusStyle = post.media.length === 1 && belowMedia ? { borderRadius: `${RADIUS} ${RADIUS} ${SMALL} ${SMALL}` } : undefined;
                       if (m.type === "video") return (
-                        <VideoWrap key={i} style={radiusStyle}><PostVideo src={m.url} autoPlay loop muted playsInline $single={post.media.length === 1} /></VideoWrap>
+                        <VideoWrap key={i} style={{ ...radiusStyle, ...(m.width && m.height ? { aspectRatio: `${m.width} / ${m.height}`, background: resolvedTheme.bgControl } : {}) }}><PostVideo src={m.url} autoPlay loop muted playsInline /></VideoWrap>
                       );
                       const img = (
                         <PostImage
@@ -4337,9 +4329,9 @@ function App() {
               {mediaPreviews.length > 0 && (!prefillLoading || prefillImageLoaded) && (
                 <PostMediaContainer $count={mediaPreviews.length} style={{ marginTop: 8 }}>
                   {mediaPreviews.map((preview, i) => (
-                    <MediaPreview key={i} style={preview.type === "video" && preview.width && preview.height ? { background: resolvedTheme.bgControl, aspectRatio: `${preview.width} / ${preview.height}` } : undefined}>
+                    <MediaPreview key={i}>
                       {preview.type === "video" ? (
-                        <PostVideo src={preview.url} autoPlay loop muted playsInline style={{ width: "100%", display: "block" }} />
+                        <PostVideo src={preview.url} autoPlay loop muted playsInline />
                       ) : (
                         <PostImage src={preview.url} $single={mediaPreviews.length === 1} />
                       )}
