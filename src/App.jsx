@@ -759,6 +759,7 @@ const VideoWrap = styled.div`
   border-radius: ${RADIUS};
   overflow: hidden;
   background: ${(p) => p.theme.bgControl};
+  ${(p) => p.$ratio && `aspect-ratio: ${p.$ratio};`}
   &::after {
     content: "";
     position: absolute;
@@ -768,7 +769,12 @@ const VideoWrap = styled.div`
     pointer-events: none;
     z-index: 1;
   }
-  & > video { border-radius: 0; width: 100%; display: block; }
+  & > video {
+    border-radius: 0;
+    width: 100%;
+    display: block;
+    ${(p) => p.$ratio && `position: absolute; top: 0; left: 0; height: 100%; object-fit: cover;`}
+  }
 `;
 
 const GameFrameWrap = styled.div`
@@ -3392,9 +3398,16 @@ function App() {
     const files = Array.from(e.target.files);
     const processed = await Promise.all(files.map((f) => compressImage(f)));
     setMediaFiles((prev) => [...prev, ...processed]);
-    const newPreviews = processed.map((file) => ({
-      url: URL.createObjectURL(file),
-      type: file.type.startsWith("video/") ? "video" : "image",
+    const newPreviews = await Promise.all(processed.map((file) => {
+      const url = URL.createObjectURL(file);
+      if (!file.type.startsWith("video/")) return Promise.resolve({ url, type: "image" });
+      return new Promise((resolve) => {
+        const vid = document.createElement("video");
+        vid.preload = "metadata";
+        vid.onloadedmetadata = () => resolve({ url, type: "video", width: vid.videoWidth, height: vid.videoHeight });
+        vid.onerror = () => resolve({ url, type: "video" });
+        vid.src = url;
+      });
     }));
     setMediaPreviews((prev) => [...prev, ...newPreviews]);
     setMediaSources((prev) => [...prev, ...processed.map(() => null)]);
@@ -3775,7 +3788,7 @@ function App() {
                     {post.media.map((m, i) => {
                       const radiusStyle = post.media.length === 1 && belowMedia ? { borderRadius: `${RADIUS} ${RADIUS} ${SMALL} ${SMALL}` } : undefined;
                       if (m.type === "video") return (
-                        <VideoWrap key={i} style={{ ...radiusStyle, ...(m.width && m.height ? { aspectRatio: `${m.width} / ${m.height}`, background: resolvedTheme.bgControl } : {}) }}><PostVideo src={m.url} autoPlay loop muted playsInline /></VideoWrap>
+                        <VideoWrap key={i} $ratio={m.width && m.height ? `${m.width} / ${m.height}` : null} style={radiusStyle}><PostVideo src={m.url} autoPlay loop muted playsInline /></VideoWrap>
                       );
                       const img = (
                         <PostImage
@@ -4331,7 +4344,7 @@ function App() {
                   {mediaPreviews.map((preview, i) => (
                     <MediaPreview key={i}>
                       {preview.type === "video" ? (
-                        <PostVideo src={preview.url} autoPlay loop muted playsInline />
+                        <VideoWrap $ratio={preview.width && preview.height ? `${preview.width} / ${preview.height}` : null}><PostVideo src={preview.url} autoPlay loop muted playsInline /></VideoWrap>
                       ) : (
                         <PostImage src={preview.url} $single={mediaPreviews.length === 1} />
                       )}
