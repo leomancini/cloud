@@ -324,7 +324,7 @@ app.get("/api/users/:id/profile", (req, res) => {
     LIMIT ? OFFSET ?`
   ).all(targetId, limit + 1, offset);
 
-  const getMedia = db.prepare("SELECT filename, media_type, source FROM post_media WHERE post_id = ? ORDER BY id");
+  const getMedia = db.prepare("SELECT filename, media_type, source, width, height FROM post_media WHERE post_id = ? ORDER BY id");
   const getComments = db.prepare(
     `SELECT c.id, c.content, c.created_at, c.user_id, c.mini_game,
       COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
@@ -348,7 +348,7 @@ app.get("/api/users/:id/profile", (req, res) => {
     return {
       ...post,
       og_preview: ogPreview,
-      media: getMedia.all(post.id).map((m) => ({ url: `/api/uploads/${m.filename}`, type: m.media_type, source: m.source || null })),
+      media: getMedia.all(post.id).map((m) => ({ url: `/api/uploads/${m.filename}`, type: m.media_type, source: m.source || null, width: m.width || null, height: m.height || null })),
       comments: getComments.all(post.id).map((c) => {
         const cReactions = getCommentReactions.all(c.id);
         const grouped = {};
@@ -537,6 +537,8 @@ db.exec(`
 `);
 
 try { db.exec("ALTER TABLE post_media ADD COLUMN source TEXT"); } catch {}
+try { db.exec("ALTER TABLE post_media ADD COLUMN width INTEGER"); } catch {}
+try { db.exec("ALTER TABLE post_media ADD COLUMN height INTEGER"); } catch {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS comments (
@@ -1016,7 +1018,7 @@ async function handleSolMention(postId, triggerText = null) {
   const post = db.prepare("SELECT p.*, COALESCE(u.display_name, u.name) as author_name FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?").get(postId);
   if (!post) return;
 
-  const media = db.prepare("SELECT filename, media_type, source FROM post_media WHERE post_id = ? ORDER BY id").all(postId);
+  const media = db.prepare("SELECT filename, media_type, source, width, height FROM post_media WHERE post_id = ? ORDER BY id").all(postId);
   const comments = db.prepare(
     "SELECT c.content, COALESCE(u.display_name, u.name) as author_name FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ? ORDER BY c.created_at ASC"
   ).all(postId);
@@ -1205,17 +1207,20 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
     let mediaSources = {};
     try { if (req.body.media_sources) mediaSources = JSON.parse(req.body.media_sources); } catch {}
     const insertMedia = db.prepare(
-      "INSERT INTO post_media (post_id, filename, media_type, source) VALUES (?, ?, ?, ?)"
+      "INSERT INTO post_media (post_id, filename, media_type, source, width, height) VALUES (?, ?, ?, ?, ?, ?)"
     );
     for (let i = 0; i < req.files.length; i++) {
       const file = req.files[i];
       const mediaType = file.mimetype.startsWith("video/") ? "video" : "image";
+      let w = null, h = null;
       if (mediaType === "image") {
         try {
-          await sharp(file.path)
+          const compressed = await sharp(file.path)
             .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
             .jpeg({ quality: 80 })
             .toFile(file.path + ".tmp");
+          w = compressed.width;
+          h = compressed.height;
           renameSync(file.path + ".tmp", file.path);
         } catch (e) {
           console.warn("Image compression failed:", e);
@@ -1228,8 +1233,15 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
         } catch (e) {
           console.warn("Video compression failed:", e);
         }
+        try {
+          const probe = execSync(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${file.path}"`).toString().trim();
+          const [pw, ph] = probe.split(",").map(Number);
+          if (pw && ph) { w = pw; h = ph; }
+        } catch (e) {
+          console.warn("Video probe failed:", e);
+        }
       }
-      insertMedia.run(postId, file.filename, mediaType, mediaSources[i] || null);
+      insertMedia.run(postId, file.filename, mediaType, mediaSources[i] || null, w, h);
     }
   }
 
@@ -1297,7 +1309,7 @@ app.get("/api/feed", (req, res) => {
     .all(req.user.id, req.user.id, limit + 1, offset);
 
   const getMedia = db.prepare(
-    "SELECT filename, media_type, source FROM post_media WHERE post_id = ? ORDER BY id"
+    "SELECT filename, media_type, source, width, height FROM post_media WHERE post_id = ? ORDER BY id"
   );
   const getComments = db.prepare(
     `SELECT c.id, c.content, c.created_at, c.user_id, c.mini_game,
