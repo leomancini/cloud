@@ -1350,6 +1350,8 @@ app.get("/api/feed", (req, res) => {
       url: `/api/uploads/${m.filename}`,
       type: m.media_type,
       source: m.source || null,
+      width: m.width || null,
+      height: m.height || null,
     })),
     comments: getComments.all(post.id).map((c) => {
       const cReactions = getCommentReactions.all(c.id);
