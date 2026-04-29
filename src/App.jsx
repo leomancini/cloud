@@ -759,7 +759,7 @@ const VideoWrap = styled.div`
   border-radius: ${RADIUS};
   overflow: hidden;
   background: ${(p) => p.theme.bgControl};
-  ${(p) => p.$ratio && `aspect-ratio: ${p.$ratio};`}
+  aspect-ratio: ${(p) => p.$ratio || "auto"};
   &::after {
     content: "";
     position: absolute;
@@ -773,7 +773,7 @@ const VideoWrap = styled.div`
     border-radius: 0;
     width: 100%;
     display: block;
-    ${(p) => p.$ratio && `position: absolute; top: 0; left: 0; height: 100%; object-fit: cover;`}
+    ${(p) => p.$ratio ? "position: absolute; top: 0; left: 0; height: 100%; object-fit: cover;" : ""}
   }
 `;
 
