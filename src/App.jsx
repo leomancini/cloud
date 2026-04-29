@@ -4337,9 +4337,9 @@ function App() {
               {mediaPreviews.length > 0 && (!prefillLoading || prefillImageLoaded) && (
                 <PostMediaContainer $count={mediaPreviews.length} style={{ marginTop: 8 }}>
                   {mediaPreviews.map((preview, i) => (
-                    <MediaPreview key={i}>
+                    <MediaPreview key={i} style={preview.type === "video" && preview.width && preview.height ? { background: resolvedTheme.bgControl, aspectRatio: `${preview.width} / ${preview.height}` } : undefined}>
                       {preview.type === "video" ? (
-                        <VideoWrap style={preview.width && preview.height ? { aspectRatio: `${preview.width} / ${preview.height}` } : undefined}><PostVideo src={preview.url} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} /></VideoWrap>
+                        <PostVideo src={preview.url} autoPlay loop muted playsInline style={{ width: "100%", display: "block" }} />
                       ) : (
                         <PostImage src={preview.url} $single={mediaPreviews.length === 1} />
                       )}
