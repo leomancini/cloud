@@ -752,7 +752,6 @@ const PostVideo = styled.video`
   border-radius: ${RADIUS};
   object-fit: cover;
   background: ${(p) => p.theme.bgControl};
-  min-height: ${(p) => (p.$single ? "200px" : "auto")};
 `;
 
 const VideoWrap = styled.div`
@@ -768,7 +767,7 @@ const VideoWrap = styled.div`
     box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.1);
     pointer-events: none;
   }
-  & > video { border-radius: 0; width: 100%; height: 100%; display: block; object-fit: cover; position: absolute; top: 0; left: 0; }
+  & > video { border-radius: 0; width: 100%; display: block; }
 `;
 
 const GameFrameWrap = styled.div`
