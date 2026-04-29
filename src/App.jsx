@@ -4339,7 +4339,7 @@ function App() {
                   {mediaPreviews.map((preview, i) => (
                     <MediaPreview key={i}>
                       {preview.type === "video" ? (
-                        <VideoWrap><PostVideo src={preview.url} width={preview.width || undefined} height={preview.height || undefined} autoPlay loop muted playsInline /></VideoWrap>
+                        <VideoWrap style={preview.width && preview.height ? { aspectRatio: `${preview.width} / ${preview.height}` } : undefined}><PostVideo src={preview.url} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} /></VideoWrap>
                       ) : (
                         <PostImage src={preview.url} $single={mediaPreviews.length === 1} />
                       )}
