@@ -759,7 +759,6 @@ const VideoWrap = styled.div`
   border-radius: ${RADIUS};
   overflow: hidden;
   background: ${(p) => p.theme.bgControl};
-  aspect-ratio: ${(p) => p.$ratio || "auto"};
   &::after {
     content: "";
     position: absolute;
@@ -773,7 +772,6 @@ const VideoWrap = styled.div`
     border-radius: 0;
     width: 100%;
     display: block;
-    ${(p) => p.$ratio ? "position: absolute; top: 0; left: 0; height: 100%; object-fit: cover;" : ""}
   }
 `;
 
@@ -3788,7 +3786,7 @@ function App() {
                     {post.media.map((m, i) => {
                       const radiusStyle = post.media.length === 1 && belowMedia ? { borderRadius: `${RADIUS} ${RADIUS} ${SMALL} ${SMALL}` } : undefined;
                       if (m.type === "video") return (
-                        <VideoWrap key={i} $ratio={m.width && m.height ? `${m.width} / ${m.height}` : null} style={radiusStyle}><PostVideo src={m.url} autoPlay loop muted playsInline /></VideoWrap>
+                        <VideoWrap key={i} style={{ ...radiusStyle, ...(m.width && m.height ? { aspectRatio: `${m.width} / ${m.height}` } : {}) }}><PostVideo src={m.url} autoPlay loop muted playsInline style={m.width && m.height ? { position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" } : undefined} /></VideoWrap>
                       );
                       const img = (
                         <PostImage
@@ -4344,7 +4342,7 @@ function App() {
                   {mediaPreviews.map((preview, i) => (
                     <MediaPreview key={i}>
                       {preview.type === "video" ? (
-                        <VideoWrap $ratio={preview.width && preview.height ? `${preview.width} / ${preview.height}` : null}><PostVideo src={preview.url} autoPlay loop muted playsInline /></VideoWrap>
+                        <VideoWrap style={preview.width && preview.height ? { aspectRatio: `${preview.width} / ${preview.height}` } : undefined}><PostVideo src={preview.url} autoPlay loop muted playsInline style={preview.width && preview.height ? { position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" } : undefined} /></VideoWrap>
                       ) : (
                         <PostImage src={preview.url} $single={mediaPreviews.length === 1} />
                       )}
