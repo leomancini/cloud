@@ -753,7 +753,21 @@ const PostVideo = styled.video`
   object-fit: cover;
   background: ${(p) => p.theme.bgControl};
   min-height: ${(p) => (p.$single ? "200px" : "auto")};
-  ${innerBorder}
+`;
+
+const VideoWrap = styled.div`
+  position: relative;
+  border-radius: ${RADIUS};
+  overflow: hidden;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.1);
+    pointer-events: none;
+  }
+  & > video { border-radius: 0; }
 `;
 
 const GameFrameWrap = styled.div`
@@ -3760,7 +3774,7 @@ function App() {
                     {post.media.map((m, i) => {
                       const radiusStyle = post.media.length === 1 && belowMedia ? { borderRadius: `${RADIUS} ${RADIUS} ${SMALL} ${SMALL}` } : undefined;
                       if (m.type === "video") return (
-                        <PostVideo key={i} src={m.url} autoPlay loop muted playsInline $single={post.media.length === 1} style={radiusStyle} />
+                        <VideoWrap key={i} style={radiusStyle}><PostVideo src={m.url} autoPlay loop muted playsInline $single={post.media.length === 1} /></VideoWrap>
                       );
                       const img = (
                         <PostImage
@@ -4316,7 +4330,7 @@ function App() {
                   {mediaPreviews.map((preview, i) => (
                     <MediaPreview key={i}>
                       {preview.type === "video" ? (
-                        <PostVideo src={preview.url} muted $single={mediaPreviews.length === 1} />
+                        <VideoWrap><PostVideo src={preview.url} autoPlay loop muted playsInline $single={mediaPreviews.length === 1} /></VideoWrap>
                       ) : (
                         <PostImage src={preview.url} $single={mediaPreviews.length === 1} />
                       )}

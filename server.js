@@ -1220,6 +1220,14 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
         } catch (e) {
           console.warn("Image compression failed:", e);
         }
+      } else if (mediaType === "video") {
+        try {
+          const outPath = file.path + ".mp4";
+          execSync(`ffmpeg -y -i "${file.path}" -vf "scale='min(1080,iw)':-2" -c:v libx264 -preset fast -crf 28 -c:a aac -b:a 128k -movflags +faststart "${outPath}" 2>/dev/null`);
+          renameSync(outPath, file.path);
+        } catch (e) {
+          console.warn("Video compression failed:", e);
+        }
       }
       insertMedia.run(postId, file.filename, mediaType, mediaSources[i] || null);
     }
