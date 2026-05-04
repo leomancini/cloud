@@ -1214,14 +1214,21 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
       const mediaType = file.mimetype.startsWith("video/") ? "video" : "image";
       let w = null, h = null;
       if (mediaType === "image") {
+        const isGif = file.mimetype === "image/gif" || file.originalname?.toLowerCase().endsWith(".gif");
         try {
-          const compressed = await sharp(file.path)
-            .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
-            .jpeg({ quality: 80 })
-            .toFile(file.path + ".tmp");
-          w = compressed.width;
-          h = compressed.height;
-          renameSync(file.path + ".tmp", file.path);
+          if (isGif) {
+            const meta = await sharp(file.path, { animated: true }).metadata();
+            w = meta.width;
+            h = meta.pageHeight || meta.height;
+          } else {
+            const compressed = await sharp(file.path)
+              .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
+              .jpeg({ quality: 80 })
+              .toFile(file.path + ".tmp");
+            w = compressed.width;
+            h = compressed.height;
+            renameSync(file.path + ".tmp", file.path);
+          }
         } catch (e) {
           console.warn("Image compression failed:", e);
         }
