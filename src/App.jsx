@@ -737,11 +737,11 @@ const PostMediaContainer = styled.div`
 
 const PostImage = styled.img`
   width: 100%;
+  height: auto;
   display: block;
   border-radius: ${RADIUS};
   object-fit: cover;
   background: ${(p) => p.theme.bgControl};
-  min-height: ${(p) => (p.$single ? "200px" : "auto")};
   cursor: ${(p) => (p.$tappable ? "zoom-in" : "default")};
   ${innerBorder}
 `;
