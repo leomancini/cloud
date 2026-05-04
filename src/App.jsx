@@ -3791,6 +3791,8 @@ function App() {
                       const img = (
                         <PostImage
                           src={m.url}
+                          width={m.width || undefined}
+                          height={m.height || undefined}
                           $single={post.media.length === 1}
                           $tappable={post.media.length > 1}
                           style={m.source ? undefined : radiusStyle}
