@@ -3378,7 +3378,7 @@ function App() {
 
   const compressImage = (file, maxWidth = 1600, quality = 0.8) =>
     new Promise((resolve) => {
-      if (!file.type.startsWith("image/")) return resolve(file);
+      if (!file.type.startsWith("image/") || file.type === "image/gif") return resolve(file);
       const img = new Image();
       img.onload = () => {
         const scale = Math.min(1, maxWidth / img.width);
