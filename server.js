@@ -1528,15 +1528,24 @@ Choose create_post or skip.`
       const allUsers = db.prepare("SELECT id FROM users WHERE id != ?").all(SOL_USER_ID);
       for (const u of allUsers) {
         notifyUser(u.id, "feed-update");
-        sendPushNotification(u.id, "new_posts", {
-          title: "Sol posted",
-          body: content.slice(0, 100),
-          tag: `new-post-${postId}`,
-          url: `/?post=${postId}`,
-        });
       }
-
+      // Send push after response so cron doesn't timeout
+      res.json({ action: "posted", postId, content });
       console.log(`[Sol Auto] Posted: "${content}"`);
+      for (const u of allUsers) {
+        try {
+          await sendPushNotification(u.id, "new_posts", {
+            title: "Sol posted",
+            body: content.slice(0, 100),
+            tag: `new-post-${postId}`,
+            url: `/?post=${postId}`,
+          });
+        } catch (e) {
+          console.warn(`[Sol Auto] Push failed for user ${u.id}:`, e.message);
+        }
+      }
+      console.log(`[Sol Auto] Push sent to ${allUsers.length} users`);
+      return;
       res.json({ action: "posted", postId, content });
     } else {
       const reason = toolBlock?.input?.reason || "no reason given";
