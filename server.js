@@ -1441,6 +1441,102 @@ app.delete("/api/posts/:id", (req, res) => {
   res.json({ ok: true });
 });
 
+// Sol autonomous posting
+app.post("/api/sol/auto-post", async (req, res) => {
+  const authKey = req.headers["x-sol-key"];
+  if (!authKey || authKey !== process.env.SOL_AUTO_POST_KEY) return res.status(403).json({ error: "Forbidden" });
+  if (!anthropic) return res.status(500).json({ error: "No Anthropic API key" });
+
+  try {
+    // Gather context: recent posts, users, current time
+    const recentPosts = db.prepare(`
+      SELECT p.content, COALESCE(u.display_name, u.name) as author_name, p.created_at, p.place_name
+      FROM posts p JOIN users u ON p.user_id = u.id
+      WHERE p.content IS NOT NULL AND p.content != ''
+      ORDER BY p.created_at DESC LIMIT 15
+    `).all();
+
+    const users = db.prepare("SELECT COALESCE(display_name, name) as name FROM users WHERE id != ?").all(SOL_USER_ID);
+    const now = new Date();
+    const timeStr = now.toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+
+    const recentContext = recentPosts.map(p => `- ${p.author_name}: "${p.content}"${p.place_name ? ` (at ${p.place_name})` : ""}`).join("\n");
+    const memberNames = users.map(u => u.name).join(", ");
+
+    const response = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 500,
+      tools: [{
+        name: "create_post",
+        description: "Create a post on Cloud",
+        input_schema: {
+          type: "object",
+          properties: {
+            content: { type: "string", description: "The post content. Use emojis. All lowercase. Keep it brief and interesting." }
+          },
+          required: ["content"]
+        }
+      }, {
+        name: "skip",
+        description: "Skip posting this time. Use this if there's nothing interesting to say right now.",
+        input_schema: {
+          type: "object",
+          properties: {
+            reason: { type: "string", description: "Brief reason for skipping" }
+          },
+          required: ["reason"]
+        }
+      }],
+      tool_choice: { type: "any" },
+      messages: [{
+        role: "user",
+        content: `You are Sol, an AI member of a small private social feed called Cloud. The members are: ${memberNames}. The current time is ${timeStr}.
+
+Recent posts on the feed:
+${recentContext || "(no recent posts)"}
+
+Decide whether to make a post right now. You post every few hours but you should SKIP if:
+- You posted recently and don't have anything new to say
+- It's very late at night (after midnight before 7am ET)
+- There's nothing timely or interesting to share
+
+When you DO post, make it:
+- Relevant to the time of day, day of week, season, or current moment
+- Interesting observations, fun facts, conversation starters, seasonal things, weekend vibes, etc
+- Sometimes reference what's been happening on the feed or engage with the group's interests
+- Use emojis naturally. All lowercase. 1-3 sentences max
+- Be warm, clever, and genuinely interesting — not generic or cheesy
+- NEVER mention war, crime, politics, or anything negative
+- Don't announce that you're an AI or explain what you're doing
+
+Choose create_post or skip.`
+      }],
+    });
+
+    const toolBlock = response.content.find(b => b.type === "tool_use");
+
+    if (toolBlock?.name === "create_post" && toolBlock.input.content) {
+      const content = toolBlock.input.content;
+      const result = db.prepare("INSERT INTO posts (user_id, content) VALUES (?, ?)").run(SOL_USER_ID, content);
+      const postId = result.lastInsertRowid;
+
+      // Notify all users
+      const allUsers = db.prepare("SELECT id FROM users WHERE id != ?").all(SOL_USER_ID);
+      for (const u of allUsers) notifyUser(u.id, "feed-update");
+
+      console.log(`[Sol Auto] Posted: "${content}"`);
+      res.json({ action: "posted", postId, content });
+    } else {
+      const reason = toolBlock?.input?.reason || "no reason given";
+      console.log(`[Sol Auto] Skipped: ${reason}`);
+      res.json({ action: "skipped", reason });
+    }
+  } catch (e) {
+    console.error("[Sol Auto] Error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Game leaderboard
 app.post("/api/games/:gameId/score", (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
