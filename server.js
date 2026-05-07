@@ -1545,8 +1545,6 @@ Choose create_post or skip.`
         }
       }
       console.log(`[Sol Auto] Push sent to ${allUsers.length} users`);
-      return;
-      res.json({ action: "posted", postId, content });
     } else {
       const reason = toolBlock?.input?.reason || "no reason given";
       console.log(`[Sol Auto] Skipped: ${reason}`);
