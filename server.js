@@ -182,6 +182,10 @@ passport.use(
       const newId = result.lastInsertRowid;
       if (picture) cachePicture(newId, picture);
 
+      // Auto-follow Sol
+      db.prepare("INSERT OR IGNORE INTO follows (follower_id, following_id, status) VALUES (?, ?, 'approved')").run(newId, SOL_USER_ID);
+      db.prepare("INSERT OR IGNORE INTO follows (follower_id, following_id, status) VALUES (?, ?, 'approved')").run(SOL_USER_ID, newId);
+
       done(null, {
         id: newId,
         google_id: googleId,
