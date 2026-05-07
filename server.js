@@ -1526,7 +1526,15 @@ Choose create_post or skip.`
 
       // Notify all users
       const allUsers = db.prepare("SELECT id FROM users WHERE id != ?").all(SOL_USER_ID);
-      for (const u of allUsers) notifyUser(u.id, "feed-update");
+      for (const u of allUsers) {
+        notifyUser(u.id, "feed-update");
+        sendPushNotification(u.id, "new_posts", {
+          title: "Sol posted",
+          body: content.slice(0, 100),
+          tag: `new-post-${postId}`,
+          url: `/?post=${postId}`,
+        });
+      }
 
       console.log(`[Sol Auto] Posted: "${content}"`);
       res.json({ action: "posted", postId, content });
