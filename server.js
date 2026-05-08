@@ -1481,6 +1481,24 @@ app.post("/api/sol/auto-post", async (req, res) => {
       if (weather.condition) weatherContext = `Current weather in ${weather.location?.name || "NYC"}: ${weather.condition} (${weather.currentPeriod})`;
     } catch {}
 
+    // Fetch "today" context
+    let todayContext = "";
+    try {
+      const [eventsRes, holidaysRes, plantsRes] = await Promise.all([
+        fetch("https://today-api.fcc.lol/historical-events", { signal: AbortSignal.timeout(5000) }).then(r => r.json()).catch(() => null),
+        fetch("https://today-api.fcc.lol/weird-holidays", { signal: AbortSignal.timeout(5000) }).then(r => r.json()).catch(() => null),
+        fetch("https://today-api.fcc.lol/blooming-plants", { signal: AbortSignal.timeout(5000) }).then(r => r.json()).catch(() => null),
+      ]);
+      const parts = [];
+      if (holidaysRes?.holidays?.length) parts.push("Today's weird holidays: " + holidaysRes.holidays.slice(0, 3).map(h => h.name).join(", "));
+      if (eventsRes?.events?.length) {
+        const nonWar = eventsRes.events.filter(e => !e.category?.match(/war|military/i)).slice(0, 3);
+        if (nonWar.length) parts.push("On this day: " + nonWar.map(e => `${e.title} (${e.year})`).join("; "));
+      }
+      if (plantsRes?.plants?.length) parts.push("Currently blooming: " + plantsRes.plants.slice(0, 3).map(p => p.commonName || p.name).join(", "));
+      todayContext = parts.join("\n");
+    } catch {}
+
     // Fetch latest news headlines from RSS
     let newsContext = "";
     try {
@@ -1541,6 +1559,7 @@ Recent posts on the feed (most recent first — pay most attention to the newest
 ${recentContext || "(no recent posts)"}
 
 ${weatherContext ? `${weatherContext}\n` : ""}
+${todayContext ? `${todayContext}\n` : ""}
 ${newsContext ? `Trending right now in the world:\n${newsContext}\n` : ""}
 Decide whether to make a post right now. You post every ~6 hours but you should SKIP if:
 - You posted very recently (check if Sol has a post in the last few hours above)
