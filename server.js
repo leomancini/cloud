@@ -1473,6 +1473,14 @@ app.post("/api/sol/auto-post", async (req, res) => {
     const memberList = users.map(u => u.name);
     const memberNames = memberList.join(", ");
 
+    // Fetch weather
+    let weatherContext = "";
+    try {
+      const weatherRes = await fetch("https://labs.noshado.ws/weather-theme-key/?location=11101", { signal: AbortSignal.timeout(5000) });
+      const weather = await weatherRes.json();
+      if (weather.condition) weatherContext = `Current weather in ${weather.location?.name || "NYC"}: ${weather.condition} (${weather.currentPeriod})`;
+    } catch {}
+
     // Fetch latest news headlines from RSS
     let newsContext = "";
     try {
@@ -1528,6 +1536,7 @@ app.post("/api/sol/auto-post", async (req, res) => {
 Recent posts on the feed (most recent first — pay most attention to the newest ones):
 ${recentContext || "(no recent posts)"}
 
+${weatherContext ? `${weatherContext}\n` : ""}
 ${newsContext ? `Trending right now in the world:\n${newsContext}\n` : ""}
 Decide whether to make a post right now. You post every ~6 hours but you should SKIP if:
 - You posted very recently (check if Sol has a post in the last few hours above)
