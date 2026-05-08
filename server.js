@@ -1470,22 +1470,30 @@ app.post("/api/sol/auto-post", async (req, res) => {
       const timeLabel = age < 1 ? "(just now)" : age < 6 ? `(${Math.round(age)}h ago)` : age < 24 ? "(today)" : "(older)";
       return `- ${p.author_name} ${timeLabel}: "${p.content}"${p.place_name ? ` (at ${p.place_name})` : ""}`;
     }).join("\n");
-    const memberNames = users.map(u => u.name).join(", ");
+    const memberList = users.map(u => u.name);
+    const memberNames = memberList.join(", ");
 
-    // Fetch latest news headlines
+    // Fetch latest news headlines from RSS
     let newsContext = "";
     try {
-      const newsRes = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 300,
-          messages: [{ role: "user", content: `What are 3-5 interesting, positive, non-political news headlines or trending topics from today (${timeStr})? Focus on science, tech, culture, sports, space, food, nature, art, music, or fun human interest stories. No war, crime, or politics. Just the headlines, one per line.` }],
-        }),
-      });
-      const newsData = await newsRes.json();
-      newsContext = newsData.content?.[0]?.text || "";
+      const feeds = [
+        "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+        "https://feeds.bbci.co.uk/news/technology/rss.xml",
+        "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml",
+      ];
+      const headlines = [];
+      for (const feedUrl of feeds) {
+        try {
+          const feedRes = await fetch(feedUrl, { signal: AbortSignal.timeout(5000) });
+          const xml = await feedRes.text();
+          const items = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
+          for (const item of items.slice(0, 3)) {
+            const title = item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] || item.match(/<title>(.*?)<\/title>/)?.[1];
+            if (title) headlines.push(title);
+          }
+        } catch {}
+      }
+      if (headlines.length) newsContext = headlines.slice(0, 8).join("\n");
     } catch (e) {
       console.warn("[Sol Auto] News fetch failed:", e.message);
     }
@@ -1537,6 +1545,7 @@ When you DO post, make it:
 - NEVER mention war, crime, politics, disasters, or anything negative
 - Don't announce that you're an AI or explain what you're doing
 - Don't repeat topics you've already posted about recently
+- You can @mention people by name (e.g. ${memberList.slice(0, 2).map(n => "@" + n).join(", ")}). Do this occasionally when referencing someone's recent post or asking someone specific a question — but don't overdo it
 
 Choose create_post or skip.`
       }],
