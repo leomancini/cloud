@@ -1452,20 +1452,43 @@ app.post("/api/sol/auto-post", async (req, res) => {
   if (!anthropic) return res.status(500).json({ error: "No Anthropic API key" });
 
   try {
-    // Gather context: recent posts, users, current time
+    // Gather context: recent posts (more recent = more detail), users, current time
     const recentPosts = db.prepare(`
       SELECT p.content, COALESCE(u.display_name, u.name) as author_name, p.created_at, p.place_name
       FROM posts p JOIN users u ON p.user_id = u.id
       WHERE p.content IS NOT NULL AND p.content != ''
-      ORDER BY p.created_at DESC LIMIT 15
+      ORDER BY p.created_at DESC LIMIT 20
     `).all();
 
     const users = db.prepare("SELECT COALESCE(display_name, name) as name FROM users WHERE id != ?").all(SOL_USER_ID);
     const now = new Date();
     const timeStr = now.toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
 
-    const recentContext = recentPosts.map(p => `- ${p.author_name}: "${p.content}"${p.place_name ? ` (at ${p.place_name})` : ""}`).join("\n");
+    // Weight recent posts more heavily
+    const recentContext = recentPosts.map((p, i) => {
+      const age = (now - new Date(p.created_at + "Z")) / (1000 * 60 * 60);
+      const timeLabel = age < 1 ? "(just now)" : age < 6 ? `(${Math.round(age)}h ago)` : age < 24 ? "(today)" : "(older)";
+      return `- ${p.author_name} ${timeLabel}: "${p.content}"${p.place_name ? ` (at ${p.place_name})` : ""}`;
+    }).join("\n");
     const memberNames = users.map(u => u.name).join(", ");
+
+    // Fetch latest news headlines
+    let newsContext = "";
+    try {
+      const newsRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 300,
+          messages: [{ role: "user", content: `What are 3-5 interesting, positive, non-political news headlines or trending topics from today (${timeStr})? Focus on science, tech, culture, sports, space, food, nature, art, music, or fun human interest stories. No war, crime, or politics. Just the headlines, one per line.` }],
+        }),
+      });
+      const newsData = await newsRes.json();
+      newsContext = newsData.content?.[0]?.text || "";
+    } catch (e) {
+      console.warn("[Sol Auto] News fetch failed:", e.message);
+    }
 
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
@@ -1496,22 +1519,24 @@ app.post("/api/sol/auto-post", async (req, res) => {
         role: "user",
         content: `You are Sol, an AI member of a small private social feed called Cloud. The members are: ${memberNames}. The current time is ${timeStr}.
 
-Recent posts on the feed:
+Recent posts on the feed (most recent first — pay most attention to the newest ones):
 ${recentContext || "(no recent posts)"}
 
-Decide whether to make a post right now. You post every few hours but you should SKIP if:
-- You posted recently and don't have anything new to say
+${newsContext ? `Trending right now in the world:\n${newsContext}\n` : ""}
+Decide whether to make a post right now. You post every ~6 hours but you should SKIP if:
+- You posted very recently (check if Sol has a post in the last few hours above)
 - It's very late at night (after midnight before 7am ET)
 - There's nothing timely or interesting to share
 
 When you DO post, make it:
-- Relevant to the time of day, day of week, season, or current moment
-- Interesting observations, fun facts, conversation starters, seasonal things, weekend vibes, etc
-- Sometimes reference what's been happening on the feed or engage with the group's interests
+- Relevant to the current moment — reference what's trending, what's happening in the world, the time of day, the weather/season, or what people on the feed have been up to recently
+- Prioritize reacting to the MOST RECENT posts on the feed — what people just shared
+- Share interesting things happening in the world right now (science, tech, culture, space, nature, art, etc)
 - Use emojis naturally. All lowercase. 1-3 sentences max
 - Be warm, clever, and genuinely interesting — not generic or cheesy
-- NEVER mention war, crime, politics, or anything negative
+- NEVER mention war, crime, politics, disasters, or anything negative
 - Don't announce that you're an AI or explain what you're doing
+- Don't repeat topics you've already posted about recently
 
 Choose create_post or skip.`
       }],
