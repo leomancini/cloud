@@ -1481,6 +1481,17 @@ app.post("/api/sol/auto-post", async (req, res) => {
       if (weather.condition) weatherContext = `Current weather in ${weather.location?.name || "NYC"}: ${weather.condition} (${weather.currentPeriod})`;
     } catch {}
 
+    // Fetch NYC sky color
+    let skyContext = "";
+    try {
+      const skyRes = await fetch("https://nyc-sky-colors.fcc.lol/api", { signal: AbortSignal.timeout(5000) });
+      const sky = await skyRes.json();
+      if (sky.colors) {
+        const dirs = Object.entries(sky.colors).map(([d, c]) => `${d}: ${c}`).join(", ");
+        skyContext = `NYC sky colors right now: ${dirs}`;
+      }
+    } catch {}
+
     // Fetch "today" context
     let todayContext = "";
     try {
@@ -1527,7 +1538,7 @@ app.post("/api/sol/auto-post", async (req, res) => {
     }
 
     const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model: "claude-sonnet-4-6",
       max_tokens: 500,
       tools: [{
         name: "create_post",
@@ -1558,7 +1569,7 @@ app.post("/api/sol/auto-post", async (req, res) => {
 Recent posts on the feed (most recent first — pay most attention to the newest ones):
 ${recentContext || "(no recent posts)"}
 
-${weatherContext ? `${weatherContext}\n` : ""}
+${weatherContext ? `${weatherContext}\n` : ""}${skyContext ? `${skyContext}\n` : ""}
 ${todayContext ? `${todayContext}\n` : ""}
 ${newsContext ? `Trending right now in the world:\n${newsContext}\n` : ""}
 Decide whether to make a post right now. You post every ~6 hours but you should SKIP if:
