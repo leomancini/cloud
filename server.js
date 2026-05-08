@@ -1454,9 +1454,10 @@ app.post("/api/sol/auto-post", async (req, res) => {
   try {
     // Gather context: recent posts (more recent = more detail), users, current time
     const recentPosts = db.prepare(`
-      SELECT p.content, COALESCE(u.display_name, u.name) as author_name, p.created_at, p.place_name
+      SELECT p.content, COALESCE(u.display_name, u.name) as author_name, p.created_at, p.place_name,
+        (SELECT COUNT(*) FROM post_media WHERE post_id = p.id AND media_type = 'image') as photo_count,
+        (SELECT COUNT(*) FROM post_media WHERE post_id = p.id AND media_type = 'video') as video_count
       FROM posts p JOIN users u ON p.user_id = u.id
-      WHERE p.content IS NOT NULL AND p.content != ''
       ORDER BY p.created_at DESC LIMIT 20
     `).all();
 
@@ -1468,7 +1469,15 @@ app.post("/api/sol/auto-post", async (req, res) => {
     const recentContext = recentPosts.map((p, i) => {
       const age = (now - new Date(p.created_at + "Z")) / (1000 * 60 * 60);
       const timeLabel = age < 1 ? "(just now)" : age < 6 ? `(${Math.round(age)}h ago)` : age < 24 ? "(today)" : "(older)";
-      return `- ${p.author_name} ${timeLabel}: "${p.content}"${p.place_name ? ` (at ${p.place_name})` : ""}`;
+      let desc = "";
+      if (p.content && p.content.trim()) desc += `"${p.content}"`;
+      const mediaParts = [];
+      if (p.photo_count > 0) mediaParts.push(p.photo_count === 1 ? "a photo" : `${p.photo_count} photos`);
+      if (p.video_count > 0) mediaParts.push(p.video_count === 1 ? "a video" : `${p.video_count} videos`);
+      if (mediaParts.length) desc += (desc ? " + " : "shared ") + mediaParts.join(" and ");
+      if (p.place_name) desc += ` (at ${p.place_name})`;
+      if (!desc) desc = "(empty post)";
+      return `- ${p.author_name} ${timeLabel}: ${desc}`;
     }).join("\n");
     const memberList = users.map(u => u.name);
     const memberNames = memberList.join(", ");
