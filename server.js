@@ -1497,7 +1497,7 @@ app.post("/api/sol/auto-post", async (req, res) => {
       if (mediaParts.length) desc += (desc ? " + " : "shared ") + mediaParts.join(" and ");
       if (p.place_name) desc += ` (at ${p.place_name})`;
       if (!desc) desc = "(empty post)";
-      return `- ${p.author_name} ${timeLabel}: ${desc}`;
+      return `- @${p.author_name} ${timeLabel}: ${desc}`;
     }).join("\n");
     const memberList = users.map(u => u.name);
     const memberNames = memberList.join(", ");
@@ -1613,7 +1613,7 @@ When you DO post, make it:
 - NEVER mention war, crime, politics, disasters, or anything negative
 - Don't announce that you're an AI or explain what you're doing
 - Don't repeat topics you've already posted about recently
-- You can @mention people by name (e.g. ${memberList.slice(0, 2).map(n => "@" + n).join(", ")}). Do this occasionally when referencing someone's recent post or asking someone specific a question — but don't overdo it
+- You can @mention people using EXACTLY these names (case-sensitive, must match exactly): ${memberList.map(n => "@" + n).join(", ")}. The @mention must be followed by a space or punctuation. Do this occasionally when referencing someone's recent post — but don't overdo it
 
 Choose create_post or skip.` }] }],
     });
