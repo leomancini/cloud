@@ -1477,9 +1477,7 @@ app.post("/api/sol/auto-post", async (req, res) => {
     let newsContext = "";
     try {
       const feeds = [
-        "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
-        "https://feeds.bbci.co.uk/news/technology/rss.xml",
-        "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
       ];
       const headlines = [];
       for (const feedUrl of feeds) {
