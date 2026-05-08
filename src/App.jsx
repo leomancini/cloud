@@ -119,9 +119,12 @@ const SpinnerRing = styled.div`
 const Spinner = ({ size } = {}) => <SpinnerRing $size={size} />;
 const BigSpinner = () => <Spinner size="24px" />;
 
-const parseText = (text, users = []) => {
+const parseText = (text, users = [], currentUser = null) => {
   if (!text) return [];
-  const base = users.some((u) => u.name === "Sol") ? users : [...users, { id: "sol-ai", name: "Sol" }];
+  let base = users.some((u) => u.name === "Sol") ? [...users] : [...users, { id: "sol-ai", name: "Sol" }];
+  if (currentUser && !base.some((u) => u.id === currentUser.id)) {
+    base.push({ id: currentUser.id, name: currentUser.name, google_name: currentUser.google_name });
+  }
   const allUsers = [];
   for (const u of base) {
     allUsers.push(u);
@@ -2568,14 +2571,14 @@ function App() {
   };
 
   const renderText = (text) => {
-    const parts = parseText(text, users);
+    const parts = parseText(text, users, user);
     return parts.map((p, i) =>
       p.type === "mention" ? <MentionSpan key={i} onClick={() => { if (p.userId === user.id) setTab("profile"); else if (p.userId) loadUserProfile(p.userId); }}>@{p.content}</MentionSpan> : <span key={i}>{renderTextPart(p.content, i)}</span>
     );
   };
 
   const renderHighlight = (text) => {
-    const parts = parseText(text, users);
+    const parts = parseText(text, users, user);
     return parts.map((p, i) =>
       p.type === "mention" ? <MentionHighlight key={i}>@{p.content}</MentionHighlight> : <React.Fragment key={i}>{p.content}</React.Fragment>
     );
@@ -2598,7 +2601,7 @@ function App() {
   };
 
   const fixMentionCasing = (text) => {
-    const parts = parseText(text, users);
+    const parts = parseText(text, users, user);
     let result = "";
     for (const p of parts) {
       result += p.type === "mention" ? `@${p.content}` : p.content;
