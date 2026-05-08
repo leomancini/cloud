@@ -1485,7 +1485,11 @@ app.post("/api/sol/auto-post", async (req, res) => {
     let newsContext = "";
     try {
       const feeds = [
-        "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Arts.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Space.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Food.xml",
       ];
       const headlines = [];
       for (const feedUrl of feeds) {
