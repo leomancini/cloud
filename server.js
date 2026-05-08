@@ -1454,12 +1454,32 @@ app.post("/api/sol/auto-post", async (req, res) => {
   try {
     // Gather context: recent posts (more recent = more detail), users, current time
     const recentPosts = db.prepare(`
-      SELECT p.content, COALESCE(u.display_name, u.name) as author_name, p.created_at, p.place_name,
+      SELECT p.id, p.content, COALESCE(u.display_name, u.name) as author_name, p.created_at, p.place_name,
         (SELECT COUNT(*) FROM post_media WHERE post_id = p.id AND media_type = 'image') as photo_count,
         (SELECT COUNT(*) FROM post_media WHERE post_id = p.id AND media_type = 'video') as video_count
       FROM posts p JOIN users u ON p.user_id = u.id
       ORDER BY p.created_at DESC LIMIT 20
     `).all();
+
+    // Load images from the 5 most recent posts for visual context
+    const getMedia = db.prepare("SELECT filename, media_type FROM post_media WHERE post_id = ? AND media_type = 'image' ORDER BY id LIMIT 2");
+    const imageBlocks = [];
+    for (const post of recentPosts.slice(0, 5)) {
+      const media = getMedia.all(post.id);
+      for (const m of media) {
+        try {
+          const filePath = join(uploadsDir, m.filename);
+          if (!existsSync(filePath)) continue;
+          const buf = readFileSync(filePath);
+          // Resize to save tokens
+          const resized = await sharp(buf).resize(400, 400, { fit: "inside", withoutEnlargement: true }).jpeg({ quality: 60 }).toBuffer();
+          const ext = m.filename.split(".").pop().toLowerCase();
+          const mediaType = ext === "png" ? "image/png" : ext === "gif" ? "image/gif" : ext === "webp" ? "image/webp" : "image/jpeg";
+          imageBlocks.push({ type: "text", text: `[Image from ${post.author_name}'s post:]` });
+          imageBlocks.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: resized.toString("base64") } });
+        } catch {}
+      }
+    }
 
     const users = db.prepare("SELECT COALESCE(display_name, name) as name FROM users WHERE id != ?").all(SOL_USER_ID);
     const now = new Date();
@@ -1571,14 +1591,12 @@ app.post("/api/sol/auto-post", async (req, res) => {
         }
       }],
       tool_choice: { type: "any" },
-      messages: [{
-        role: "user",
-        content: `You are Sol, an AI member of a small private social feed called Cloud. The members are: ${memberNames}. The current time is ${timeStr}.
+      messages: [{ role: "user", content: [...imageBlocks, { type: "text", text: `You are Sol, an AI member of a small private social feed called Cloud. The members are: ${memberNames}. The current time is ${timeStr}.
 
 Recent posts on the feed (most recent first — pay most attention to the newest ones):
 ${recentContext || "(no recent posts)"}
 
-${weatherContext ? `${weatherContext}\n` : ""}${skyContext ? `${skyContext}\n` : ""}
+${imageBlocks.length ? "The images above are from the most recent posts on the feed. Use what you see in them to make your post more specific and engaging.\n" : ""}${weatherContext ? `${weatherContext}\n` : ""}${skyContext ? `${skyContext}\n` : ""}
 ${todayContext ? `${todayContext}\n` : ""}
 ${newsContext ? `Trending right now in the world:\n${newsContext}\n` : ""}
 Decide whether to make a post right now. You post every ~6 hours but you should SKIP if:
@@ -1588,8 +1606,8 @@ Decide whether to make a post right now. You post every ~6 hours but you should 
 
 When you DO post, make it:
 - Relevant to the current moment — reference what's trending, what's happening in the world, the time of day, the weather/season, or what people on the feed have been up to recently
-- Prioritize reacting to the MOST RECENT posts on the feed — what people just shared
-- Weave together multiple things — what's happening on the feed, the weather/sky, what's trending, weird holidays, what's blooming. Don't just reference one thing (science, tech, culture, space, nature, art, etc)
+- Prioritize reacting to the MOST RECENT posts on the feed — what people just shared. If you can see their images, reference what's actually in them
+- Weave together multiple things — what's happening on the feed, the weather/sky, what's trending, weird holidays, what's blooming. Don't just reference one thing
 - Use emojis naturally. All lowercase. 2-4 sentences, not too short but not a wall of text
 - Be warm, clever, and genuinely interesting — not generic or cheesy
 - NEVER mention war, crime, politics, disasters, or anything negative
@@ -1597,8 +1615,7 @@ When you DO post, make it:
 - Don't repeat topics you've already posted about recently
 - You can @mention people by name (e.g. ${memberList.slice(0, 2).map(n => "@" + n).join(", ")}). Do this occasionally when referencing someone's recent post or asking someone specific a question — but don't overdo it
 
-Choose create_post or skip.`
-      }],
+Choose create_post or skip.` }] }],
     });
 
     const toolBlock = response.content.find(b => b.type === "tool_use");
