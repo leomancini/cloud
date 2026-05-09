@@ -1533,13 +1533,15 @@ const CommentPostButton = styled.button`
   cursor: pointer;
   padding: 0;
   width: 40px;
+  min-width: 40px;
   height: 40px;
-  border-radius: ${RADIUS};
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   box-sizing: border-box;
+  overflow: hidden;
 
   @media (hover: hover) {
     &:hover {
