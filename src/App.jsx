@@ -4045,6 +4045,9 @@ function App() {
                       {c.mini_game && (
                         <GameFrameWrap style={{ marginTop: 8 }}><GameFrameInner data-game-id={c.id} srcDoc={getGameSrcDoc(c.mini_game, gameAudioEnabled[c.id])} sandbox="allow-scripts allow-same-origin" title="Mini game" /></GameFrameWrap>
                       )}
+                      {c.image && (
+                        <PostImage src={`/api/uploads/${c.image}`} style={{ marginTop: 8, borderRadius: RADIUS }} />
+                      )}
                       </>
                     )}
                   />

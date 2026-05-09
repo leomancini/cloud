@@ -330,7 +330,7 @@ app.get("/api/users/:id/profile", (req, res) => {
 
   const getMedia = db.prepare("SELECT filename, media_type, source, width, height FROM post_media WHERE post_id = ? ORDER BY id");
   const getComments = db.prepare(
-    `SELECT c.id, c.content, c.created_at, c.user_id, c.mini_game,
+    `SELECT c.id, c.content, c.created_at, c.user_id, c.mini_game, c.image,
       COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
     FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ? ORDER BY c.created_at ASC`
   );
@@ -556,6 +556,7 @@ db.exec(`
   )
 `);
 try { db.exec("ALTER TABLE comments ADD COLUMN mini_game TEXT"); } catch {}
+try { db.exec("ALTER TABLE comments ADD COLUMN image TEXT"); } catch {}
 try { db.exec("ALTER TABLE users ADD COLUMN game_leaderboard_opt_out INTEGER NOT NULL DEFAULT 0"); } catch {}
 
 db.exec(`
@@ -980,11 +981,10 @@ async function handleSolImageModify(prompt, postId) {
       h = meta.height;
     } catch {}
 
-    // Add modified image to the post's media and leave a comment
-    db.prepare("INSERT INTO post_media (post_id, filename, media_type, source, width, height) VALUES (?, ?, 'image', 'sol-edit', ?, ?)").run(postId, filename, w, h);
+    // Post the modified image as a comment
     const doneMessages = ["here's what i came up with!", "done! what do you think?", "gave it a shot, hope you like it!", "here you go!"];
     const msg = doneMessages[Math.floor(Math.random() * doneMessages.length)];
-    db.prepare("INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)").run(postId, SOL_USER_ID, msg);
+    db.prepare("INSERT INTO comments (post_id, user_id, content, image) VALUES (?, ?, ?, ?)").run(postId, SOL_USER_ID, msg, filename);
 
     console.log("[Sol] Image modification posted:", filename);
 
@@ -1434,7 +1434,7 @@ app.get("/api/feed", (req, res) => {
     "SELECT filename, media_type, source, width, height FROM post_media WHERE post_id = ? ORDER BY id"
   );
   const getComments = db.prepare(
-    `SELECT c.id, c.content, c.created_at, c.user_id, c.mini_game,
+    `SELECT c.id, c.content, c.created_at, c.user_id, c.mini_game, c.image,
       COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
     FROM comments c
     JOIN users u ON c.user_id = u.id
