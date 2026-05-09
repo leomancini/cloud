@@ -998,7 +998,7 @@ async function handleSolImageModify(prompt, postId) {
         notifyUser(post.user_id, "feed-update");
         const followers = db.prepare("SELECT follower_id FROM follows WHERE following_id = ? AND status = 'approved'").all(post.user_id);
         for (const f of followers) notifyUser(f.follower_id, "feed-update");
-      }, 500);
+      }, 1000);
     }
 
     return true;
