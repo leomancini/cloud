@@ -996,7 +996,7 @@ async function handleSolImageModify(prompt, postId) {
       for (const f of followers) notifyUser(f.follower_id, "feed-update");
     }
 
-    return commentResult.lastInsertRowid;
+    return true;
   } catch (e) {
     console.warn("[Sol] Image modification error:", e);
     return null;
