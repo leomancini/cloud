@@ -1139,10 +1139,10 @@ async function handleSolMention(postId, triggerText = null) {
       const filePath = join(uploadsDir, m.filename);
       if (m.media_type === "image") {
         const buf = readFileSync(filePath);
-        const base64 = buf.toString("base64");
         const ext = m.filename.split(".").pop().toLowerCase();
-        const mediaType = ext === "png" ? "image/png" : ext === "gif" ? "image/gif" : ext === "webp" ? "image/webp" : "image/jpeg";
-        content.push({ type: "image", source: { type: "base64", media_type: mediaType, data: base64 } });
+        // GIFs are kept as-is, everything else is compressed to JPEG by sharp
+        const mediaType = ext === "gif" ? "image/gif" : "image/jpeg";
+        content.push({ type: "image", source: { type: "base64", media_type: mediaType, data: buf.toString("base64") } });
       } else if (m.media_type === "video") {
         const tmpDir = join(uploadsDir, ".tmp_frames");
         if (!existsSync(tmpDir)) mkdirSync(tmpDir);
