@@ -728,6 +728,18 @@ const CLASSIFY_TOOLS = [
       },
       required: ["game_description", "message"]
     }
+  },
+  {
+    name: "modify_image",
+    description: "Modify, edit, remix, or transform an image from the post using AI image generation. Use this when someone asks to change, edit, modify, remix, stylize, or transform a photo or image on the post.",
+    input_schema: {
+      type: "object",
+      properties: {
+        prompt: { type: "string", description: "The modification prompt to apply to the image. Describe the desired transformation." },
+        message: { type: "string", description: "A brief comment acknowledging the image modification request. All lowercase, no emojis." }
+      },
+      required: ["prompt", "message"]
+    }
   }
 ];
 
@@ -895,6 +907,93 @@ Steps: 1) Read the file(s) you need to change. 2) Use edit_file for targeted rep
     console.warn("Sol PR error:", e);
     try { execFileSync("git", ["worktree", "remove", "--force", worktreePath], { cwd: __dirname }); } catch {}
     try { execFileSync("git", ["branch", "-D", branchName], { cwd: __dirname }); } catch {}
+    return null;
+  }
+}
+
+async function handleSolImageModify(prompt, postId) {
+  if (!process.env.POE_API_KEY) return null;
+  try {
+    console.log("[Sol] Modifying image with Nano Banana 2...");
+
+    // Get the first image from the post
+    const media = db.prepare("SELECT filename, media_type FROM post_media WHERE post_id = ? AND media_type = 'image' ORDER BY id LIMIT 1").get(postId);
+    if (!media) { console.log("[Sol] No image found on post"); return null; }
+
+    // Build the public URL for the image
+    const baseUrl = process.env.BASE_URL || "https://cloud.leo.gd";
+    const imageUrl = `${baseUrl}/api/uploads/${media.filename}`;
+
+    // Call Poe API with Nano Banana 2
+    let response;
+    for (let retry = 0; retry < 3; retry++) {
+      try {
+        const poeRes = await fetch("https://api.poe.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${process.env.POE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "Nano-Banana-2",
+            messages: [{
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                { type: "image_url", image_url: { url: imageUrl } },
+              ],
+            }],
+            stream: false,
+          }),
+        });
+        response = await poeRes.json();
+        break;
+      } catch (e) {
+        if (retry < 2) { await new Promise(r => setTimeout(r, 3000)); } else throw e;
+      }
+    }
+
+    // Extract image URL from response
+    const content = response?.choices?.[0]?.message?.content || "";
+    const urlMatch = content.match(/https:\/\/pfst\.cf2\.poecdn\.net\/[^\s\)]+/);
+    if (!urlMatch) { console.log("[Sol] No image URL in Poe response"); return null; }
+
+    // Download the generated image
+    const imgRes = await fetch(urlMatch[0]);
+    if (!imgRes.ok) { console.log("[Sol] Failed to download generated image"); return null; }
+    const imgBuf = Buffer.from(await imgRes.arrayBuffer());
+
+    // Save to uploads
+    const filename = `${Date.now()}-sol-edit.jpg`;
+    const filePath = join(uploadsDir, filename);
+    writeFileSync(filePath, imgBuf);
+
+    // Get dimensions
+    let w = null, h = null;
+    try {
+      const meta = await sharp(filePath).metadata();
+      w = meta.width;
+      h = meta.height;
+    } catch {}
+
+    // Create comment with the image
+    const commentResult = db.prepare("INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)").run(postId, SOL_USER_ID, "");
+    // Attach image to post as media (linked to original post)
+    db.prepare("INSERT INTO post_media (post_id, filename, media_type, source, width, height) VALUES (?, ?, 'image', 'sol-edit', ?, ?)").run(postId, filename, w, h);
+
+    console.log("[Sol] Image modification posted:", filename);
+
+    // Notify
+    const post = db.prepare("SELECT user_id FROM posts WHERE id = ?").get(postId);
+    if (post) {
+      notifyUser(post.user_id, "feed-update");
+      const followers = db.prepare("SELECT follower_id FROM follows WHERE following_id = ? AND status = 'approved'").all(post.user_id);
+      for (const f of followers) notifyUser(f.follower_id, "feed-update");
+    }
+
+    return commentResult.lastInsertRowid;
+  } catch (e) {
+    console.warn("[Sol] Image modification error:", e);
     return null;
   }
 }
@@ -1082,7 +1181,8 @@ Respond to the most recent message directed at you (above). The post and comment
 ${threadHasGame ? "IMPORTANT: This thread already contains a mini game you created. If the user is asking for ANY changes, updates, tweaks, or modifications, you MUST use post_mini_game — NOT make_code_change. Only use make_code_change if they explicitly say they want to change the Cloud app's source code itself.\n\n" : ""}Choose one action:
 - post_comment: Write a brief, natural comment. Be friendly and conversational. 1-2 sentences. No emojis. Always all lowercase. Use this for casual messages, greetings, questions, or anything that isn't explicitly asking for a code change or a game.
 - make_code_change: ONLY use this if the user explicitly asks to modify the Cloud app's deployed source code (server.js, App.jsx, etc). Words like "build", "make", "create", "add", "change", "update" about a game or interactive thing mean post_mini_game, NOT this.${!process.env.GITHUB_TOKEN ? " (Currently unavailable — no GitHub token configured)" : ""}
-- post_mini_game: Use this whenever the user wants ANY kind of game, toy, interactive thing, challenge, puzzle, simulation, or playable experience. Also use this if they describe something visual/interactive to "build" or "make" — that is a game, not a code change. If in doubt between this and make_code_change, choose this.${threadHasGame ? " This thread already has a game — use this for any follow-up requests about it." : ""}`;
+- post_mini_game: Use this whenever the user wants ANY kind of game, toy, interactive thing, challenge, puzzle, simulation, or playable experience. Also use this if they describe something visual/interactive to "build" or "make" — that is a game, not a code change. If in doubt between this and make_code_change, choose this.${threadHasGame ? " This thread already has a game — use this for any follow-up requests about it." : ""}
+- modify_image: Use this when the user asks to modify, edit, remix, stylize, transform, or change an image/photo on the post. Examples: "make this look like a painting", "add a sunset", "make it look vintage", "turn this into pixel art".`;
 
   content.push({ type: "text", text: textContext });
 
@@ -1155,6 +1255,12 @@ ${threadHasGame ? "IMPORTANT: This thread already contains a mini game you creat
       const gamePostId = await handleSolMiniGame(toolBlock.input.game_description, postId, existingGameHtml);
       if (!gamePostId) {
         solComment("i tried to make a game but something went wrong, sorry");
+      }
+    } else if (toolBlock && toolBlock.name === "modify_image") {
+      updatePlaceholder(toolBlock.input.message);
+      const result = await handleSolImageModify(toolBlock.input.prompt, postId);
+      if (!result) {
+        solComment("i tried to modify the image but something went wrong, sorry");
       }
     } else if (toolBlock && toolBlock.name === "post_comment") {
       updatePlaceholder(toolBlock.input.comment);
