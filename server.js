@@ -988,12 +988,14 @@ async function handleSolImageModify(prompt, postId) {
 
     console.log("[Sol] Image modification posted:", filename);
 
-    // Notify
+    // Notify - small delay so DB write is fully committed before feed reload
     const post = db.prepare("SELECT user_id FROM posts WHERE id = ?").get(postId);
     if (post) {
-      notifyUser(post.user_id, "feed-update");
-      const followers = db.prepare("SELECT follower_id FROM follows WHERE following_id = ? AND status = 'approved'").all(post.user_id);
-      for (const f of followers) notifyUser(f.follower_id, "feed-update");
+      setTimeout(() => {
+        notifyUser(post.user_id, "feed-update");
+        const followers = db.prepare("SELECT follower_id FROM follows WHERE following_id = ? AND status = 'approved'").all(post.user_id);
+        for (const f of followers) notifyUser(f.follower_id, "feed-update");
+      }, 500);
     }
 
     return true;
