@@ -976,10 +976,11 @@ async function handleSolImageModify(prompt, postId) {
       h = meta.height;
     } catch {}
 
-    // Create comment with the image
-    const commentResult = db.prepare("INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)").run(postId, SOL_USER_ID, "");
-    // Attach image to post as media (linked to original post)
+    // Add modified image to the post's media and leave a comment
     db.prepare("INSERT INTO post_media (post_id, filename, media_type, source, width, height) VALUES (?, ?, 'image', 'sol-edit', ?, ?)").run(postId, filename, w, h);
+    const doneMessages = ["here's what i came up with!", "done! what do you think?", "gave it a shot, hope you like it!", "here you go!"];
+    const msg = doneMessages[Math.floor(Math.random() * doneMessages.length)];
+    db.prepare("INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)").run(postId, SOL_USER_ID, msg);
 
     console.log("[Sol] Image modification posted:", filename);
 
