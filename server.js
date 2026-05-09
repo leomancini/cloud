@@ -965,17 +965,17 @@ async function handleSolImageModify(prompt, postId) {
     // Download the generated image
     const imgRes = await fetch(urlMatch[0]);
     if (!imgRes.ok) { console.log("[Sol] Failed to download generated image"); return null; }
-    const imgBuf = Buffer.from(await imgRes.arrayBuffer());
+    const resultBuf = Buffer.from(await imgRes.arrayBuffer());
 
     // Save to uploads
     const filename = `${Date.now()}-sol-edit.jpg`;
-    const filePath = join(uploadsDir, filename);
-    writeFileSync(filePath, imgBuf);
+    const savePath = join(uploadsDir, filename);
+    writeFileSync(savePath, resultBuf);
 
     // Get dimensions
     let w = null, h = null;
     try {
-      const meta = await sharp(filePath).metadata();
+      const meta = await sharp(savePath).metadata();
       w = meta.width;
       h = meta.height;
     } catch {}
