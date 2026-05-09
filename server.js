@@ -920,9 +920,13 @@ async function handleSolImageModify(prompt, postId) {
     const media = db.prepare("SELECT filename, media_type FROM post_media WHERE post_id = ? AND media_type = 'image' ORDER BY id LIMIT 1").get(postId);
     if (!media) { console.log("[Sol] No image found on post"); return null; }
 
-    // Build the public URL for the image
-    const baseUrl = process.env.BASE_URL || "https://cloud.leo.gd";
-    const imageUrl = `${baseUrl}/api/uploads/${media.filename}`;
+    // Read image and convert to base64 data URL
+    const filePath = join(uploadsDir, media.filename);
+    if (!existsSync(filePath)) { console.log("[Sol] Image file not found"); return null; }
+    const imgBuf = readFileSync(filePath);
+    const ext = media.filename.split(".").pop().toLowerCase();
+    const mimeType = ext === "png" ? "image/png" : ext === "gif" ? "image/gif" : ext === "webp" ? "image/webp" : "image/jpeg";
+    const dataUrl = `data:${mimeType};base64,${imgBuf.toString("base64")}`;
 
     // Call Poe API with Nano Banana 2
     let response;
@@ -940,7 +944,7 @@ async function handleSolImageModify(prompt, postId) {
               role: "user",
               content: [
                 { type: "text", text: prompt },
-                { type: "image_url", image_url: { url: imageUrl } },
+                { type: "image_url", image_url: { url: dataUrl } },
               ],
             }],
             stream: false,
