@@ -917,17 +917,20 @@ async function handleSolImageModify(prompt, postId) {
   try {
     console.log("[Sol] Modifying image with Nano Banana 2...");
 
-    // Get the first image from the post
-    const media = db.prepare("SELECT filename, media_type FROM post_media WHERE post_id = ? AND media_type = 'image' ORDER BY id LIMIT 1").get(postId);
-    if (!media) { console.log("[Sol] No image found on post"); return null; }
+    // Get the most recent image: check comment images first (Sol's previous edits), then post media
+    const commentImage = db.prepare("SELECT image FROM comments WHERE post_id = ? AND image IS NOT NULL ORDER BY created_at DESC LIMIT 1").get(postId);
+    const postMedia = db.prepare("SELECT filename FROM post_media WHERE post_id = ? AND media_type = 'image' ORDER BY id LIMIT 1").get(postId);
+    const imageFilename = commentImage?.image || postMedia?.filename;
+    if (!imageFilename) { console.log("[Sol] No image found on post or comments"); return null; }
 
     // Read image and convert to base64 data URL
-    const filePath = join(uploadsDir, media.filename);
-    if (!existsSync(filePath)) { console.log("[Sol] Image file not found"); return null; }
-    const imgBuf = readFileSync(filePath);
-    const ext = media.filename.split(".").pop().toLowerCase();
-    const mimeType = ext === "png" ? "image/png" : ext === "gif" ? "image/gif" : ext === "webp" ? "image/webp" : "image/jpeg";
+    const sourceFilePath = join(uploadsDir, imageFilename);
+    if (!existsSync(sourceFilePath)) { console.log("[Sol] Image file not found:", imageFilename); return null; }
+    const imgBuf = readFileSync(sourceFilePath);
+    const ext = imageFilename.split(".").pop().toLowerCase();
+    const mimeType = ext === "gif" ? "image/gif" : "image/jpeg";
     const dataUrl = `data:${mimeType};base64,${imgBuf.toString("base64")}`;
+    console.log("[Sol] Using image:", commentImage?.image ? "previous edit" : "original post", imageFilename);
 
     // Call Poe API with Nano Banana 2
     let response;
