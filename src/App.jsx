@@ -1310,6 +1310,194 @@ const CommentsSection = styled.div`
   margin-top: 14px;
 `;
 
+// ─── Threading styled components ─────────────────────────────────────────────
+
+const ThreadContainer = styled.div`
+  position: relative;
+`;
+
+const ThreadedReplyGroup = styled.div`
+  position: relative;
+  padding-left: 32px;
+  margin-top: 4px;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 11px;
+    top: 0;
+    bottom: 14px;
+    width: 2px;
+    background: ${(p) => p.theme.border};
+    border-radius: 2px;
+  }
+`;
+
+const ThreadConnector = styled.div`
+  position: absolute;
+  left: 11px;
+  top: 14px;
+  width: 20px;
+  height: 2px;
+  background: ${(p) => p.theme.border};
+  border-radius: 2px;
+`;
+
+const ReplyButton = styled.button`
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: ${(p) => p.theme.textSecondary};
+  cursor: pointer;
+  padding: 2px 0;
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: normal;
+
+  @media (hover: hover) {
+    &:hover { color: ${(p) => p.theme.text}; }
+  }
+  &:active { opacity: 0.6; }
+`;
+
+const CollapseThreadButton = styled.button`
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: ${(p) => p.theme.textSecondary};
+  cursor: pointer;
+  padding: 2px 0 2px 4px;
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  @media (hover: hover) {
+    &:hover { color: ${(p) => p.theme.text}; }
+  }
+  &:active { opacity: 0.6; }
+`;
+
+const CollapsedThreadPill = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  margin-left: 32px;
+  padding: 6px 12px;
+  background: ${(p) => p.theme.bgControl};
+  border: none;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: ${(p) => p.theme.textSecondary};
+  cursor: pointer;
+
+  @media (hover: hover) {
+    &:hover {
+      background: ${(p) => p.theme.bgHover};
+      color: ${(p) => p.theme.text};
+    }
+  }
+  &:active { opacity: 0.7; }
+`;
+
+const ViewThreadButton = styled.button`
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: ${(p) => p.theme.textSecondary};
+  cursor: pointer;
+  padding: 2px 0;
+  margin-top: 2px;
+  margin-left: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  @media (hover: hover) {
+    &:hover { color: ${(p) => p.theme.text}; }
+  }
+  &:active { opacity: 0.6; }
+`;
+
+const ThreadFocusOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: ${(p) => p.theme.bgOverlay};
+  z-index: 500;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+`;
+
+const ThreadFocusSheet = styled.div`
+  background: ${(p) => p.theme.bg};
+  border-radius: ${RADIUS} ${RADIUS} 0 0;
+  width: 100%;
+  max-width: 560px;
+  max-height: 88dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px 20px 40px;
+  box-sizing: border-box;
+`;
+
+const ThreadFocusHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+`;
+
+const ThreadFocusTitle = styled.div`
+  font-size: 16px;
+  font-weight: 700;
+  color: ${(p) => p.theme.text};
+`;
+
+const ThreadFocusClose = styled.button`
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: ${(p) => p.theme.bgControl};
+  color: ${(p) => p.theme.text};
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  @media (hover: hover) { &:hover { background: ${(p) => p.theme.bgHover}; } }
+`;
+
+const ReplyInputBanner = styled.div`
+  font-size: 12px;
+  color: ${(p) => p.theme.textSecondary};
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+`;
+
+const CancelReplyButton = styled.button`
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: ${(p) => p.theme.textSecondary};
+  cursor: pointer;
+  padding: 0;
+  @media (hover: hover) { &:hover { color: ${(p) => p.theme.text}; } }
+`;
+
+// ─── End threading styled components ─────────────────────────────────────────
+
 const thumbsUpPop = keyframes`
   0%   { transform: scale(0.5); opacity: 0; }
   60%  { transform: scale(1.3); opacity: 1; }
@@ -2655,6 +2843,11 @@ function App() {
   const [commentReactionPicker, setCommentReactionPicker] = useState(null); // { postId, commentId }
   const [quickReactPickerPostId, setQuickReactPickerPostId] = useState(null); // post id for quick one-off reaction
   const [commentDoubleTapPicker, setCommentDoubleTapPicker] = useState(null); // { postId, commentId, x, y } — shown on double-tap
+
+  // Threading state
+  const [replyingTo, setReplyingTo] = useState({}); // postId -> { commentId, authorName }
+  const [collapsedThreads, setCollapsedThreads] = useState({}); // commentId -> bool (collapsed)
+  const [threadFocus, setThreadFocus] = useState(null); // { postId, rootCommentId } — "view thread" mode
   const pickerPopoverRef = useRef(null);
   const pickerScrollRef = useRef(null);
   const [pickerScroll, setPickerScroll] = useState({ left: false, right: false });
