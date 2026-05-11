@@ -4271,6 +4271,11 @@ function App() {
             )}
             <div style={{ position: "relative" }}>
               <CommentInputRow>
+                {replyingTo[post.id] && (
+                  <button onClick={() => setReplyingTo(prev => { const next = { ...prev }; delete next[post.id]; return next; })} style={{ border: "none", background: "none", cursor: "pointer", color: resolvedTheme.textSecondary, padding: 0, fontSize: 14, flexShrink: 0, display: "flex", alignItems: "center" }}>
+                    <i className="fa-solid fa-xmark" />
+                  </button>
+                )}
                 <CommentInputWrapper>
                   <CommentHighlight>{renderHighlight(commentInputs[post.id] || "")}</CommentHighlight>
                   <CommentInput
