@@ -4275,7 +4275,7 @@ function App() {
                   <CommentHighlight>{renderHighlight(commentInputs[post.id] || "")}</CommentHighlight>
                   <CommentInput
                     ref={(el) => (commentRefs.current[post.id] = el)}
-                    placeholder="Add a comment..."
+                    placeholder={replyingTo[post.id] ? `Reply to ${replyingTo[post.id].authorName}...` : "Add a comment..."}
                     rows={1}
                     value={commentInputs[post.id] || ""}
                     onFocus={(e) => { e.target.style.height = e.target.scrollHeight + "px"; }}
