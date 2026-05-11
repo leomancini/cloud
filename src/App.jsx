@@ -4183,27 +4183,6 @@ function App() {
                                 {c.content === "thinking..." || c.content === "generated a game (old version)" ? c.content : renderText(c.content)}
                               </CommentText>
                               {c.content !== "thinking..." && <>{" "}<CommentTime>{timeAgo(c.created_at)}</CommentTime></>}
-                              {c.comment_reactions && c.comment_reactions.length > 0 && (
-                                <CommentTime style={{ display: "flex", gap: 12, marginTop: 6, marginLeft: 0, flexWrap: "wrap" }}>
-                                  {c.comment_reactions.map((r) => (
-                                    <span key={r.emoji} style={r.user_reacted ? { cursor: "pointer" } : undefined}
-                                      onClick={r.user_reacted ? () => { if (commentReactionPicker?.commentId === c.id) { setCommentReactionPicker(null); } else { setTimeout(() => setCommentReactionPicker({ postId: post.id, commentId: c.id }), 0); } } : undefined}
-                                    >{r.emoji}&ensp;<span style={{ fontWeight: 600, color: resolvedTheme.text }}>{r.names.join(", ")}</span></span>
-                                  ))}
-                                </CommentTime>
-                              )}
-                              {commentReactionPicker?.commentId === c.id && (
-                                <EmojiPickerWrap onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
-                                  <Picker data={data} dynamicWidth={true} theme={resolvedTheme === darkTheme ? "dark" : "light"} previewPosition="none" maxFrequentRows={0} emojiSize={32} emojiButtonSize={48} emojiButtonRadius="0.5rem" searchPosition="static"
-                                    onEmojiSelect={async (e) => {
-                                      const res = await fetch(`/api/comments/${c.id}/react`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ emoji: e.native }) });
-                                      if (res.ok) { const d = await res.json(); updatePostInState((p) => p.id !== post.id ? p : { ...p, comments: (p.comments || []).map((cm) => cm.id === c.id ? { ...cm, comment_reactions: d.comment_reactions } : cm) }); }
-                                      setCommentReactionPicker(null);
-                                    }}
-                                    onClickOutside={() => setCommentReactionPicker(null)}
-                                  />
-                                </EmojiPickerWrap>
-                              )}
                             </>
                           )}
                         </CommentBody>
@@ -4243,7 +4222,32 @@ function App() {
                         <GameFrameWrap style={{ marginTop: 8 }}><GameFrameInner data-game-id={c.id} srcDoc={getGameSrcDoc(c.mini_game, gameAudioEnabled[c.id])} sandbox="allow-scripts allow-same-origin" title="Mini game" /></GameFrameWrap>
                       )}
                       {c.image && (
-                        <PostImage src={`/api/uploads/${c.image}`} style={{ marginTop: 8, borderRadius: RADIUS }} />
+                        <PostImage src={`/api/uploads/${c.image}`} style={{ marginTop: 8, borderRadius: RADIUS, cursor: "default" }}
+                          onDoubleClick={() => handleCommentReact(post.id, c.id, null, null)}
+                          onTouchStart={(e) => { e.target._tapY = e.touches[0].clientY; e.target._tapTime = Date.now(); }}
+                          onTouchEnd={(e) => { const dy = Math.abs((e.changedTouches[0]?.clientY || 0) - (e.target._tapY || 0)); const now = Date.now(); if (dy < 10 && e.target._lastTap && now - e.target._lastTap < 300) { e.preventDefault(); handleCommentReact(post.id, c.id, { clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY, target: e.target }, null); e.target._lastTap = 0; } else { e.target._lastTap = now; } }}
+                        />
+                      )}
+                      {c.comment_reactions && c.comment_reactions.length > 0 && (
+                        <CommentTime style={{ display: "flex", gap: 12, marginTop: 6, marginLeft: 0, flexWrap: "wrap" }}>
+                          {c.comment_reactions.map((r) => (
+                            <span key={r.emoji} style={r.user_reacted ? { cursor: "pointer" } : undefined}
+                              onClick={r.user_reacted ? () => { if (commentReactionPicker?.commentId === c.id) { setCommentReactionPicker(null); } else { setTimeout(() => setCommentReactionPicker({ postId: post.id, commentId: c.id }), 0); } } : undefined}
+                            >{r.emoji}&ensp;<span style={{ fontWeight: 600, color: resolvedTheme.text }}>{r.names.join(", ")}</span></span>
+                          ))}
+                        </CommentTime>
+                      )}
+                      {commentReactionPicker?.commentId === c.id && (
+                        <EmojiPickerWrap onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
+                          <Picker data={data} dynamicWidth={true} theme={resolvedTheme === darkTheme ? "dark" : "light"} previewPosition="none" maxFrequentRows={0} emojiSize={32} emojiButtonSize={48} emojiButtonRadius="0.5rem" searchPosition="static"
+                            onEmojiSelect={async (e) => {
+                              const res = await fetch(`/api/comments/${c.id}/react`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ emoji: e.native }) });
+                              if (res.ok) { const d = await res.json(); updatePostInState((p) => p.id !== post.id ? p : { ...p, comments: (p.comments || []).map((cm) => cm.id === c.id ? { ...cm, comment_reactions: d.comment_reactions } : cm) }); }
+                              setCommentReactionPicker(null);
+                            }}
+                            onClickOutside={() => setCommentReactionPicker(null)}
+                          />
+                        </EmojiPickerWrap>
                       )}
                       </>
                     )}
