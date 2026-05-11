@@ -4208,7 +4208,7 @@ function App() {
                           )}
                         </CommentBody>
                         {editingComment !== c.id && c.content !== "thinking..." && (
-                          <PostMenuButton onClick={() => { setReplyingTo(prev => ({ ...prev, [post.id]: { commentId: c.id, authorName: c.author_name } })); const ref = commentRefs.current[post.id]; if (ref) ref.focus(); }} style={{ color: resolvedTheme.textSecondary }}>
+                          <PostMenuButton onClick={() => { setReplyingTo(prev => ({ ...prev, [post.id]: { commentId: c.id, authorName: c.author_name } })); const ref = commentRefs.current[post.id]; if (ref) ref.focus(); }} style={{ color: resolvedTheme.textSecondary, alignSelf: "center" }}>
                             <i className="fa-solid fa-reply" style={{ fontSize: 12, opacity: 0.5 }} />
                           </PostMenuButton>
                         )}
