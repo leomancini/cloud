@@ -3838,10 +3838,11 @@ function App() {
     const content = (commentInputs[postId] || "").trim();
     if (!content) return;
     startBusy(`comment-${postId}`);
+    const reply = replyingTo[postId];
     const res = await fetch(`/api/posts/${postId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, parent_comment_id: reply?.commentId || null }),
     });
     if (!res.ok) { endBusy(`comment-${postId}`); return; }
     const comment = await res.json();
@@ -3849,6 +3850,7 @@ function App() {
       p.id === postId ? { ...p, comments: [...(p.comments || []), comment] } : p
     );
     setCommentInputs((prev) => ({ ...prev, [postId]: "" }));
+    setReplyingTo((prev) => { const next = { ...prev }; delete next[postId]; return next; });
     if (commentRefs.current[postId]) commentRefs.current[postId].style.height = "auto";
     setMentionQuery(null);
     endBusy(`comment-${postId}`);
@@ -4192,7 +4194,7 @@ function App() {
                               <CommentText style={c.content === "thinking..." || c.content === "generated a game (old version)" ? { color: "#999" } : undefined}>
                                 {c.content === "thinking..." || c.content === "generated a game (old version)" ? c.content : renderText(c.content)}
                               </CommentText>
-                              {c.content !== "thinking..." && <>{" "}<CommentTime>{timeAgo(c.created_at)}</CommentTime></>}
+                              {c.content !== "thinking..." && <>{" "}<CommentTime>{timeAgo(c.created_at)}</CommentTime>{" "}<ReplyButton onClick={() => { setReplyingTo(prev => ({ ...prev, [post.id]: { commentId: c.id, authorName: c.author_name } })); const ref = commentRefs.current[post.id]; if (ref) ref.focus(); }}>Reply</ReplyButton></>}
                               {c.comment_reactions && c.comment_reactions.length > 0 && (
                                 <CommentTime style={{ display: "flex", gap: 12, marginTop: 6, marginLeft: 0, flexWrap: "wrap" }}>
                                   {c.comment_reactions.map((r) => (
@@ -4285,6 +4287,14 @@ function App() {
               </>
             )}
             <div style={{ position: "relative" }}>
+              {replyingTo[post.id] && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: resolvedTheme.textSecondary, marginBottom: 4 }}>
+                  <span>Replying to <strong style={{ color: resolvedTheme.text }}>{replyingTo[post.id].authorName}</strong></span>
+                  <button onClick={() => setReplyingTo(prev => { const next = { ...prev }; delete next[post.id]; return next; })} style={{ border: "none", background: "none", cursor: "pointer", color: resolvedTheme.textSecondary, padding: 0, fontSize: 12 }}>
+                    <i className="fa-solid fa-xmark" />
+                  </button>
+                </div>
+              )}
               <CommentInputRow>
                 <CommentInputWrapper>
                   <CommentHighlight>{renderHighlight(commentInputs[post.id] || "")}</CommentHighlight>
