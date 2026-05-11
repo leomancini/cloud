@@ -4253,7 +4253,7 @@ function App() {
                     )}
                   />
                   );
-                  return topLevel.map(c => (
+                  return topLevel.map((c, ci) => (
                     <ThreadContainer key={c.id}>
                       {renderComment(c)}
                       {replies[c.id] && replies[c.id].length > 0 && (
@@ -4279,7 +4279,7 @@ function App() {
                         const isReplyingHere = replyTarget && (replyTarget.commentId === c.id || replies[c.id]?.some(r => r.id === replyTarget.commentId));
                         if (!isReplyingHere) return null;
                         return (
-                          <div style={{ marginTop: 8, marginLeft: 32, marginBottom: 12 }}>
+                          <div style={{ marginTop: 8, marginLeft: 32, ...(ci < topLevel.length - 1 ? { marginBottom: 12 } : {}) }}>
                             <CommentInputRow>
                               <button onClick={() => setReplyingTo(prev => { const next = { ...prev }; delete next[post.id]; return next; })} style={{ border: "none", background: resolvedTheme.bgControl, cursor: "pointer", color: resolvedTheme.textSecondary, padding: 0, fontSize: 16, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", width: 40, minWidth: 40, height: 40, borderRadius: "50%" }}>
                                 <i className="fa-solid fa-xmark" />
