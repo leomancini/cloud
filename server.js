@@ -1891,10 +1891,12 @@ app.post("/api/posts/:id/comments", (req, res) => {
   }
 
   // Notify other commenters on this post (thread replies)
+  const parentCommentUserId = parentId ? db.prepare("SELECT user_id FROM comments WHERE id = ?").get(parentId)?.user_id : null;
   const previousCommenters = db.prepare(
     `SELECT DISTINCT user_id FROM comments WHERE post_id = ? AND user_id != ? AND user_id != ?`
   ).all(post.id, req.user.id, post.user_id);
   for (const { user_id } of previousCommenters) {
+    if (user_id === parentCommentUserId) continue;
     notifyUser(user_id, "feed-update");
     sendPushNotification(user_id, "replies", {
       title: `${getUserDisplayName(req.user.id)} also commented`,
