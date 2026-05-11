@@ -4166,7 +4166,14 @@ function App() {
           <CommentsSection>
             {post.comments && post.comments.length > 0 && (
               <>
-                {post.comments.map((c) => (
+                {(() => {
+                  const topLevel = post.comments.filter(c => !c.parent_comment_id);
+                  const replies = {};
+                  post.comments.filter(c => c.parent_comment_id).forEach(c => {
+                    if (!replies[c.parent_comment_id]) replies[c.parent_comment_id] = [];
+                    replies[c.parent_comment_id].push(c);
+                  });
+                  const renderComment = (c) => (
                   <CommentRowWithReaction key={c.id} postId={post.id} commentId={c.id} onReact={handleCommentReact}
                     renderContent={(commentReactProps) => (
                       <><CommentRow data-comment-id={c.id} {...commentReactProps}>
@@ -4246,7 +4253,35 @@ function App() {
                       </>
                     )}
                   />
-                ))}
+                  );
+                  return topLevel.map(c => (
+                    <ThreadContainer key={c.id}>
+                      {renderComment(c)}
+                      {replies[c.id] && replies[c.id].length > 0 && (
+                        collapsedThreads[c.id] ? (
+                          <CollapsedThreadPill onClick={() => setCollapsedThreads(prev => ({ ...prev, [c.id]: false }))}>
+                            <i className="fa-solid fa-chevron-down" style={{ fontSize: 10 }} />
+                            {replies[c.id].length} {replies[c.id].length === 1 ? "reply" : "replies"}
+                          </CollapsedThreadPill>
+                        ) : (
+                          <ThreadedReplyGroup>
+                            {replies[c.id].map(r => (
+                              <div key={r.id} style={{ position: "relative" }}>
+                                <ThreadConnector />
+                                {renderComment(r)}
+                              </div>
+                            ))}
+                            {replies[c.id].length > 1 && (
+                              <CollapseThreadButton onClick={() => setCollapsedThreads(prev => ({ ...prev, [c.id]: true }))}>
+                                <i className="fa-solid fa-chevron-up" style={{ fontSize: 10 }} /> Hide replies
+                              </CollapseThreadButton>
+                            )}
+                          </ThreadedReplyGroup>
+                        )
+                      )}
+                    </ThreadContainer>
+                  ));
+                })()}
               </>
             )}
             <div style={{ position: "relative" }}>
