@@ -4294,7 +4294,7 @@ function App() {
                               <CommentInputWrapper>
                                 <CommentHighlight>{renderHighlight(commentInputs[post.id] || "")}</CommentHighlight>
                                 <CommentInput
-                                  ref={(el) => (commentRefs.current[post.id] = el)}
+                                  ref={(el) => { if (el) commentRefs.current[post.id] = el; }}
                                   placeholder={`Reply to ${replyTarget.authorName}...`}
                                   rows={1}
                                   value={commentInputs[post.id] || ""}
@@ -4322,7 +4322,7 @@ function App() {
                 <CommentInputWrapper>
                   <CommentHighlight>{renderHighlight(commentInputs[post.id] || "")}</CommentHighlight>
                   <CommentInput
-                    ref={(el) => (commentRefs.current[post.id] = el)}
+                    ref={(el) => { if (!replyingTo[post.id]) commentRefs.current[post.id] = el; }}
                     placeholder={replyingTo[post.id] ? `Reply to ${replyingTo[post.id].authorName}...` : "Add a comment..."}
                     rows={1}
                     value={commentInputs[post.id] || ""}
