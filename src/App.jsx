@@ -4273,18 +4273,45 @@ function App() {
                           </ThreadedReplyGroup>
                         )
                       )}
+                      {(() => {
+                        // Show inline reply input if replying to this comment or one of its replies
+                        const replyTarget = replyingTo[post.id];
+                        const isReplyingHere = replyTarget && (replyTarget.commentId === c.id || replies[c.id]?.some(r => r.id === replyTarget.commentId));
+                        if (!isReplyingHere) return null;
+                        return (
+                          <div style={{ marginTop: 8, marginLeft: 32 }}>
+                            <CommentInputRow>
+                              <button onClick={() => setReplyingTo(prev => { const next = { ...prev }; delete next[post.id]; return next; })} style={{ border: "none", background: resolvedTheme.bgControl, cursor: "pointer", color: resolvedTheme.textSecondary, padding: 0, fontSize: 16, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", width: 40, minWidth: 40, height: 40, borderRadius: "50%" }}>
+                                <i className="fa-solid fa-xmark" />
+                              </button>
+                              <CommentInputWrapper>
+                                <CommentHighlight>{renderHighlight(commentInputs[post.id] || "")}</CommentHighlight>
+                                <CommentInput
+                                  ref={(el) => (commentRefs.current[post.id] = el)}
+                                  placeholder={`Reply to ${replyTarget.authorName}...`}
+                                  rows={1}
+                                  value={commentInputs[post.id] || ""}
+                                  onFocus={(e) => { e.target.style.height = e.target.scrollHeight + "px"; }}
+                                  onChange={(e) => { const v = e.target.value; const fixed = fixMentionCasing(v); if (fixed !== v) { const pos = e.target.selectionStart + (fixed.length - v.length); e.target.value = fixed; e.target.setSelectionRange(pos, pos); } setCommentInputs((prev) => ({ ...prev, [post.id]: fixed })); handleMentionInput(fixed, post.id); e.target.style.height = "0"; e.target.style.height = e.target.scrollHeight + "px"; e.target.scrollTop = 0; }}
+                                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleComment(post.id); } }}
+                                />
+                              </CommentInputWrapper>
+                              {(commentInputs[post.id] || "").trim() && (
+                                <CommentPostButton onClick={() => handleComment(post.id)} disabled={isBusy(`comment-${post.id}`)}>
+                                  {isBusy(`comment-${post.id}`) ? <Spinner /> : <i className="fa-solid fa-arrow-up" />}
+                                </CommentPostButton>
+                              )}
+                            </CommentInputRow>
+                          </div>
+                        );
+                      })()}
                     </ThreadContainer>
                   ));
                 })()}
               </>
             )}
-            <div style={{ position: "relative" }}>
+            {!replyingTo[post.id] && <div style={{ position: "relative" }}>
               <CommentInputRow>
-                {replyingTo[post.id] && (
-                  <button onClick={() => setReplyingTo(prev => { const next = { ...prev }; delete next[post.id]; return next; })} style={{ border: "none", background: resolvedTheme.bgControl, cursor: "pointer", color: resolvedTheme.textSecondary, padding: 0, fontSize: 16, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", width: 40, minWidth: 40, height: 40, borderRadius: "50%" }}>
-                    <i className="fa-solid fa-xmark" />
-                  </button>
-                )}
                 <CommentInputWrapper>
                   <CommentHighlight>{renderHighlight(commentInputs[post.id] || "")}</CommentHighlight>
                   <CommentInput
@@ -4332,7 +4359,7 @@ function App() {
                   </MentionDropdown>
                 );
               })()}
-            </div>
+            </div>}
           </CommentsSection>
         </PostItem>
       )}
