@@ -4229,7 +4229,7 @@ function App() {
                         />
                       )}
                       {c.comment_reactions && c.comment_reactions.length > 0 && (
-                        <CommentTime style={{ display: "flex", gap: 12, marginTop: 6, marginLeft: 32, flexWrap: "wrap" }}>
+                        <CommentTime style={{ display: "flex", gap: 12, marginTop: c.image ? 10 : 6, marginLeft: 32, flexWrap: "wrap" }}>
                           {c.comment_reactions.map((r) => (
                             <span key={r.emoji} style={r.user_reacted ? { cursor: "pointer" } : undefined}
                               onClick={r.user_reacted ? () => { if (commentReactionPicker?.commentId === c.id) { setCommentReactionPicker(null); } else { setTimeout(() => setCommentReactionPicker({ postId: post.id, commentId: c.id }), 0); } } : undefined}
