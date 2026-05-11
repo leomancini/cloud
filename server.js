@@ -330,7 +330,7 @@ app.get("/api/users/:id/profile", (req, res) => {
 
   const getMedia = db.prepare("SELECT filename, media_type, source, width, height FROM post_media WHERE post_id = ? ORDER BY id");
   const getComments = db.prepare(
-    `SELECT c.id, c.content, c.created_at, c.user_id, c.mini_game, c.image,
+    `SELECT c.id, c.content, c.created_at, c.user_id, c.mini_game, c.image, c.parent_comment_id,
       COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
     FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ? ORDER BY c.created_at ASC`
   );
@@ -369,6 +369,7 @@ app.get("/api/users/:id/profile", (req, res) => {
   });
 
   res.json({ profile, posts: postsWithMedia, hasMore, canViewPosts: true });
+
 });
 
 // Connection degree endpoint
@@ -550,13 +551,16 @@ db.exec(`
     post_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
     content TEXT NOT NULL,
+    parent_comment_id INTEGER DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (post_id) REFERENCES posts(id),
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (parent_comment_id) REFERENCES comments(id)
   )
 `);
 try { db.exec("ALTER TABLE comments ADD COLUMN mini_game TEXT"); } catch {}
 try { db.exec("ALTER TABLE comments ADD COLUMN image TEXT"); } catch {}
+try { db.exec("ALTER TABLE comments ADD COLUMN parent_comment_id INTEGER DEFAULT NULL"); } catch {}
 try { db.exec("ALTER TABLE users ADD COLUMN game_leaderboard_opt_out INTEGER NOT NULL DEFAULT 0"); } catch {}
 
 db.exec(`
@@ -1439,7 +1443,7 @@ app.get("/api/feed", (req, res) => {
     "SELECT filename, media_type, source, width, height FROM post_media WHERE post_id = ? ORDER BY id"
   );
   const getComments = db.prepare(
-    `SELECT c.id, c.content, c.created_at, c.user_id, c.mini_game, c.image,
+    `SELECT c.id, c.content, c.created_at, c.user_id, c.mini_game, c.image, c.parent_comment_id,
       COALESCE(u.display_name, u.name) as author_name, '/api/pictures/' || u.id || '.jpg' as author_picture
     FROM comments c
     JOIN users u ON c.user_id = u.id
@@ -1845,15 +1849,22 @@ app.post("/api/posts/:id/react", (req, res) => {
 // Comments
 app.post("/api/posts/:id/comments", (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
-  const { content } = req.body;
+  const { content, parent_comment_id } = req.body;
   if (!content || !content.trim()) return res.status(400).json({ error: "Content required" });
 
   const post = db.prepare("SELECT id, user_id FROM posts WHERE id = ?").get(Number(req.params.id));
   if (!post) return res.status(404).json({ error: "Post not found" });
 
+  // Validate parent_comment_id if supplied
+  let parentId = null;
+  if (parent_comment_id) {
+    const parent = db.prepare("SELECT id FROM comments WHERE id = ? AND post_id = ?").get(Number(parent_comment_id), post.id);
+    if (parent) parentId = parent.id;
+  }
+
   const result = db
-    .prepare("INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)")
-    .run(post.id, req.user.id, content.trim());
+    .prepare("INSERT INTO comments (post_id, user_id, content, parent_comment_id) VALUES (?, ?, ?, ?)")
+    .run(post.id, req.user.id, content.trim(), parentId);
 
   if (post.user_id !== req.user.id) {
     notifyUser(post.user_id, "feed-update");
@@ -1863,6 +1874,20 @@ app.post("/api/posts/:id/comments", (req, res) => {
       tag: `comment-${post.id}-${req.user.id}`,
       url: `/?post=${post.id}&comment=${result.lastInsertRowid}`,
     });
+  }
+
+  // Notify parent comment author if this is a reply
+  if (parentId) {
+    const parentComment = db.prepare("SELECT user_id FROM comments WHERE id = ?").get(parentId);
+    if (parentComment && parentComment.user_id !== req.user.id && parentComment.user_id !== post.user_id) {
+      notifyUser(parentComment.user_id, "feed-update");
+      sendPushNotification(parentComment.user_id, "replies", {
+        title: `${getUserDisplayName(req.user.id)} replied to you`,
+        body: content.trim().slice(0, 100),
+        tag: `reply-${result.lastInsertRowid}`,
+        url: `/?post=${post.id}&comment=${result.lastInsertRowid}`,
+      });
+    }
   }
 
   // Notify other commenters on this post (thread replies)
@@ -1887,9 +1912,11 @@ app.post("/api/posts/:id/comments", (req, res) => {
     id: result.lastInsertRowid,
     content: content.trim(),
     user_id: req.user.id,
+    parent_comment_id: parentId,
     author_name: getUserDisplayName(req.user.id),
     author_picture: `/api/pictures/${req.user.id}.jpg`,
     created_at: new Date().toISOString().replace("T", " ").split(".")[0],
+    comment_reactions: [],
   });
 });
 
