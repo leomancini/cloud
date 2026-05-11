@@ -1317,20 +1317,8 @@ const ThreadContainer = styled.div`
 `;
 
 const ThreadedReplyGroup = styled.div`
-  position: relative;
   padding-left: 32px;
   margin-top: 4px;
-
-  &::before {
-    content: "";
-    position: absolute;
-    left: 11px;
-    top: 0;
-    bottom: 14px;
-    width: 2px;
-    background: ${(p) => p.theme.border};
-    border-radius: 2px;
-  }
 `;
 
 const ThreadConnector = styled.div`
@@ -4267,12 +4255,7 @@ function App() {
                           </CollapsedThreadPill>
                         ) : (
                           <ThreadedReplyGroup>
-                            {replies[c.id].map(r => (
-                              <div key={r.id} style={{ position: "relative" }}>
-                                <ThreadConnector />
-                                {renderComment(r)}
-                              </div>
-                            ))}
+                            {replies[c.id].map(r => renderComment(r))}
                             {replies[c.id].length > 1 && (
                               <CollapseThreadButton onClick={() => setCollapsedThreads(prev => ({ ...prev, [c.id]: true }))}>
                                 <i className="fa-solid fa-chevron-up" style={{ fontSize: 10 }} /> Hide replies
