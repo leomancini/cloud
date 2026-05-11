@@ -4182,7 +4182,7 @@ function App() {
                               <CommentText style={c.content === "thinking..." || c.content === "generated a game (old version)" ? { color: "#999" } : undefined}>
                                 {c.content === "thinking..." || c.content === "generated a game (old version)" ? c.content : renderText(c.content)}
                               </CommentText>
-                              {c.content !== "thinking..." && <>{" "}<CommentTime>{timeAgo(c.created_at)}</CommentTime>{" "}<ReplyButton onClick={() => { setReplyingTo(prev => ({ ...prev, [post.id]: { commentId: c.id, authorName: c.author_name } })); const ref = commentRefs.current[post.id]; if (ref) ref.focus(); }}>Reply</ReplyButton></>}
+                              {c.content !== "thinking..." && <>{" "}<CommentTime>{timeAgo(c.created_at)}</CommentTime></>}
                               {c.comment_reactions && c.comment_reactions.length > 0 && (
                                 <CommentTime style={{ display: "flex", gap: 12, marginTop: 6, marginLeft: 0, flexWrap: "wrap" }}>
                                   {c.comment_reactions.map((r) => (
@@ -4207,6 +4207,11 @@ function App() {
                             </>
                           )}
                         </CommentBody>
+                        {editingComment !== c.id && c.content !== "thinking..." && (
+                          <PostMenuButton onClick={() => { setReplyingTo(prev => ({ ...prev, [post.id]: { commentId: c.id, authorName: c.author_name } })); const ref = commentRefs.current[post.id]; if (ref) ref.focus(); }} style={{ color: resolvedTheme.textSecondary }}>
+                            <i className="fa-solid fa-reply" />
+                          </PostMenuButton>
+                        )}
                         {(c.user_id === user.id || (c.author_name === "Sol" && user.email === "leo@leomancinidesign.com") || c.mini_game) && editingComment !== c.id && (
                           <PostMenuWrapper onTouchStart={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
                             <PostMenuButton onClick={(e) => { e.stopPropagation(); setOpenCommentMenuId(openCommentMenuId === c.id ? null : c.id); }}>
