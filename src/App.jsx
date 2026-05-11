@@ -4270,14 +4270,6 @@ function App() {
               </>
             )}
             <div style={{ position: "relative" }}>
-              {replyingTo[post.id] && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: resolvedTheme.textSecondary, marginBottom: 4 }}>
-                  <span>Replying to <strong style={{ color: resolvedTheme.text }}>{replyingTo[post.id].authorName}</strong></span>
-                  <button onClick={() => setReplyingTo(prev => { const next = { ...prev }; delete next[post.id]; return next; })} style={{ border: "none", background: "none", cursor: "pointer", color: resolvedTheme.textSecondary, padding: 0, fontSize: 12 }}>
-                    <i className="fa-solid fa-xmark" />
-                  </button>
-                </div>
-              )}
               <CommentInputRow>
                 <CommentInputWrapper>
                   <CommentHighlight>{renderHighlight(commentInputs[post.id] || "")}</CommentHighlight>
