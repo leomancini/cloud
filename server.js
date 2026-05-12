@@ -101,7 +101,7 @@ const upload = multer({
       cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`);
     },
   }),
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  limits: { fileSize: 200 * 1024 * 1024 }, // 200MB
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith("image/") || file.mimetype.startsWith("video/")) {
       cb(null, true);
@@ -1359,7 +1359,7 @@ app.post("/api/posts", upload.array("media", 10), async (req, res) => {
       } else if (mediaType === "video") {
         try {
           const outPath = file.path + ".mp4";
-          execSync(`ffmpeg -y -i "${file.path}" -vf "scale='min(1080,iw)':-2" -c:v libx264 -preset fast -crf 28 -c:a aac -b:a 128k -movflags +faststart "${outPath}" 2>/dev/null`);
+          execSync(`ffmpeg -y -i "${file.path}" -vf "scale='min(1080,iw)':-2" -c:v libx264 -preset fast -crf 28 -c:a aac -b:a 128k -movflags +faststart "${outPath}" 2>/dev/null`, { timeout: 120000 });
           renameSync(outPath, file.path);
         } catch (e) {
           console.warn("Video compression failed:", e);
