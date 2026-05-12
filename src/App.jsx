@@ -704,38 +704,31 @@ const PostMediaContainer = styled.div`
   grid-template-columns: ${(p) => (p.$count === 1 ? "1fr" : "1fr 1fr")};
   gap: 4px;
 
-  ${(p) => p.$count === 2 && css`
-    grid-template-rows: 1fr;
-    & > * {
-      height: 100%;
-      max-height: 400px;
-    }
-    & > *:first-child, & > *:first-child img, & > *:first-child video { border-radius: ${RADIUS} 4px 4px ${RADIUS} !important; }
-    & > *:last-child, & > *:last-child img, & > *:last-child video { border-radius: 4px ${RADIUS} ${RADIUS} 4px !important; }
-  `}
+  ${(p) => {
+    const R = RADIUS;
+    const S = "4px";
+    const BL = p.$belowMedia ? S : R; // bottom-left
+    const BR = p.$belowMedia ? S : R; // bottom-right
 
-  ${(p) => p.$count === 3 && css`
-    & > *:first-child {
-      grid-column: 1 / -1;
-      max-height: 300px;
-    }
-    & > *:first-child, & > *:first-child img, & > *:first-child video { border-radius: ${RADIUS} ${RADIUS} 4px 4px !important; }
-    & > *:nth-child(2), & > *:nth-child(2) img, & > *:nth-child(2) video {
-      aspect-ratio: 3 / 4;
-      border-radius: 4px 4px 4px ${RADIUS} !important;
-    }
-    & > *:nth-child(3), & > *:nth-child(3) img, & > *:nth-child(3) video {
-      aspect-ratio: 3 / 4;
-      border-radius: 4px 4px ${RADIUS} 4px !important;
-    }
-  `}
-
-  ${(p) => p.$count >= 4 && css`
-    & > *:nth-child(1), & > *:nth-child(1) img, & > *:nth-child(1) video { border-radius: ${RADIUS} 4px 4px 4px !important; }
-    & > *:nth-child(2), & > *:nth-child(2) img, & > *:nth-child(2) video { border-radius: 4px ${RADIUS} 4px 4px !important; }
-    & > *:nth-child(3), & > *:nth-child(3) img, & > *:nth-child(3) video { border-radius: 4px 4px 4px ${RADIUS} !important; }
-    & > *:nth-child(4), & > *:nth-child(4) img, & > *:nth-child(4) video { border-radius: 4px 4px ${RADIUS} 4px !important; }
-  `}
+    if (p.$count === 2) return css`
+      grid-template-rows: 1fr;
+      & > * { height: 100%; max-height: 400px; }
+      & > *:first-child, & > *:first-child img, & > *:first-child video { border-radius: ${R} ${S} ${S} ${BL} !important; }
+      & > *:last-child, & > *:last-child img, & > *:last-child video { border-radius: ${S} ${R} ${BR} ${S} !important; }
+    `;
+    if (p.$count === 3) return css`
+      & > *:first-child { grid-column: 1 / -1; max-height: 300px; }
+      & > *:first-child, & > *:first-child img, & > *:first-child video { border-radius: ${R} ${R} ${S} ${S} !important; }
+      & > *:nth-child(2), & > *:nth-child(2) img, & > *:nth-child(2) video { aspect-ratio: 3 / 4; border-radius: ${S} ${S} ${S} ${BL} !important; }
+      & > *:nth-child(3), & > *:nth-child(3) img, & > *:nth-child(3) video { aspect-ratio: 3 / 4; border-radius: ${S} ${S} ${BR} ${S} !important; }
+    `;
+    if (p.$count >= 4) return css`
+      & > *:nth-child(1), & > *:nth-child(1) img, & > *:nth-child(1) video { border-radius: ${R} ${S} ${S} ${S} !important; }
+      & > *:nth-child(2), & > *:nth-child(2) img, & > *:nth-child(2) video { border-radius: ${S} ${R} ${S} ${S} !important; }
+      & > *:nth-child(3), & > *:nth-child(3) img, & > *:nth-child(3) video { border-radius: ${S} ${S} ${S} ${BL} !important; }
+      & > *:nth-child(4), & > *:nth-child(4) img, & > *:nth-child(4) video { border-radius: ${S} ${S} ${BR} ${S} !important; }
+    `;
+  }}
 `;
 
 const PostImage = styled.img`
@@ -3970,7 +3963,7 @@ function App() {
                   <GameFrameWrap><GameFrameInner data-game-id={`post-${post.id}`} srcDoc={getGameSrcDoc(post.mini_game, gameAudioEnabled[`post-${post.id}`])} sandbox="allow-scripts allow-same-origin" title="Mini game" /></GameFrameWrap>
                 )}
                 {hasMedia && (
-                  <PostMediaContainer $count={post.media.length} style={{ ...(belowMedia ? { marginBottom: SMALL } : {}) }}>
+                  <PostMediaContainer $count={post.media.length} $belowMedia={belowMedia} style={{ ...(belowMedia ? { marginBottom: SMALL } : {}) }}>
                     {post.media.map((m, i) => {
                       const radiusStyle = post.media.length === 1 && belowMedia ? { borderRadius: `${RADIUS} ${RADIUS} ${SMALL} ${SMALL}` } : undefined;
                       if (m.type === "video") return (
