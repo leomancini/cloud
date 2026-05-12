@@ -4190,10 +4190,11 @@ function App() {
                           <PostMenuButton onClick={() => {
                             // Focus bottom input SYNCHRONOUSLY to capture iOS keyboard
                             const existing = commentRefs.current[post.id];
+                            const cursorPos = existing?.selectionStart ?? existing?.value?.length ?? 0;
                             if (existing) existing.focus();
                             setReplyingTo(prev => ({ ...prev, [post.id]: { commentId: c.id, authorName: c.author_name } }));
-                            // After re-render, transfer focus to the inline input
-                            setTimeout(() => { const ref = commentRefs.current[post.id]; if (ref) { ref.focus(); ref.scrollIntoView({ behavior: "smooth", block: "center" }); } }, 100);
+                            // After re-render, transfer focus to the inline input and restore cursor
+                            setTimeout(() => { const ref = commentRefs.current[post.id]; if (ref) { ref.focus(); ref.setSelectionRange(cursorPos, cursorPos); ref.scrollIntoView({ behavior: "smooth", block: "center" }); } }, 100);
                           }} style={{ color: resolvedTheme.textSecondary, alignSelf: "flex-start", marginTop: 2 }}>
                             <i className="fa-solid fa-reply" style={{ fontSize: 12, opacity: 0.5 }} />
                           </PostMenuButton>
