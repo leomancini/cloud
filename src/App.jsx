@@ -3339,6 +3339,7 @@ function App() {
         posts: [],
         canViewPosts: cached.follow_status === "approved",
         hasMore: false,
+        _postsLoading: true,
       });
       setViewingProfileLoading(false);
     } else {
@@ -3353,7 +3354,7 @@ function App() {
     setTabState("user-profile");
     fetch(`/api/users/${userId}/profile`)
       .then((res) => { if (res.ok) return res.json(); })
-      .then((data) => { if (data) setViewingProfile(data); })
+      .then((data) => { if (data) setViewingProfile({ ...data, _postsLoading: false }); })
       .catch(() => {})
       .finally(() => setViewingProfileLoading(false));
   };
@@ -4819,6 +4820,8 @@ function App() {
                   <i className="fa-solid fa-lock" style={{ fontSize: 24, marginBottom: 12, display: "block" }} />
                   Follow {viewingProfile.profile.name} to see their posts
                 </UserProfilePrivate>
+              ) : viewingProfile._postsLoading ? (
+                <EmptyState><Spinner /></EmptyState>
               ) : viewingProfile.posts.length === 0 ? (
                 <EmptyState>No posts yet</EmptyState>
               ) : (
