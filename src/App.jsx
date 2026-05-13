@@ -2133,7 +2133,7 @@ const FollowButton = styled.button`
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
