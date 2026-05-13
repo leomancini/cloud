@@ -4821,7 +4821,7 @@ function App() {
                   Follow {viewingProfile.profile.name} to see their posts
                 </UserProfilePrivate>
               ) : viewingProfile._postsLoading ? (
-                <EmptyState><Spinner /></EmptyState>
+                <EmptyState><BigSpinner /></EmptyState>
               ) : viewingProfile.posts.length === 0 ? (
                 <EmptyState>No posts yet</EmptyState>
               ) : (
