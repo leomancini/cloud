@@ -1789,7 +1789,14 @@ const PostPlaceName = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   transition: border-color 0.15s ease;
+  & > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
 `;
 
 const PostPlaceAddress = styled.span`
