@@ -722,12 +722,26 @@ const PostMediaContainer = styled.div`
       & > *:nth-child(2), & > *:nth-child(2) img, & > *:nth-child(2) video { aspect-ratio: 3 / 4; border-radius: ${S} ${S} ${S} ${BL} !important; }
       & > *:nth-child(3), & > *:nth-child(3) img, & > *:nth-child(3) video { aspect-ratio: 3 / 4; border-radius: ${S} ${S} ${BR} ${S} !important; }
     `;
-    if (p.$count >= 4) return css`
-      & > *:nth-child(1), & > *:nth-child(1) img, & > *:nth-child(1) video { border-radius: ${R} ${S} ${S} ${S} !important; }
-      & > *:nth-child(2), & > *:nth-child(2) img, & > *:nth-child(2) video { border-radius: ${S} ${R} ${S} ${S} !important; }
-      & > *:nth-child(3), & > *:nth-child(3) img, & > *:nth-child(3) video { border-radius: ${S} ${S} ${S} ${BL} !important; }
-      & > *:nth-child(4), & > *:nth-child(4) img, & > *:nth-child(4) video { border-radius: ${S} ${S} ${BR} ${S} !important; }
-    `;
+    if (p.$count >= 4) {
+      // 2-column grid: figure out which items are in the last row
+      const lastRow = p.$count % 2 === 0 ? [p.$count - 1, p.$count] : [p.$count];
+      const isLastLeft = (n) => lastRow.includes(n) && n % 2 === 1;
+      const isLastRight = (n) => lastRow.includes(n) && n % 2 === 0;
+      // If odd count, last item spans full width — both bottom corners
+      const oddLast = p.$count % 2 === 1;
+      let rules = `
+        & > *, & > * img, & > * video { border-radius: ${S} !important; }
+        & > *:nth-child(1), & > *:nth-child(1) img, & > *:nth-child(1) video { border-radius: ${R} ${S} ${S} ${S} !important; }
+        & > *:nth-child(2), & > *:nth-child(2) img, & > *:nth-child(2) video { border-radius: ${S} ${R} ${S} ${S} !important; }
+      `;
+      if (oddLast) {
+        rules += `& > *:last-child, & > *:last-child img, & > *:last-child video { grid-column: 1 / -1; border-radius: ${S} ${S} ${BR} ${BL} !important; }`;
+      } else {
+        rules += `& > *:nth-child(${p.$count - 1}), & > *:nth-child(${p.$count - 1}) img, & > *:nth-child(${p.$count - 1}) video { border-radius: ${S} ${S} ${S} ${BL} !important; }`;
+        rules += `& > *:nth-child(${p.$count}), & > *:nth-child(${p.$count}) img, & > *:nth-child(${p.$count}) video { border-radius: ${S} ${S} ${BR} ${S} !important; }`;
+      }
+      return css`${rules}`;
+    }
   }}
 `;
 
