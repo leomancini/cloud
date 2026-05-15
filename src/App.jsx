@@ -4199,7 +4199,9 @@ function App() {
                             const existing = commentRefs.current[post.id];
                             const cursorPos = existing?.selectionStart ?? existing?.value?.length ?? 0;
                             if (existing) existing.focus();
-                            setReplyingTo(prev => ({ ...prev, [post.id]: { commentId: c.id, authorName: c.author_name } }));
+                            // Thread under the top-level parent (flatten nesting)
+                            const parentId = c.parent_comment_id || c.id;
+                            setReplyingTo(prev => ({ ...prev, [post.id]: { commentId: parentId, authorName: c.author_name } }));
                             // After re-render, transfer focus to the inline input and restore cursor
                             setTimeout(() => { const ref = commentRefs.current[post.id]; if (ref) { ref.focus(); ref.setSelectionRange(cursorPos, cursorPos); ref.scrollIntoView({ behavior: "smooth", block: "center" }); } }, 100);
                           }} style={{ color: resolvedTheme.textSecondary, alignSelf: "flex-start", marginTop: 2 }}>
