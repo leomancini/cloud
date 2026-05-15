@@ -4620,18 +4620,22 @@ function App() {
               )}
               {mediaPreviews.length > 0 && (!prefillLoading || prefillImageLoaded) && (
                 <PostMediaContainer $count={mediaPreviews.length} $belowMedia={!!ogPreview || !!selectedLocation} style={{ marginTop: 8, ...(ogPreview || selectedLocation ? { marginBottom: "4px" } : {}) }}>
-                  {mediaPreviews.map((preview, i) => (
+                  {(() => {
+                    const previewBelowMedia = !!ogPreview || !!selectedLocation;
+                    const previewRadiusStyle = mediaPreviews.length === 1 && previewBelowMedia ? { borderRadius: `${RADIUS} ${RADIUS} 4px 4px` } : undefined;
+                    return mediaPreviews.map((preview, i) => (
                     <MediaPreview key={i}>
                       {preview.type === "video" ? (
-                        <VideoWrap style={preview.width && preview.height ? { aspectRatio: `${preview.width} / ${preview.height}` } : undefined}><PostVideo src={preview.url} autoPlay loop muted playsInline style={preview.width && preview.height ? { position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" } : undefined} /></VideoWrap>
+                        <VideoWrap style={{ ...(preview.width && preview.height ? { aspectRatio: `${preview.width} / ${preview.height}` } : {}), ...previewRadiusStyle }}><PostVideo src={preview.url} autoPlay loop muted playsInline style={preview.width && preview.height ? { position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" } : undefined} /></VideoWrap>
                       ) : (
-                        <PostImage src={preview.url} $single={mediaPreviews.length === 1} />
+                        <PostImage src={preview.url} $single={mediaPreviews.length === 1} style={previewRadiusStyle} />
                       )}
                       {mediaSources[i] === "mosaic" && <MosaicBadge href="https://mosaic.fcc.lol" target="_blank" rel="noopener noreferrer"><MosaicBadgeBg />Made with Mosaic <span style={{ opacity: 0.75, fontWeight: 400 }}>Try it <i className="fa-solid fa-arrow-right" style={{ fontSize: 11 }} /></span></MosaicBadge>}
                       {mediaSources[i] === "zap" && <MosaicBadge href="https://zap.fcc.lol" target="_blank" rel="noopener noreferrer"><MosaicBadgeBg />Made with Zap <span style={{ opacity: 0.75, fontWeight: 400 }}>Try it <i className="fa-solid fa-arrow-right" style={{ fontSize: 11 }} /></span></MosaicBadge>}
                       <RemoveMedia onClick={() => removeMedia(i)}><i className="fa-solid fa-xmark" /></RemoveMedia>
                     </MediaPreview>
-                  ))}
+                  ));
+                  })()}
                 </PostMediaContainer>
               )}
               {ogPreview && (
