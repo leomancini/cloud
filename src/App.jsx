@@ -4617,7 +4617,7 @@ function App() {
                 </div>
               )}
               {mediaPreviews.length > 0 && (!prefillLoading || prefillImageLoaded) && (
-                <PostMediaContainer $count={mediaPreviews.length} style={{ marginTop: 8 }}>
+                <PostMediaContainer $count={mediaPreviews.length} $belowMedia={!!ogPreview || !!selectedLocation} style={{ marginTop: 8, ...(ogPreview || selectedLocation ? { marginBottom: "4px" } : {}) }}>
                   {mediaPreviews.map((preview, i) => (
                     <MediaPreview key={i}>
                       {preview.type === "video" ? (
@@ -4633,8 +4633,8 @@ function App() {
                 </PostMediaContainer>
               )}
               {ogPreview && (
-                <LinkPreviewCard as="div" $static style={{ cursor: "default", position: "relative" }}>
-                  {ogPreview.image && <LinkPreviewImageWrap className="link-image-wrap"><LinkPreviewImage src={ogPreview.image} /></LinkPreviewImageWrap>}
+                <LinkPreviewCard as="div" $static style={{ cursor: "default", position: "relative", ...(mediaPreviews.length > 0 || selectedLocation ? { borderRadius: `${mediaPreviews.length > 0 ? "4px" : RADIUS} ${mediaPreviews.length > 0 ? "4px" : RADIUS} ${selectedLocation ? "4px" : RADIUS} ${selectedLocation ? "4px" : RADIUS}` } : {}), ...(selectedLocation ? { marginBottom: "4px" } : {}) }}>
+                  {ogPreview.image && <LinkPreviewImageWrap className="link-image-wrap" style={mediaPreviews.length > 0 ? { borderRadius: "4px 4px 0 0" } : undefined}><LinkPreviewImage src={ogPreview.image} /></LinkPreviewImageWrap>}
                   <LinkPreviewBody className="link-body" $hasImage={!!ogPreview.image}>
                     {ogPreview.title && <LinkPreviewTitle>{ogPreview.title}</LinkPreviewTitle>}
                     {ogPreview.description && <LinkPreviewDesc>{ogPreview.description}</LinkPreviewDesc>}
@@ -4645,7 +4645,7 @@ function App() {
               )}
               {selectedLocation && (
                 <PostLocation style={{ position: "relative" }}>
-                  <PostMapWrapper className="map-wrapper">
+                  <PostMapWrapper className="map-wrapper" style={(mediaPreviews.length > 0 || ogPreview) ? { borderRadius: "4px 4px 0 0" } : undefined}>
                     <PostMap
                       src={`/api/staticmap?lat=${selectedLocation.lat}&lng=${selectedLocation.lng}&v=4`}
                       alt={selectedLocation.name}
