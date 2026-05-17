@@ -4577,6 +4577,10 @@ function App() {
                       <PushRowLabel>Replies in threads you're in</PushRowLabel>
                       <ToggleTrack $on={pushPrefs.replies}><ToggleThumb $on={pushPrefs.replies} /></ToggleTrack>
                     </PushRow>
+                    <PushRow onClick={(e) => { e.preventDefault(); updatePushPref("sol_posts", !pushPrefs.sol_posts); }}>
+                      <PushRowLabel>Sol's posts</PushRowLabel>
+                      <ToggleTrack $on={pushPrefs.sol_posts}><ToggleThumb $on={pushPrefs.sol_posts} /></ToggleTrack>
+                    </PushRow>
                   </>
                 )}
               </PushSection>
