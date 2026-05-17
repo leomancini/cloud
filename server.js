@@ -617,6 +617,25 @@ db.exec(`
   )
 `);
 
+// Sol memory table — stores facts Sol has been asked to remember about users
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sol_memories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    about_user_id INTEGER,
+    about_name TEXT,
+    detail TEXT NOT NULL,
+    raw_text TEXT,
+    context_post_id INTEGER,
+    created_by_user_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (about_user_id) REFERENCES users(id),
+    FOREIGN KEY (context_post_id) REFERENCES posts(id),
+    FOREIGN KEY (created_by_user_id) REFERENCES users(id)
+  )
+`);
+try { db.exec("ALTER TABLE sol_memories ADD COLUMN about_name TEXT"); } catch {}
+try { db.exec("ALTER TABLE sol_memories ADD COLUMN raw_text TEXT"); } catch {}
+
 // Ensure Sol AI user exists with avatar
 const existingClaude = db.prepare("SELECT id FROM users WHERE google_id = 'claude-ai'").get();
 const existingSol = db.prepare("SELECT id FROM users WHERE google_id = 'sol-ai'").get();
@@ -700,6 +719,156 @@ async function sendPushNotification(userId, prefKey, payload) {
 const GITHUB_OWNER = "leomancini";
 const GITHUB_REPO = "cloud";
 
+// ── Sol memory helpers ────────────────────────────────────────────────────────
+
+/**
+ * Detect a "remember X about Y" intent in a message and persist it.
+ * Returns the memory object if one was saved, otherwise null.
+ *
+ * Patterns recognised (all case-insensitive):
+ *   "remember (that) <detail>"
+ *   "remember (that) this is <name>'s <detail>"
+ *   "don't forget (that) <detail>"
+ *   "keep in mind (that) <detail>"
+ *   "note (that) <detail>"
+ *   "save this: <detail>"
+ */
+function detectAndSaveMemory(text, triggeringUserId, postId) {
+  if (!text) return null;
+
+  const lower = text.toLowerCase().trim();
+
+  // Quick bail-out if none of the trigger words appear
+  const triggers = ["remember", "don't forget", "dont forget", "keep in mind", "note that", "save this"];
+  if (!triggers.some((t) => lower.includes(t))) return null;
+
+  // Strip the trigger phrase from the front to get the raw detail
+  let detail = text.trim();
+  const prefixes = [
+    /^remember\s+that\s+/i,
+    /^remember\s+/i,
+    /^don'?t\s+forget\s+that\s+/i,
+    /^don'?t\s+forget\s+/i,
+    /^keep\s+in\s+mind\s+that\s+/i,
+    /^keep\s+in\s+mind\s+/i,
+    /^note\s+that\s+/i,
+    /^note:\s*/i,
+    /^save\s+this:\s*/i,
+  ];
+  for (const rx of prefixes) {
+    if (rx.test(detail)) { detail = detail.replace(rx, "").trim(); break; }
+  }
+
+  if (!detail || detail.length < 3) return null;
+
+  // Try to identify who this memory is about.
+  // Pattern: "this is <name>'s <thing>" or "<name> is <thing>" or mentions an @user
+  let aboutUserId = null;
+  let aboutName = null;
+
+  // Check for @mention
+  const mentionMatch = text.match(/@(\w[\w\s]*?)(?:\s|$|')/);
+  if (mentionMatch) {
+    const mentionedName = mentionMatch[1].trim();
+    const matched = db.prepare(
+      "SELECT id, COALESCE(display_name, name) as name FROM users WHERE LOWER(COALESCE(display_name, name)) = LOWER(?)"
+    ).get(mentionedName);
+    if (matched) { aboutUserId = matched.id; aboutName = matched.name; }
+    else aboutName = mentionedName;
+  }
+
+  // Pattern: "this is X's Y" → aboutName = X
+  if (!aboutName) {
+    const possessive = detail.match(/^this\s+is\s+(\w+)'s\s+/i);
+    if (possessive) {
+      aboutName = possessive[1];
+      const matched = db.prepare(
+        "SELECT id, COALESCE(display_name, name) as name FROM users WHERE LOWER(COALESCE(display_name, name)) = LOWER(?)"
+      ).get(aboutName);
+      if (matched) aboutUserId = matched.id;
+    }
+  }
+
+  // If about_user_id still null but we know the triggering user, default to them
+  if (!aboutUserId && !aboutName) {
+    aboutUserId = triggeringUserId;
+    const u = db.prepare("SELECT COALESCE(display_name, name) as name FROM users WHERE id = ?").get(triggeringUserId);
+    aboutName = u?.name || null;
+  }
+
+  const result = db.prepare(`
+    INSERT INTO sol_memories (about_user_id, about_name, detail, raw_text, context_post_id, created_by_user_id)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(aboutUserId, aboutName, detail, text, postId || null, triggeringUserId);
+
+  console.log(`[Sol Memory] Saved memory #${result.lastInsertRowid}: "${detail}" (about: ${aboutName || aboutUserId})`);
+  return { id: result.lastInsertRowid, about_user_id: aboutUserId, about_name: aboutName, detail };
+}
+
+/**
+ * Load memories relevant to a post thread.
+ * - All memories about users who authored or commented in the thread
+ * - All memories created in this post's thread
+ * - Cap at 40 most recent memories
+ */
+function getRelevantMemories(postId, userIdsInThread = []) {
+  const conditions = [];
+  const params = [];
+
+  if (postId) {
+    conditions.push("m.context_post_id = ?");
+    params.push(postId);
+  }
+  if (userIdsInThread.length > 0) {
+    const placeholders = userIdsInThread.map(() => "?").join(", ");
+    conditions.push(`m.about_user_id IN (${placeholders})`);
+    params.push(...userIdsInThread);
+    conditions.push(`m.created_by_user_id IN (${placeholders})`);
+    params.push(...userIdsInThread);
+  }
+
+  if (conditions.length === 0) return [];
+
+  const where = conditions.map((c) => `(${c})`).join(" OR ");
+  const rows = db.prepare(`
+    SELECT m.id, m.detail, m.about_name, m.about_user_id, m.created_at,
+           COALESCE(u.display_name, u.name) as created_by_name
+    FROM sol_memories m
+    LEFT JOIN users u ON u.id = m.created_by_user_id
+    WHERE ${where}
+    ORDER BY m.created_at DESC
+    LIMIT 40
+  `).all(...params);
+
+  return rows;
+}
+
+/**
+ * Load ALL memories (for Sol's global context, used in auto-posts or when no post context).
+ * Cap at 60 most recent.
+ */
+function getAllMemories() {
+  return db.prepare(`
+    SELECT m.id, m.detail, m.about_name, m.about_user_id, m.created_at,
+           COALESCE(u.display_name, u.name) as created_by_name
+    FROM sol_memories m
+    LEFT JOIN users u ON u.id = m.created_by_user_id
+    ORDER BY m.created_at DESC
+    LIMIT 60
+  `).all();
+}
+
+function formatMemoriesForPrompt(memories) {
+  if (!memories || memories.length === 0) return "";
+  const lines = memories.map((m) => {
+    const who = m.about_name ? `about ${m.about_name}` : "";
+    return `- ${who ? who + ": " : ""}${m.detail}`;
+  });
+  return `\n\nThings Sol has been asked to remember:\n${lines.join("\n")}\n`;
+}
+
+// ── End Sol memory helpers ────────────────────────────────────────────────────
+
 const CLASSIFY_TOOLS = [
   {
     name: "post_comment",
@@ -746,6 +915,19 @@ const CLASSIFY_TOOLS = [
         message: { type: "string", description: "A brief comment acknowledging the image modification request. All lowercase, no emojis." }
       },
       required: ["prompt", "message"]
+    }
+  },
+  {
+    name: "save_memory",
+    description: "Save something to Sol's persistent memory when the user explicitly asks Sol to remember a fact, detail, or piece of information. Use this when the message contains 'remember', 'don't forget', 'keep in mind', 'note that', or similar memory-storing intent. The memory will be available in all future conversations.",
+    input_schema: {
+      type: "object",
+      properties: {
+        detail: { type: "string", description: "The exact fact or detail to remember, written clearly and concisely." },
+        about_name: { type: "string", description: "The name of the person or entity this memory is about, if applicable." },
+        message: { type: "string", description: "A brief acknowledgment confirming you've saved the memory. All lowercase, no emojis. Example: 'got it, i'll remember that'" }
+      },
+      required: ["detail", "message"]
     }
   }
 ];
@@ -1137,9 +1319,19 @@ async function handleSolMention(postId, triggerText = null) {
   const post = db.prepare("SELECT p.*, COALESCE(u.display_name, u.name) as author_name FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?").get(postId);
   if (!post) return;
 
+  // Detect and auto-save memory from the trigger text before doing anything else
+  if (triggerText) {
+    // Find the user who wrote the trigger (last non-Sol commenter)
+    const lastComment = db.prepare(
+      "SELECT user_id FROM comments WHERE post_id = ? AND user_id != ? ORDER BY created_at DESC LIMIT 1"
+    ).get(postId, SOL_USER_ID);
+    const triggerUserId = lastComment?.user_id || post.user_id;
+    detectAndSaveMemory(triggerText, triggerUserId, postId);
+  }
+
   const media = db.prepare("SELECT filename, media_type, source, width, height FROM post_media WHERE post_id = ? ORDER BY id").all(postId);
   const comments = db.prepare(
-    "SELECT c.content, COALESCE(u.display_name, u.name) as author_name FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ? ORDER BY c.created_at ASC"
+    "SELECT c.content, c.user_id, COALESCE(u.display_name, u.name) as author_name FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ? ORDER BY c.created_at ASC"
   ).all(postId);
 
   const content = [];
@@ -1190,11 +1382,19 @@ async function handleSolMention(postId, triggerText = null) {
   }
   const threadHasGame = !!db.prepare("SELECT 1 FROM comments WHERE post_id = ? AND mini_game IS NOT NULL LIMIT 1").get(postId);
 
+  // Load relevant memories for this thread
+  const userIdsInThread = [...new Set([
+    post.user_id,
+    ...comments.map((c) => c.user_id).filter(Boolean),
+  ])].filter((id) => id !== SOL_USER_ID);
+  const relevantMemories = getRelevantMemories(postId, userIdsInThread);
+  const memoryContext = formatMemoriesForPrompt(relevantMemories);
+
   textContext += `You are Sol, an AI participant in this social feed called Cloud. Cloud is also the name of the app's codebase. You are powered by Claude Sonnet 4.6 (Anthropic). When making code changes, you also use Claude Sonnet 4.6.
 
 Respond to the most recent message directed at you (above). The post and comment thread are context, but focus on what was just said to you.
 
-${threadHasGame ? "IMPORTANT: This thread already contains a mini game you created. If the user is asking for ANY changes, updates, tweaks, or modifications, you MUST use post_mini_game — NOT make_code_change. Only use make_code_change if they explicitly say they want to change the Cloud app's source code itself.\n\n" : ""}Choose one action:
+${threadHasGame ? "IMPORTANT: This thread already contains a mini game you created. If the user is asking for ANY changes, updates, tweaks, or modifications, you MUST use post_mini_game — NOT make_code_change. Only use make_code_change if they explicitly say they want to change the Cloud app's source code itself.\n\n" : ""}${memoryContext}Choose one action:
 - post_comment: Write a brief, natural comment. Be friendly and conversational. 1-2 sentences. No emojis. Always all lowercase. Use this for casual messages, greetings, questions, or anything that isn't explicitly asking for a code change or a game.
 - make_code_change: ONLY use this if the user explicitly asks to modify the Cloud app's deployed source code (server.js, App.jsx, etc). Words like "build", "make", "create", "add", "change", "update" about a game or interactive thing mean post_mini_game, NOT this.${!process.env.GITHUB_TOKEN ? " (Currently unavailable — no GitHub token configured)" : ""}
 - post_mini_game: Use this whenever the user wants ANY kind of game, toy, interactive thing, challenge, puzzle, simulation, or playable experience. Also use this if they describe something visual/interactive to "build" or "make" — that is a game, not a code change. If in doubt between this and make_code_change, choose this.${threadHasGame ? " This thread already has a game — use this for any follow-up requests about it." : ""}
