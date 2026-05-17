@@ -12,7 +12,7 @@ fi
 
 BASE_URL="${SOL_BASE_URL:-http://localhost:3127}"
 
-curl -s -X POST "$BASE_URL/api/sol/auto-post" \
+curl -s --max-time 120 -X POST "$BASE_URL/api/sol/auto-post" \
   -H "Content-Type: application/json" \
   -H "X-Sol-Key: $SOL_AUTO_POST_KEY" | head -c 500
 

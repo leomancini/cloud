@@ -1745,14 +1745,15 @@ Choose create_post or skip.` }] }],
       const result = db.prepare("INSERT INTO posts (user_id, content) VALUES (?, ?)").run(SOL_USER_ID, content);
       const postId = result.lastInsertRowid;
 
-      // Notify all users
+      // Notify all users via WebSocket
       const allUsers = db.prepare("SELECT id FROM users WHERE id != ?").all(SOL_USER_ID);
       for (const u of allUsers) {
         notifyUser(u.id, "feed-update");
       }
-      // Send push after response so cron doesn't timeout
-      res.json({ action: "posted", postId, content });
+
+      // Send push notifications before responding
       console.log(`[Sol Auto] Posted: "${content}"`);
+      let pushCount = 0;
       for (const u of allUsers) {
         try {
           await sendPushNotification(u.id, "new_posts", {
@@ -1761,11 +1762,13 @@ Choose create_post or skip.` }] }],
             tag: `new-post-${postId}`,
             url: `/?post=${postId}`,
           });
+          pushCount++;
         } catch (e) {
           console.warn(`[Sol Auto] Push failed for user ${u.id}:`, e.message);
         }
       }
-      console.log(`[Sol Auto] Push sent to ${allUsers.length} users`);
+      console.log(`[Sol Auto] Push attempted for ${allUsers.length} users, ${pushCount} succeeded`);
+      res.json({ action: "posted", postId, content });
     } else {
       const reason = toolBlock?.input?.reason || "no reason given";
       console.log(`[Sol Auto] Skipped: ${reason}`);
