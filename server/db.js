@@ -185,4 +185,23 @@ db.exec(`
   )
 `);
 
+// ── Sol memories ────────────────────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sol_memories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    about_user_id INTEGER,
+    about_name TEXT,
+    detail TEXT NOT NULL,
+    raw_text TEXT,
+    context_post_id INTEGER,
+    created_by_user_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (about_user_id) REFERENCES users(id),
+    FOREIGN KEY (context_post_id) REFERENCES posts(id),
+    FOREIGN KEY (created_by_user_id) REFERENCES users(id)
+  )
+`);
+try { db.exec("ALTER TABLE sol_memories ADD COLUMN about_name TEXT"); } catch {}
+try { db.exec("ALTER TABLE sol_memories ADD COLUMN raw_text TEXT"); } catch {}
+
 export default db;

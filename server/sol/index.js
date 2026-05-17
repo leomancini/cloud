@@ -9,6 +9,7 @@ import { SOL_USER_ID } from "../solUser.js";
 import { handleSolCodeChange } from "./codeChange.js";
 import { handleSolMiniGame } from "./miniGame.js";
 import { handleSolImageModify } from "./imageModify.js";
+import { detectAndSaveMemory, getRelevantMemories, formatMemoriesForPrompt } from "./memory.js";
 
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
 
@@ -59,6 +60,19 @@ const CLASSIFY_TOOLS = [
       },
       required: ["prompt", "message"]
     }
+  },
+  {
+    name: "save_memory",
+    description: "Save something to Sol's persistent memory when the user explicitly asks Sol to remember a fact, detail, or piece of information. Use this when the message contains 'remember', 'don't forget', 'keep in mind', 'note that', or similar memory-storing intent. The memory will be available in all future conversations.",
+    input_schema: {
+      type: "object",
+      properties: {
+        detail: { type: "string", description: "The exact fact or detail to remember, written clearly and concisely." },
+        about_name: { type: "string", description: "The name of the person or entity this memory is about, if applicable." },
+        message: { type: "string", description: "A brief acknowledgment confirming you've saved the memory. All lowercase, no emojis. Example: 'got it, i'll remember that'" }
+      },
+      required: ["detail", "message"]
+    }
   }
 ];
 
@@ -76,9 +90,18 @@ async function handleSolMention(postId, triggerText = null) {
   const post = db.prepare("SELECT p.*, COALESCE(u.display_name, u.name) as author_name FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?").get(postId);
   if (!post) return;
 
+  // Detect and auto-save memory from the trigger text before doing anything else
+  if (triggerText) {
+    const lastComment = db.prepare(
+      "SELECT user_id FROM comments WHERE post_id = ? AND user_id != ? ORDER BY created_at DESC LIMIT 1"
+    ).get(postId, SOL_USER_ID);
+    const triggerUserId = lastComment?.user_id || post.user_id;
+    detectAndSaveMemory(triggerText, triggerUserId, postId);
+  }
+
   const media = db.prepare("SELECT filename, media_type, source, width, height FROM post_media WHERE post_id = ? ORDER BY id").all(postId);
   const comments = db.prepare(
-    "SELECT c.content, COALESCE(u.display_name, u.name) as author_name FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ? ORDER BY c.created_at ASC"
+    "SELECT c.content, c.user_id, COALESCE(u.display_name, u.name) as author_name FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ? ORDER BY c.created_at ASC"
   ).all(postId);
 
   const content = [];
@@ -126,15 +149,24 @@ async function handleSolMention(postId, triggerText = null) {
   }
   const threadHasGame = !!db.prepare("SELECT 1 FROM comments WHERE post_id = ? AND mini_game IS NOT NULL LIMIT 1").get(postId);
 
+  // Load relevant memories for this thread
+  const userIdsInThread = [...new Set([
+    post.user_id,
+    ...comments.map((c) => c.user_id).filter(Boolean),
+  ])].filter((id) => id !== SOL_USER_ID);
+  const relevantMemories = getRelevantMemories(postId, userIdsInThread);
+  const memoryContext = formatMemoriesForPrompt(relevantMemories);
+
   textContext += `You are Sol, an AI participant in this social feed called Cloud. Cloud is also the name of the app's codebase. You are powered by Claude Sonnet 4.6 (Anthropic). When making code changes, you also use Claude Sonnet 4.6.
 
 Respond to the most recent message directed at you (above). The post and comment thread are context, but focus on what was just said to you.
 
-${threadHasGame ? "IMPORTANT: This thread already contains a mini game you created. If the user is asking for ANY changes, updates, tweaks, or modifications, you MUST use post_mini_game \u2014 NOT make_code_change. Only use make_code_change if they explicitly say they want to change the Cloud app's source code itself.\n\n" : ""}Choose one action:
+${threadHasGame ? "IMPORTANT: This thread already contains a mini game you created. If the user is asking for ANY changes, updates, tweaks, or modifications, you MUST use post_mini_game \u2014 NOT make_code_change. Only use make_code_change if they explicitly say they want to change the Cloud app's source code itself.\n\n" : ""}${memoryContext}Choose one action:
 - post_comment: Write a brief, natural comment. Be friendly and conversational. 1-2 sentences. No emojis. Always all lowercase. Use this for casual messages, greetings, questions, or anything that isn't explicitly asking for a code change or a game.
 - make_code_change: ONLY use this if the user explicitly asks to modify the Cloud app's deployed source code (server.js, App.jsx, etc). Words like "build", "make", "create", "add", "change", "update" about a game or interactive thing mean post_mini_game, NOT this.${!process.env.GITHUB_TOKEN ? " (Currently unavailable \u2014 no GitHub token configured)" : ""}
 - post_mini_game: Use this whenever the user wants ANY kind of game, toy, interactive thing, challenge, puzzle, simulation, or playable experience. Also use this if they describe something visual/interactive to "build" or "make" \u2014 that is a game, not a code change. If in doubt between this and make_code_change, choose this.${threadHasGame ? " This thread already has a game \u2014 use this for any follow-up requests about it." : ""}
-- modify_image: Use this when the user asks to modify, edit, remix, stylize, transform, or change an image/photo on the post. Examples: "make this look like a painting", "add a sunset", "make it look vintage", "turn this into pixel art".`;
+- modify_image: Use this when the user asks to modify, edit, remix, stylize, transform, or change an image/photo on the post. Examples: "make this look like a painting", "add a sunset", "make it look vintage", "turn this into pixel art".
+- save_memory: Use this when the user explicitly asks you to remember, save, or note a fact for the future.`;
 
   content.push({ type: "text", text: textContext });
 
@@ -211,6 +243,23 @@ ${threadHasGame ? "IMPORTANT: This thread already contains a mini game you creat
       if (!result) {
         solComment("i tried to modify the image but something went wrong, sorry");
       }
+    } else if (toolBlock && toolBlock.name === "save_memory") {
+      // Save the memory via the structured tool output
+      const triggerUserId = (() => {
+        const lastComment = db.prepare("SELECT user_id FROM comments WHERE post_id = ? AND user_id != ? ORDER BY created_at DESC LIMIT 1").get(postId, SOL_USER_ID);
+        return lastComment?.user_id || post.user_id;
+      })();
+      let aboutUserId = null;
+      if (toolBlock.input.about_name) {
+        const matched = db.prepare("SELECT id FROM users WHERE LOWER(COALESCE(display_name, name)) = LOWER(?)").get(toolBlock.input.about_name);
+        if (matched) aboutUserId = matched.id;
+      }
+      if (!aboutUserId) aboutUserId = triggerUserId;
+      db.prepare(`INSERT INTO sol_memories (about_user_id, about_name, detail, raw_text, context_post_id, created_by_user_id) VALUES (?, ?, ?, ?, ?, ?)`).run(
+        aboutUserId, toolBlock.input.about_name || null, toolBlock.input.detail, triggerText, postId, triggerUserId
+      );
+      console.log(`[Sol Memory] Saved via tool: "${toolBlock.input.detail}"`);
+      updatePlaceholder(toolBlock.input.message);
     } else if (toolBlock && toolBlock.name === "post_comment") {
       updatePlaceholder(toolBlock.input.comment);
     } else {
