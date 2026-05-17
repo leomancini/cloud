@@ -71,10 +71,12 @@ db.exec(`
     reactions INTEGER NOT NULL DEFAULT 1,
     comments INTEGER NOT NULL DEFAULT 1,
     replies INTEGER NOT NULL DEFAULT 1,
+    sol_posts INTEGER NOT NULL DEFAULT 1,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
   )
 `);
+try { db.exec("ALTER TABLE push_prefs ADD COLUMN sol_posts INTEGER NOT NULL DEFAULT 1"); } catch {}
 
 // Push subscriptions table (Web Push endpoint + keys)
 db.exec(`
@@ -1756,6 +1758,9 @@ Choose create_post or skip.` }] }],
       let pushCount = 0;
       for (const u of allUsers) {
         try {
+          // Check sol_posts pref
+          const prefs = db.prepare("SELECT sol_posts FROM push_prefs WHERE user_id = ?").get(u.id);
+          if (prefs && !prefs.sol_posts) continue;
           await sendPushNotification(u.id, "new_posts", {
             title: "Sol posted",
             body: content.slice(0, 100),
@@ -2504,7 +2509,7 @@ app.get("/api/push/prefs", (req, res) => {
 app.patch("/api/push/prefs", (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not logged in" });
 
-  const allowed = ["enabled", "new_posts", "mentions", "reactions", "comments", "replies"];
+  const allowed = ["enabled", "new_posts", "mentions", "reactions", "comments", "replies", "sol_posts"];
   const updates = {};
   for (const key of allowed) {
     if (key in req.body) updates[key] = req.body[key] ? 1 : 0;
@@ -2515,8 +2520,8 @@ app.patch("/api/push/prefs", (req, res) => {
   if (!existing) {
     // Insert with defaults then apply updates
     db.prepare(`
-      INSERT INTO push_prefs (user_id, enabled, new_posts, mentions, reactions, comments, replies)
-      VALUES (?, 0, 1, 1, 1, 1, 1)
+      INSERT INTO push_prefs (user_id, enabled, new_posts, mentions, reactions, comments, replies, sol_posts)
+      VALUES (?, 0, 1, 1, 1, 1, 1, 1)
     `).run(req.user.id);
   }
 
@@ -2544,11 +2549,11 @@ app.post("/api/push/subscribe", async (req, res) => {
   const existing = db.prepare("SELECT id FROM push_prefs WHERE user_id = ?").get(req.user.id);
   if (!existing) {
     db.prepare(`
-      INSERT INTO push_prefs (user_id, enabled, new_posts, mentions, reactions, comments, replies)
-      VALUES (?, 1, 1, 1, 1, 1, 1)
+      INSERT INTO push_prefs (user_id, enabled, new_posts, mentions, reactions, comments, replies, sol_posts)
+      VALUES (?, 1, 1, 1, 1, 1, 1, 1)
     `).run(req.user.id);
   } else {
-    db.prepare("UPDATE push_prefs SET enabled = 1, new_posts = 1, mentions = 1, reactions = 1, comments = 1, replies = 1 WHERE user_id = ?").run(req.user.id);
+    db.prepare("UPDATE push_prefs SET enabled = 1, new_posts = 1, mentions = 1, reactions = 1, comments = 1, replies = 1, sol_posts = 1 WHERE user_id = ?").run(req.user.id);
   }
 
   res.json({ ok: true });
