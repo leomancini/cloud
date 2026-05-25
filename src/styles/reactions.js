@@ -243,7 +243,7 @@ export const EmojiPickerWrap = styled.div`
     position: absolute;
     inset: 0;
     border-radius: ${RADIUS};
-    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.1);
+    box-shadow: inset 0 0 0 2px ${(p) => p.theme.mapBorder};
     pointer-events: none;
     z-index: 1;
   }

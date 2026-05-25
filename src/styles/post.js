@@ -78,7 +78,7 @@ export const VideoWrap = styled.div`
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.1);
+    box-shadow: inset 0 0 0 2px ${(p) => p.theme.mapBorder};
     pointer-events: none;
     z-index: 1;
   }
@@ -102,7 +102,7 @@ export const GameFrameWrap = styled.div`
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.1);
+    box-shadow: inset 0 0 0 2px ${(p) => p.theme.mapBorder};
     pointer-events: none;
   }
 `;
@@ -165,9 +165,9 @@ export const LinkPreviewCard = styled.a`
   -webkit-tap-highlight-color: transparent;
   ${(p) => !p.$static && `
     @media (hover: hover) {
-      &:hover .link-body { border-color: rgba(0, 0, 0, 0.15); }
+      &:hover .link-body { border-color: ${p.theme.mapBorder}; }
     }
-    &:active .link-body { border-color: rgba(0, 0, 0, 0.18); }
+    &:active .link-body { border-color: ${p.theme.mapBorder}; }
   `}
 `;
 
@@ -184,17 +184,17 @@ export const LinkPreviewImageWrap = styled.div`
     right: 0;
     bottom: 0;
     border-radius: inherit;
-    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.1);
+    box-shadow: inset 0 0 0 2px ${(p) => p.theme.mapBorder};
     pointer-events: none;
     transition: box-shadow 0.15s ease;
   }
   @media (hover: hover) {
     a:hover &::after {
-      box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.15);
+      box-shadow: inset 0 0 0 2px ${(p) => p.theme.mapBorder};
     }
   }
   a:active &::after {
-    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.18);
+    box-shadow: inset 0 0 0 2px ${(p) => p.theme.mapBorder};
   }
 `;
 
@@ -207,8 +207,8 @@ export const LinkPreviewImage = styled.img`
 
 export const LinkPreviewBody = styled.div`
   padding: 12px;
-  border: 2px solid rgba(0, 0, 0, 0.1);
-  border-top: ${(p) => p.$hasImage ? "none" : "2px solid rgba(0, 0, 0, 0.1)"};
+  border: 2px solid ${(p) => p.theme.mapBorder};
+  border-top: ${(p) => p.$hasImage ? "none" : `2px solid ${p.theme.mapBorder}`};
   border-radius: ${(p) => p.$hasImage ? `0 0 ${RADIUS} ${RADIUS}` : RADIUS};
   transition: border-color 0.15s ease;
 `;
@@ -243,9 +243,9 @@ export const PostLocation = styled.div`
   margin-top: 10px;
   display: block;
   @media (hover: hover) {
-    &[href]:hover .place-name { border-color: rgba(0, 0, 0, 0.15); }
+    &[href]:hover .place-name { border-color: ${(p) => p.theme.mapBorder}; }
   }
-  &[href]:active .place-name { border-color: rgba(0, 0, 0, 0.18); }
+  &[href]:active .place-name { border-color: ${(p) => p.theme.mapBorder}; }
 `;
 
 export const PostMapWrapper = styled.div`
@@ -261,17 +261,17 @@ export const PostMapWrapper = styled.div`
     right: 0;
     bottom: 0;
     border-radius: inherit;
-    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.1);
+    box-shadow: inset 0 0 0 2px ${(p) => p.theme.mapBorder};
     pointer-events: none;
     transition: box-shadow 0.15s ease;
   }
   @media (hover: hover) {
     a:hover &::after {
-      box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.15);
+      box-shadow: inset 0 0 0 2px ${(p) => p.theme.mapBorder};
     }
   }
   a:active &::after {
-    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.18);
+    box-shadow: inset 0 0 0 2px ${(p) => p.theme.mapBorder};
   }
 `;
 
@@ -287,7 +287,8 @@ export const PostPlaceName = styled.div`
   font-size: 16px;
   font-weight: 500;
   color: ${(p) => p.theme.text};
-  border: 2px solid rgba(0, 0, 0, 0.1);
+  background: ${(p) => p.theme.bgSecondary};
+  border: 2px solid ${(p) => p.theme.mapBorder};
   border-top: none;
   border-radius: 0 0 ${RADIUS} ${RADIUS};
   display: flex;
@@ -384,7 +385,7 @@ export const ListItemIcon = styled.div`
   font-size: 11px;
   color: ${(p) => p.theme.text};
   flex-shrink: 0;
-  outline: 1px solid rgba(0, 0, 0, 0.1);
+  outline: 1px solid ${(p) => p.theme.mapBorder};
   outline-offset: -1px;
 `;
 

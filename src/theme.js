@@ -52,7 +52,7 @@ export const darkTheme = {
   shadow:           "rgba(0,0,0,0.4)",
   shadowMd:         "rgba(0,0,0,0.4)",
   mentionBg:        "#3a3a3a",
-  mapBorder:        "rgba(255,255,255,0.08)",
+  mapBorder:        "transparent",
 };
 
 export function useSystemDark() {

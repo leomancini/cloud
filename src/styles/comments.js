@@ -304,7 +304,7 @@ export const CommentAvatar = styled.div`
   height: 24px;
   ${avatarBase}
   margin-top: -1px;
-  outline: 1px solid rgba(0, 0, 0, 0.1);
+  outline: 1px solid ${(p) => p.theme.mapBorder};
   outline-offset: -1px;
   ${avatarHover}
 `;

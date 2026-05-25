@@ -1,9 +1,12 @@
-import styled, { keyframes } from "styled-components";
+import styled, { keyframes, css } from "styled-components";
 import { RADIUS, RADIUS_SM, ICON_GAP } from "../theme.js";
 
 // ─── Shared CSS helpers ──────────────────────────────────────────────────────
 
-export const innerBorder = "outline: 2px solid rgba(0, 0, 0, 0.1); outline-offset: -2px;";
+export const innerBorder = css`
+  outline: 2px solid ${(p) => p.theme.mapBorder};
+  outline-offset: -2px;
+`;
 
 export const avatarBase = `
   border-radius: 50%;
@@ -134,7 +137,7 @@ export const MentionAvatar = styled.div`
   width: 24px;
   height: 24px;
   ${avatarBase}
-  outline: 1px solid rgba(0, 0, 0, 0.1);
+  outline: 1px solid ${(p) => p.theme.mapBorder};
   outline-offset: -1px;
   display: inline-block;
   vertical-align: middle;
