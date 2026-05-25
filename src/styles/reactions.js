@@ -177,12 +177,10 @@ export const ReactionNames = styled.span`
   font-weight: 600;
 `;
 
-export const EmojiOption = styled.button`
+export const EmojiOption = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  border: none;
-  background: none;
   font-size: 24px;
   line-height: 1;
   padding: 0;
@@ -191,7 +189,6 @@ export const EmojiOption = styled.button`
   height: 24px;
   cursor: pointer;
   border-radius: ${RADIUS_SM};
-  -webkit-appearance: none;
   opacity: ${(p) => (p.$dimmed ? 0.35 : 1)};
   transition: transform 0.1s ease;
   &:active {
