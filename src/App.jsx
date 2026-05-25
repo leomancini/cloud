@@ -1522,7 +1522,7 @@ function App() {
             <ReactionsRow>
               {(post.reactions || []).map((r) => (
                 <ReactionChip key={r.emoji} $active={r.user_reacted}>
-                  <span style={{ width: 24, textAlign: "center", flexShrink: 0 }}>{r.emoji}</span> <ReactionNames>{(r.names || []).join(", ")}</ReactionNames>
+                  <EmojiOption style={{ cursor: "default" }}>{r.emoji}</EmojiOption> <ReactionNames>{(r.names || []).join(", ")}</ReactionNames>
                 </ReactionChip>
               ))}
             </ReactionsRow>
