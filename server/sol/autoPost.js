@@ -195,7 +195,7 @@ Choose create_post or skip.` }] }],
         try {
           const prefs = db.prepare("SELECT sol_posts FROM push_prefs WHERE user_id = ?").get(u.id);
           if (prefs && !prefs.sol_posts) continue;
-          await sendPushNotification(u.id, "new_posts", {
+          await sendPushNotification(u.id, null, {
             title: "Sol posted",
             body: truncateBody(content),
             tag: `new-post-${postId}`,

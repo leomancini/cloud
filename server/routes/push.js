@@ -20,6 +20,7 @@ router.get("/api/push/prefs", (req, res) => {
       reactions: 1,
       comments: 1,
       replies: 1,
+      sol_posts: 1,
     };
   }
   res.json({
@@ -29,6 +30,7 @@ router.get("/api/push/prefs", (req, res) => {
     reactions: !!prefs.reactions,
     comments:  !!prefs.comments,
     replies:   !!prefs.replies,
+    sol_posts: prefs.sol_posts !== undefined ? !!prefs.sol_posts : true,
   });
 });
 
