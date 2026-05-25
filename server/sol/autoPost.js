@@ -28,15 +28,18 @@ router.post("/api/sol/auto-post", async (req, res) => {
 
     const getMedia = db.prepare("SELECT filename, media_type FROM post_media WHERE post_id = ? AND media_type = 'image' ORDER BY id LIMIT 2");
     const imageBlocks = [];
-    for (const post of recentPosts.slice(0, 5)) {
+    for (let idx = 0; idx < Math.min(5, recentPosts.length); idx++) {
+      const post = recentPosts[idx];
       const media = getMedia.all(post.id);
+      const postTime = new Date(post.created_at + "Z").toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+      const placeLabel = post.place_name ? ` at ${post.place_name}` : "";
       for (const m of media) {
         try {
           const filePath = join(uploadsDir, m.filename);
           if (!existsSync(filePath)) continue;
           const buf = readFileSync(filePath);
           const resized = await sharp(buf).resize(400, 400, { fit: "inside", withoutEnlargement: true }).jpeg({ quality: 60 }).toBuffer();
-          imageBlocks.push({ type: "text", text: `[Image from ${post.author_name}'s post:]` });
+          imageBlocks.push({ type: "text", text: `[Image ${idx + 1} — from ${post.author_name}'s post${placeLabel}, ${postTime}:]` });
           imageBlocks.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: resized.toString("base64") } });
         } catch {}
       }
