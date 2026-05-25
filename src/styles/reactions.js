@@ -157,6 +157,7 @@ export const ReactionsRow = styled.div`
   align-items: center;
   gap: 12px;
   margin-top: 14px;
+  margin-left: -2px;
   flex-wrap: wrap;
   user-select: none;
   -webkit-user-select: none;
