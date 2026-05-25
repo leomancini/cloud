@@ -6,3 +6,5 @@ pictures/
 uploads/
 maps/
 
+data.sqlite-shm
+data.sqlite-wal
