@@ -6,7 +6,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import db from "../db.js";
 import { uploadsDir } from "../upload.js";
 import { notifyUser } from "../websocket.js";
-import { sendPushNotification } from "../push.js";
+import { sendPushNotification, truncateBody } from "../push.js";
 import { SOL_USER_ID } from "../solUser.js";
 
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
@@ -197,7 +197,7 @@ Choose create_post or skip.` }] }],
           if (prefs && !prefs.sol_posts) continue;
           await sendPushNotification(u.id, "new_posts", {
             title: "Sol posted",
-            body: content.slice(0, 100),
+            body: truncateBody(content),
             tag: `new-post-${postId}`,
             url: `/?post=${postId}`,
           });

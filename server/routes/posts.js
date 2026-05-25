@@ -5,7 +5,7 @@ import sharp from "sharp";
 import db from "../db.js";
 import { upload } from "../upload.js";
 import { notifyUser } from "../websocket.js";
-import { getUserDisplayName, sendPushNotification } from "../push.js";
+import { getUserDisplayName, sendPushNotification, truncateBody } from "../push.js";
 import { SOL_USER_ID } from "../solUser.js";
 import { handleSolMention } from "../sol/index.js";
 
@@ -106,7 +106,7 @@ router.post("/api/posts", upload.array("media", 10), async (req, res) => {
     notifyUser(f.follower_id, "feed-update");
     sendPushNotification(f.follower_id, "new_posts", {
       title: `${getUserDisplayName(req.user.id)} posted`,
-      body: (content || "").trim().slice(0, 100) || mediaDesc || "New post",
+      body: truncateBody((content || "").trim()) || mediaDesc || "New post",
       tag: `new-post-${postId}`,
       url: `/?post=${postId}`,
     });
@@ -122,7 +122,7 @@ router.post("/api/posts", upload.array("media", 10), async (req, res) => {
       if (mentionPattern.test(postText) && u.id !== SOL_USER_ID) {
         sendPushNotification(u.id, "mentions", {
           title: `${getUserDisplayName(req.user.id)} mentioned you`,
-          body: postText.slice(0, 100),
+          body: truncateBody(postText),
           tag: `mention-post-${postId}`,
           url: `/?post=${postId}`,
         });

@@ -40,4 +40,11 @@ async function sendPushNotification(userId, prefKey, payload) {
   }
 }
 
-export { getUserDisplayName, sendPushNotification };
+function truncateBody(text, max = 140) {
+  if (!text) return "";
+  const trimmed = text.trim();
+  if (trimmed.length <= max) return trimmed;
+  return trimmed.slice(0, max - 1) + "\u2026";
+}
+
+export { getUserDisplayName, sendPushNotification, truncateBody };

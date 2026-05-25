@@ -1,7 +1,7 @@
 import { Router } from "express";
 import db from "../db.js";
 import { notifyUser } from "../websocket.js";
-import { getUserDisplayName, sendPushNotification } from "../push.js";
+import { getUserDisplayName, sendPushNotification, truncateBody } from "../push.js";
 import { SOL_USER_ID } from "../solUser.js";
 import { handleSolMention } from "../sol/index.js";
 
@@ -29,7 +29,7 @@ router.post("/api/posts/:id/comments", (req, res) => {
     notifyUser(post.user_id, "feed-update");
     sendPushNotification(post.user_id, "comments", {
       title: `${getUserDisplayName(req.user.id)} commented`,
-      body: content.trim().slice(0, 100),
+      body: truncateBody(content),
       tag: `comment-${post.id}-${req.user.id}`,
       url: `/?post=${post.id}&comment=${result.lastInsertRowid}`,
     });
@@ -42,7 +42,7 @@ router.post("/api/posts/:id/comments", (req, res) => {
       notifyUser(parentComment.user_id, "feed-update");
       sendPushNotification(parentComment.user_id, "replies", {
         title: `${getUserDisplayName(req.user.id)} replied to you`,
-        body: content.trim().slice(0, 100),
+        body: truncateBody(content),
         tag: `reply-${result.lastInsertRowid}`,
         url: `/?post=${post.id}&comment=${result.lastInsertRowid}`,
       });
@@ -59,7 +59,7 @@ router.post("/api/posts/:id/comments", (req, res) => {
     notifyUser(user_id, "feed-update");
     sendPushNotification(user_id, "replies", {
       title: `${getUserDisplayName(req.user.id)} also commented`,
-      body: content.trim().slice(0, 100),
+      body: truncateBody(content),
       tag: `thread-${post.id}-${req.user.id}`,
       url: `/?post=${post.id}&comment=${result.lastInsertRowid}`,
     });
