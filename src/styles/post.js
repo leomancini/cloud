@@ -387,3 +387,123 @@ export const ListItemIcon = styled.div`
   outline: 1px solid rgba(0, 0, 0, 0.1);
   outline-offset: -1px;
 `;
+
+export const PostItem = styled.div`
+  padding: 16px 0;
+`;
+
+export const PostHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+`;
+
+export const PostHeaderLink = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: ${(p) => p.$clickable ? "pointer" : "default"};
+  @media (hover: hover) {
+    &:hover > div { transform: rotate(calc(var(--tilt) * 1deg)); }
+  }
+  &:active > div { transform: rotate(calc(var(--tilt) * 1deg)); }
+  ${(p) => p.$clickable && `&:active > span { opacity: 0.6; }`}
+`;
+
+export const PostHeaderText = styled.div`
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  flex: 1;
+  min-width: 0;
+`;
+
+export const Avatar = styled.div`
+  width: 36px;
+  height: 36px;
+  ${avatarBase}
+  ${innerBorder}
+  ${avatarHover}
+`;
+
+export const PostAuthor = styled.span`
+  font-size: 16px;
+  font-weight: 600;
+  color: ${(p) => p.theme.text};
+`;
+
+export const PostTime = styled.span`
+  font-size: 14px;
+  color: ${(p) => p.theme.textSecondary};
+  white-space: nowrap;
+`;
+
+export const PostHeaderRight = styled.div`
+  margin-left: auto;
+  position: relative;
+  top: 1px;
+`;
+
+export const PostMenuWrapper = styled.div`
+  position: relative;
+`;
+
+export const PostMenuButton = styled.button`
+  border: none;
+  background: none;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+
+  @media (hover: hover) {
+    &:hover {
+      color: ${(p) => p.theme.textSecondary};
+    }
+  }
+`;
+
+export const PostMenu = styled.div`
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: ${(p) => p.theme.bgElevated};
+  border-radius: ${RADIUS};
+  box-shadow: 0 2px 12px ${(p) => p.theme.shadowMd};
+  z-index: 10;
+  overflow: hidden;
+  min-width: 160px;
+  white-space: nowrap;
+`;
+
+export const PostMenuItem = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  color: ${(p) => (p.$danger ? "#e53e3e" : p.theme.text)};
+  & > i { width: 16px; text-align: center; flex-shrink: 0; }
+
+  @media (hover: hover) {
+    &:hover {
+      background: ${(p) => p.theme.bgHover};
+    }
+  }
+`;
+
+export const PostContent = styled.p`
+  font-size: 16px;
+  color: ${(p) => p.theme.text};
+  margin: 0;
+  line-height: 1.4;
+  white-space: pre-wrap;
+`;

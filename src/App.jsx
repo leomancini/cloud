@@ -31,10 +31,10 @@ import { SpinnerRing, spinAnim, shimmer, MentionSpan, MentionHighlight, MentionD
 import { Page, Header, HeaderProfile, SmallAvatar, HeaderName, LoginCard, Title, Subtitle, SignInButton, SegmentedControl, Segment, BackButton, LogoutButton, Content, Banner, BannerText, BannerButton, BannerDismiss, EmptyState } from "./styles/layout.js";
 
 // Styled components — Compose
-import { ComposeBox, ComposeWrapper, ComposeInput, ComposeHighlight, ComposeActions, ComposeActionsLeft, IconButton, HiddenFileInput, MediaPreviews, MediaPreview, PreviewImage, PreviewVideo, RemoveMedia, LocationSearch, LocationInput, LocationResults, LocationResult, LocationName, LocationAddress, SelectedLocation, RemoveLocation } from "./styles/compose.js";
+import { ComposeBox, ComposeWrapper, ComposeInput, ComposeHighlight, ComposeActions, ComposeActionsLeft, IconButton, HiddenFileInput, MediaPreviews, MediaPreview, PreviewImage, PreviewVideo, RemoveMedia, LocationSearch, LocationInput, LocationResults, LocationResult, LocationName, LocationAddress, SelectedLocation, RemoveLocation, PostButton } from "./styles/compose.js";
 
 // Styled components — Post
-import { PostMediaContainer, PostImage, PostVideo, VideoWrap, GameFrameWrap, GameFrameInner, MosaicBadgeBg, MosaicBadge, MediaWrapper, LinkPreviewCard, LinkPreviewImageWrap, LinkPreviewImage, LinkPreviewBody, LinkPreviewSite, LinkPreviewTitle, LinkPreviewDesc, PostLocation, PostMapWrapper, PostMap, PostPlaceName, PostPlaceAddress, SaveToListButton, SaveToListDropdown, SaveToListItem, ListItemIcon } from "./styles/post.js";
+import { PostMediaContainer, PostImage, PostVideo, VideoWrap, GameFrameWrap, GameFrameInner, MosaicBadgeBg, MosaicBadge, MediaWrapper, LinkPreviewCard, LinkPreviewImageWrap, LinkPreviewImage, LinkPreviewBody, LinkPreviewSite, LinkPreviewTitle, LinkPreviewDesc, PostLocation, PostMapWrapper, PostMap, PostPlaceName, PostPlaceAddress, SaveToListButton, SaveToListDropdown, SaveToListItem, ListItemIcon, PostItem, PostHeader, PostHeaderLink, PostHeaderText, Avatar, PostAuthor, PostTime, PostHeaderRight, PostMenuWrapper, PostMenuButton, PostMenu, PostMenuItem, PostContent } from "./styles/post.js";
 
 // Styled components — Comments
 import { CommentsSection, ThreadContainer, ThreadedReplyGroup, ThreadConnector, ReplyButton, CollapseThreadButton, CollapsedThreadPill, ViewThreadButton, ThreadFocusOverlay, ThreadFocusSheet, ThreadFocusHeader, ThreadFocusTitle, ThreadFocusClose, ReplyInputBanner, CancelReplyButton, CommentRow, CommentThumbsBadge, ThumbsUpEmoji, DoubleTapPickerBackdrop, DoubleTapPickerPopover, DoubleTapPickerScroll, DoubleTapPickerEmoji, CommentAvatar, CommentBody, CommentAuthor, CommentText, CommentTime, CommentInputRow, CommentInputWrapper, CommentInput, CommentHighlight, CommentPostButton, CommentCount } from "./styles/comments.js";
@@ -50,6 +50,8 @@ import { LightboxBackdrop, LightboxImg, LightboxClose } from "./styles/lightbox.
 
 // Styled components — Reactions
 import { ReactionSettingsSection, ReactionContextBlock, ReactionContextHeader, ReactionContextLabel, ReactionContextSubLabel, ReactionResetButton, EmojiChipRow, EmojiChip, EmojiChipRemove, EmojiChipDragHandle, AddEmojiRow, EmojiInput, AddEmojiButton, ReactionContextDivider, ReactionPreviewRow, ReactionPreviewEmoji, ReactionInheritNote, ReactionsRow, ReactionChip, ReactionNames, EmojiOption, EmojiEditButton, QuickReactButton, EmojiPickerWrap } from "./styles/reactions.js";
+
+const DEFAULT_REACTION_EMOJIS = ["\u2764\uFE0F", "\uD83D\uDE02", "\uD83D\uDE2E", "\uD83D\uDD25", "\uD83D\uDC4F", "\uD83D\uDE22"];
 
 function App() {
   const [themePref, setThemePref] = useState(() => localStorage.getItem("theme-pref") || "system");

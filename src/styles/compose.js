@@ -228,3 +228,25 @@ export const RemoveLocation = styled.button`
   line-height: 1;
   z-index: 1;
 `;
+
+export const PostButton = styled.button`
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 20px;
+  border-radius: ${RADIUS};
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: ${(p) => p.theme.btnPrimary};
+  color: ${(p) => p.theme.btnPrimaryText};
+
+  @media (hover: hover) {
+    &:hover {
+      background: ${(p) => p.theme.btnPrimaryHover};
+    }
+  }
+`;
