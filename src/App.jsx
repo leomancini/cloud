@@ -1593,8 +1593,8 @@ function App() {
                   });
                   const renderComment = (c) => (
                   <CommentRowWithReaction key={c.id} postId={post.id} commentId={c.id} onReact={handleCommentReact}
-                    renderContent={(commentReactProps) => (
-                      <><CommentRow data-comment-id={c.id} {...commentReactProps}>
+                    renderContent={(commentReactProps, commentRef) => (
+                      <><CommentRow ref={commentRef} data-comment-id={c.id} {...commentReactProps}>
                         <CommentAvatar style={{ backgroundImage: `url(${c.author_picture})`, '--tilt': randomTilt() }} />
                         <CommentBody>
                           <CommentAuthor>{c.author_name}</CommentAuthor>
