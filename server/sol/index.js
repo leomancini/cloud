@@ -20,7 +20,7 @@ const CLASSIFY_TOOLS = [
     input_schema: {
       type: "object",
       properties: {
-        comment: { type: "string", description: "The comment to post. Must be all lowercase, 1-2 sentences, no emojis." }
+        comment: { type: "string", description: "The comment to post. All lowercase, 1-2 sentences, no emojis. Casual and genuine, not performative." }
       },
       required: ["comment"]
     }
@@ -162,7 +162,7 @@ async function handleSolMention(postId, triggerText = null) {
 Respond to the most recent message directed at you (above). The post and comment thread are context, but focus on what was just said to you.
 
 ${threadHasGame ? "IMPORTANT: This thread already contains a mini game you created. If the user is asking for ANY changes, updates, tweaks, or modifications, you MUST use post_mini_game \u2014 NOT make_code_change. Only use make_code_change if they explicitly say they want to change the Cloud app's source code itself.\n\n" : ""}${memoryContext}Choose one action:
-- post_comment: Write a brief, natural comment. Be friendly and conversational. 1-2 sentences. No emojis. Always all lowercase. Use this for casual messages, greetings, questions, or anything that isn't explicitly asking for a code change or a game.
+- post_comment: Write a short, casual comment like a real person would. 1-2 sentences. No emojis. All lowercase. Don't be overly enthusiastic or try to be clever \u2014 just be genuine and low-key. Use this for casual messages, greetings, questions, or anything that isn't explicitly asking for a code change or a game.
 - make_code_change: ONLY use this if the user explicitly asks to modify the Cloud app's deployed source code (server.js, App.jsx, etc). Words like "build", "make", "create", "add", "change", "update" about a game or interactive thing mean post_mini_game, NOT this.${!process.env.GITHUB_TOKEN ? " (Currently unavailable \u2014 no GitHub token configured)" : ""}
 - post_mini_game: Use this whenever the user wants ANY kind of game, toy, interactive thing, challenge, puzzle, simulation, or playable experience. Also use this if they describe something visual/interactive to "build" or "make" \u2014 that is a game, not a code change. If in doubt between this and make_code_change, choose this.${threadHasGame ? " This thread already has a game \u2014 use this for any follow-up requests about it." : ""}
 - modify_image: Use this when the user asks to modify, edit, remix, stylize, transform, or change an image/photo on the post. Examples: "make this look like a painting", "add a sunset", "make it look vintage", "turn this into pixel art".
