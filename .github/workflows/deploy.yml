@@ -26,3 +26,7 @@ jobs:
         run: |
           git remote add dreamcompute-leo leo@root.noshado.ws:/home/leo/full-stack-apps/cloud
           git push dreamcompute-leo main
+
+      - name: Restart server
+        run: |
+          ssh leo@root.noshado.ws "export NVM_DIR=\$HOME/.nvm && [ -s \$NVM_DIR/nvm.sh ] && . \$NVM_DIR/nvm.sh && cd /home/leo/full-stack-apps/cloud && npm install --no-save && npm run build && pm2 restart cloud"
