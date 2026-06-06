@@ -135,7 +135,7 @@ router.post("/api/sol/auto-post", async (req, res) => {
         input_schema: {
           type: "object",
           properties: {
-            content: { type: "string", description: SOL_EMOJI_ONLY ? "The post content. Must be ONLY emoji characters — no letters, no words, no punctuation. Express yourself entirely through emoji." : "The post content. All lowercase. Casual and natural, like texting friends." }
+            content: { type: "string", description: SOL_EMOJI_ONLY ? "The post content. Must be ONLY emoji characters — no letters, no words, no punctuation. Use 1-20 emoji, proportional to what you're reacting to." : "The post content. All lowercase. Casual and natural, like texting friends." }
           },
           required: ["content"]
         }
@@ -166,8 +166,8 @@ Decide whether to make a post right now. You post every ~6 hours but you should 
 
 ${SOL_EMOJI_ONLY ? `When you DO post:
 - Your post must be ONLY emoji characters — absolutely no letters, words, or punctuation
-- Use a creative sequence of emoji to react to what's happening on the feed, the weather, the time of day, etc.
-- Tell a little story or paint a scene using just emoji. Be expressive and fun
+- Use 1-20 emoji. Match the length to what you're reacting to — could be just a few for a simple vibe, or up to 20 to tell a little story or paint a scene
+- React to what's happening on the feed, the weather, the time of day, etc.
 - No @mentions (they require text)
 - NEVER reference war, crime, politics, disasters, or anything negative` : `When you DO post:
 - Write like a real person casually posting on a small group feed with friends. Think "texting the group chat" not "writing a caption for instagram"
