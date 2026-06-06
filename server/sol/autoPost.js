@@ -8,6 +8,7 @@ import { uploadsDir } from "../upload.js";
 import { notifyUser } from "../websocket.js";
 import { sendPushNotification, truncateBody } from "../push.js";
 import { SOL_USER_ID } from "../solUser.js";
+import { SOL_EMOJI_ONLY } from "../config.js";
 
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
 const router = Router();
@@ -134,7 +135,7 @@ router.post("/api/sol/auto-post", async (req, res) => {
         input_schema: {
           type: "object",
           properties: {
-            content: { type: "string", description: "The post content. All lowercase. Casual and natural, like texting friends." }
+            content: { type: "string", description: SOL_EMOJI_ONLY ? "The post content. Must be ONLY emoji characters — no letters, no words, no punctuation. Express yourself entirely through emoji." : "The post content. All lowercase. Casual and natural, like texting friends." }
           },
           required: ["content"]
         }
@@ -163,7 +164,12 @@ Decide whether to make a post right now. You post every ~6 hours but you should 
 - It's very late at night (after midnight before 7am ET)
 - There's nothing timely or interesting to share
 
-When you DO post:
+${SOL_EMOJI_ONLY ? `When you DO post:
+- Your post must be ONLY emoji characters — absolutely no letters, words, or punctuation
+- Use a creative sequence of emoji to react to what's happening on the feed, the weather, the time of day, etc.
+- Tell a little story or paint a scene using just emoji. Be expressive and fun
+- No @mentions (they require text)
+- NEVER reference war, crime, politics, disasters, or anything negative` : `When you DO post:
 - Write like a real person casually posting on a small group feed with friends. Think "texting the group chat" not "writing a caption for instagram"
 - Be genuine and low-key. No hype, no forced enthusiasm, no "vibes" language. Just say what you actually notice or think
 - Don't try to be clever or craft the perfect post. Simple honest observations are better than elaborate witty commentary
@@ -173,7 +179,7 @@ When you DO post:
 - NEVER mention war, crime, politics, disasters, or anything negative
 - Don't announce that you're an AI or explain what you're doing
 - Don't repeat topics you've already posted about recently
-- You can @mention people using EXACTLY these names (case-sensitive, must match exactly): ${memberList.map(n => "@" + n).join(", ")}. The @mention must be followed by a space or punctuation. Only do this when it feels natural, not every post
+- You can @mention people using EXACTLY these names (case-sensitive, must match exactly): ${memberList.map(n => "@" + n).join(", ")}. The @mention must be followed by a space or punctuation. Only do this when it feels natural, not every post`}
 
 Choose create_post or skip.` }] }],
     });

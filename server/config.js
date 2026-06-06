@@ -12,4 +12,7 @@ const GITHUB_REPO = "cloud";
 
 const LISTS_API_URL = "https://page-builder-server.fcc.lol";
 
-export { __dirname, port, GITHUB_OWNER, GITHUB_REPO, LISTS_API_URL };
+// Sol output modes
+const SOL_EMOJI_ONLY = false; // Set to true to force all Sol outputs to be entirely emoji
+
+export { __dirname, port, GITHUB_OWNER, GITHUB_REPO, LISTS_API_URL, SOL_EMOJI_ONLY };
