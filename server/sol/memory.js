@@ -10,11 +10,13 @@ export function detectAndSaveMemory(text, triggeringUserId, postId) {
 
   const lower = text.toLowerCase().trim();
 
-  const triggers = ["remember", "don't forget", "dont forget", "keep in mind", "note that", "save this"];
-  if (!triggers.some((t) => lower.includes(t))) return null;
+  // Skip questions asking about memory ("what do you remember?", "do you remember?", etc.)
+  if (/\b(what|do|can|did|will)\b.*\bremember\b/i.test(lower)) return null;
+  if (/\bremember\s*\?/i.test(lower)) return null;
 
-  let detail = text.trim();
-  const prefixes = [
+  // Only match imperative "remember X" commands, not incidental uses
+  const commandPatterns = [
+    /^@?\s*sol\s*,?\s*remember\s+/i,
     /^remember\s+that\s+/i,
     /^remember\s+/i,
     /^don'?t\s+forget\s+that\s+/i,
@@ -25,8 +27,16 @@ export function detectAndSaveMemory(text, triggeringUserId, postId) {
     /^note:\s*/i,
     /^save\s+this:\s*/i,
   ];
-  for (const rx of prefixes) {
+
+  // Strip @sol prefix for matching
+  const stripped = lower.replace(/^@\s*sol\s*,?\s*/i, "");
+  if (!commandPatterns.some((rx) => rx.test(lower) || rx.test(stripped))) return null;
+
+  let detail = text.trim();
+  for (const rx of commandPatterns) {
     if (rx.test(detail)) { detail = detail.replace(rx, "").trim(); break; }
+    const strippedDetail = detail.replace(/^@\s*sol\s*,?\s*/i, "");
+    if (rx.test(strippedDetail)) { detail = strippedDetail.replace(rx, "").trim(); break; }
   }
 
   if (!detail || detail.length < 3) return null;
