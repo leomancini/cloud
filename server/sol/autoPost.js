@@ -8,7 +8,7 @@ import { uploadsDir } from "../upload.js";
 import { notifyUser } from "../websocket.js";
 import { sendPushNotification, truncateBody } from "../push.js";
 import { SOL_USER_ID } from "../solUser.js";
-import { SOL_EMOJI_ONLY } from "../config.js";
+import { SOL_EMOJI_ONLY_POSTS as SOL_EMOJI_ONLY } from "../config.js";
 
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
 const router = Router();

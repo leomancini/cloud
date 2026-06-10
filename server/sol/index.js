@@ -10,7 +10,7 @@ import { handleSolCodeChange } from "./codeChange.js";
 import { handleSolMiniGame } from "./miniGame.js";
 import { handleSolImageModify } from "./imageModify.js";
 import { detectAndSaveMemory, getRelevantMemories, formatMemoriesForPrompt } from "./memory.js";
-import { SOL_EMOJI_ONLY } from "../config.js";
+import { SOL_EMOJI_ONLY_COMMENTS as SOL_EMOJI_ONLY } from "../config.js";
 
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
 
