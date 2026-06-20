@@ -13,7 +13,16 @@ const GITHUB_REPO = "cloud";
 const LISTS_API_URL = "https://page-builder-server.fcc.lol";
 
 // Sol output modes
-const SOL_EMOJI_ONLY_POSTS = true;    // Emoji-only for auto-posts
-const SOL_EMOJI_ONLY_COMMENTS = false; // Emoji-only for comment replies
+//
+// Auto-post mode — exactly ONE mode is active at a time. To switch modes,
+// change this single value. Valid modes are defined in SOL_POST_MODES below.
+//   "normal"     — casual, natural text posts
+//   "emoji"      — emoji-only posts
+//   "haiku-poem" — posts are always a 5-7-5 haiku about the current context
+const SOL_POST_MODE = "haiku-poem";
 
-export { __dirname, port, GITHUB_OWNER, GITHUB_REPO, LISTS_API_URL, SOL_EMOJI_ONLY_POSTS, SOL_EMOJI_ONLY_COMMENTS };
+const SOL_POST_MODES = ["normal", "emoji", "haiku-poem"];
+
+const SOL_EMOJI_ONLY_COMMENTS = false; // Emoji-only for comment replies (independent of post mode)
+
+export { __dirname, port, GITHUB_OWNER, GITHUB_REPO, LISTS_API_URL, SOL_POST_MODE, SOL_POST_MODES, SOL_EMOJI_ONLY_COMMENTS };

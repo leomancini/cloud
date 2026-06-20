@@ -8,10 +8,49 @@ import { uploadsDir } from "../upload.js";
 import { notifyUser } from "../websocket.js";
 import { sendPushNotification, truncateBody } from "../push.js";
 import { SOL_USER_ID } from "../solUser.js";
-import { SOL_EMOJI_ONLY_POSTS as SOL_EMOJI_ONLY } from "../config.js";
+import { SOL_POST_MODE, SOL_POST_MODES } from "../config.js";
 
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
 const router = Router();
+
+// Resolve the active post mode, falling back to "normal" if misconfigured.
+const POST_MODE = SOL_POST_MODES.includes(SOL_POST_MODE) ? SOL_POST_MODE : "normal";
+
+// Short description shown to the model for the create_post tool's content field.
+const POST_CONTENT_DESCRIPTION = {
+  normal: "The post content. All lowercase. Casual and natural, like texting friends.",
+  emoji: "The post content. Must be ONLY emoji characters — no letters, no words, no punctuation. Use 1-20 emoji, proportional to what you're reacting to.",
+  "haiku-poem": "The post content. Must be a haiku: three lines in a 5-7-5 syllable structure (5 syllables, then 7, then 5), all lowercase, with the three lines separated by newline characters.",
+};
+
+// Per-mode "When you DO post" instructions. memberList is in scope where used.
+const buildPostInstructions = (memberList) => ({
+  normal: `When you DO post:
+- Write like a real person casually posting on a small group feed with friends. Think "texting the group chat" not "writing a caption for instagram"
+- Be genuine and low-key. No hype, no forced enthusiasm, no "vibes" language. Just say what you actually notice or think
+- Don't try to be clever or craft the perfect post. Simple honest observations are better than elaborate witty commentary
+- Reference what people posted recently if it's natural to — but don't narrate or describe their photos back to them. React like a friend would ("that looks amazing" not "capturing the golden light cascading across...")
+- Touch on a few things you find interesting from the context — what people have been posting, what's happening today, the weather, whatever catches your attention. Connect them naturally like you're catching up with friends, not bullet-pointing a newsletter. 2-4 sentences is good
+- All lowercase. Use emojis sparingly and only when they feel natural, not decorative
+- NEVER mention war, crime, politics, disasters, or anything negative
+- Don't announce that you're an AI or explain what you're doing
+- Don't repeat topics you've already posted about recently
+- You can @mention people using EXACTLY these names (case-sensitive, must match exactly): ${memberList.map(n => "@" + n).join(", ")}. The @mention must be followed by a space or punctuation. Only do this when it feels natural, not every post`,
+  emoji: `When you DO post:
+- Your post must be ONLY emoji characters — absolutely no letters, words, or punctuation
+- Use 1-20 emoji. Match the length to what you're reacting to — could be just a few for a simple vibe, or up to 20 to tell a little story or paint a scene
+- React to what's happening on the feed, the weather, the time of day, etc.
+- No @mentions (they require text)
+- NEVER reference war, crime, politics, disasters, or anything negative`,
+  "haiku-poem": `When you DO post:
+- Your post MUST be a haiku poem — exactly three lines in a strict 5-7-5 syllable structure (first line 5 syllables, second line 7 syllables, third line 5 syllables)
+- Count syllables carefully and double-check the structure is exactly 5-7-5 before posting
+- Make the haiku about something timely and specific from the context above — what people posted recently, the weather, the sky colors, the season, the time of day, what's blooming, or what's happening in the world
+- Write the three lines separated by line breaks (newlines). No title, no commentary, no explanation — just the three lines of the haiku
+- All lowercase. Minimal punctuation, no emojis
+- No @mentions
+- NEVER reference war, crime, politics, disasters, or anything negative`,
+});
 
 router.post("/api/sol/auto-post", async (req, res) => {
   const authKey = req.headers["x-sol-key"];
@@ -65,6 +104,7 @@ router.post("/api/sol/auto-post", async (req, res) => {
     }).join("\n");
     const memberList = users.map(u => u.name);
     const memberNames = memberList.join(", ");
+    const postInstructions = buildPostInstructions(memberList)[POST_MODE];
 
     let weatherContext = "";
     try {
@@ -135,7 +175,7 @@ router.post("/api/sol/auto-post", async (req, res) => {
         input_schema: {
           type: "object",
           properties: {
-            content: { type: "string", description: SOL_EMOJI_ONLY ? "The post content. Must be ONLY emoji characters — no letters, no words, no punctuation. Use 1-20 emoji, proportional to what you're reacting to." : "The post content. All lowercase. Casual and natural, like texting friends." }
+            content: { type: "string", description: POST_CONTENT_DESCRIPTION[POST_MODE] }
           },
           required: ["content"]
         }
@@ -164,22 +204,7 @@ Decide whether to make a post right now. You post every ~6 hours but you should 
 - It's very late at night (after midnight before 7am ET)
 - There's nothing timely or interesting to share
 
-${SOL_EMOJI_ONLY ? `When you DO post:
-- Your post must be ONLY emoji characters — absolutely no letters, words, or punctuation
-- Use 1-20 emoji. Match the length to what you're reacting to — could be just a few for a simple vibe, or up to 20 to tell a little story or paint a scene
-- React to what's happening on the feed, the weather, the time of day, etc.
-- No @mentions (they require text)
-- NEVER reference war, crime, politics, disasters, or anything negative` : `When you DO post:
-- Write like a real person casually posting on a small group feed with friends. Think "texting the group chat" not "writing a caption for instagram"
-- Be genuine and low-key. No hype, no forced enthusiasm, no "vibes" language. Just say what you actually notice or think
-- Don't try to be clever or craft the perfect post. Simple honest observations are better than elaborate witty commentary
-- Reference what people posted recently if it's natural to \u2014 but don't narrate or describe their photos back to them. React like a friend would ("that looks amazing" not "capturing the golden light cascading across...")
-- Touch on a few things you find interesting from the context \u2014 what people have been posting, what's happening today, the weather, whatever catches your attention. Connect them naturally like you're catching up with friends, not bullet-pointing a newsletter. 2-4 sentences is good
-- All lowercase. Use emojis sparingly and only when they feel natural, not decorative
-- NEVER mention war, crime, politics, disasters, or anything negative
-- Don't announce that you're an AI or explain what you're doing
-- Don't repeat topics you've already posted about recently
-- You can @mention people using EXACTLY these names (case-sensitive, must match exactly): ${memberList.map(n => "@" + n).join(", ")}. The @mention must be followed by a space or punctuation. Only do this when it feels natural, not every post`}
+${postInstructions}
 
 Choose create_post or skip.` }] }],
     });
