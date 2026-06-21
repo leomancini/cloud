@@ -212,7 +212,16 @@ Choose create_post or skip.` }] }],
     const toolBlock = response.content.find(b => b.type === "tool_use");
 
     if (toolBlock?.name === "create_post" && toolBlock.input.content) {
-      const content = toolBlock.input.content;
+      // For haiku mode, detect the three-line 5-7-5 structure and join the
+      // stanza lines with " / " so the structure reads clearly in the feed
+      // (e.g. "old silent pond / a frog jumps into the pond / splash! silence again").
+      // This only activates when the content actually contains newlines (i.e. the
+      // model followed the haiku format), so it never touches normal posts.
+      let content = toolBlock.input.content;
+      if (POST_MODE === "haiku-poem") {
+        const lines = content.split("\n").map(l => l.trim()).filter(Boolean);
+        if (lines.length === 3) content = lines.join(" / ");
+      }
       const result = db.prepare("INSERT INTO posts (user_id, content) VALUES (?, ?)").run(SOL_USER_ID, content);
       const postId = result.lastInsertRowid;
 
