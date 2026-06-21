@@ -17,6 +17,7 @@ export const PostMediaContainer = styled.div`
     if (p.$count === 2) return css`
       grid-template-rows: 1fr;
       & > * { height: 100%; max-height: 400px; }
+      & > img, & > video, & > * img, & > * video { height: 100%; object-fit: cover; }
       & > *:first-child, & > *:first-child img, & > *:first-child video { border-radius: ${R} ${S} ${S} ${BL} !important; }
       & > *:last-child, & > *:last-child img, & > *:last-child video { border-radius: ${S} ${R} ${BR} ${S} !important; }
     `;
