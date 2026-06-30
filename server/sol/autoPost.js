@@ -8,7 +8,7 @@ import { uploadsDir } from "../upload.js";
 import { notifyUser } from "../websocket.js";
 import { sendPushNotification, truncateBody } from "../push.js";
 import { SOL_USER_ID } from "../solUser.js";
-import { SOL_POST_MODE, SOL_POST_MODES } from "../config.js";
+import { SOL_POST_MODE, SOL_POST_MODES, SOL_AUTO_POST_ENABLED } from "../config.js";
 
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
 const router = Router();
@@ -55,6 +55,7 @@ const buildPostInstructions = (memberList) => ({
 router.post("/api/sol/auto-post", async (req, res) => {
   const authKey = req.headers["x-sol-key"];
   if (!authKey || authKey !== process.env.SOL_AUTO_POST_KEY) return res.status(403).json({ error: "Forbidden" });
+  if (!SOL_AUTO_POST_ENABLED) return res.json({ action: "skipped", reason: "Auto-posting is disabled" });
   if (!anthropic) return res.status(500).json({ error: "No Anthropic API key" });
 
   try {

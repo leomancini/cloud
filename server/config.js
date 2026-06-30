@@ -25,4 +25,6 @@ const SOL_POST_MODES = ["normal", "emoji", "haiku-poem"];
 
 const SOL_EMOJI_ONLY_COMMENTS = false; // Emoji-only for comment replies (independent of post mode)
 
-export { __dirname, port, GITHUB_OWNER, GITHUB_REPO, LISTS_API_URL, SOL_POST_MODE, SOL_POST_MODES, SOL_EMOJI_ONLY_COMMENTS };
+const SOL_AUTO_POST_ENABLED = false; // Set to true to enable Sol auto-posting
+
+export { __dirname, port, GITHUB_OWNER, GITHUB_REPO, LISTS_API_URL, SOL_POST_MODE, SOL_POST_MODES, SOL_EMOJI_ONLY_COMMENTS, SOL_AUTO_POST_ENABLED };
